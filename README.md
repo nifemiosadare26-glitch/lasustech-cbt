@@ -1,2 +1,0 @@
-# lasustech-cbt
-LASUSTECH CBT PLATFORM
