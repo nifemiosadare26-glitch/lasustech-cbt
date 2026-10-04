@@ -29,7 +29,7 @@ const heroSlides = [
     description:
       "A streamlined computer-based testing platform designed for students, lecturers, and examination officers.",
     image:
-      "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=2200&q=85",
+      "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=2200&q=85",
   },
   {
     eyebrow: "Examination Integrity",
@@ -38,7 +38,7 @@ const heroSlides = [
     description:
       "Support accountable assessments through controlled access, monitoring, and traceable submission records.",
     image:
-      "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&w=2200&q=85",
+      "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=2200&q=85",
   },
   {
     eyebrow: "Student Experience",
@@ -47,7 +47,7 @@ const heroSlides = [
     description:
       "Access scheduled examinations, prepare with practice tests, and navigate your CBT portal seamlessly.",
     image:
-      "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=2200&q=85",
+      "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=2200&q=85",
   },
 ];
 
@@ -137,7 +137,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60 font-sans text-slate-900">
       {/* SLIM NAVBAR */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <nav className="mx-auto flex h-[58px] max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-blue-950 shadow-sm">
@@ -207,7 +207,7 @@ export default function LandingPage() {
         </nav>
 
         {menuOpen && (
-          <div className="border-t border-slate-100 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-xl md:hidden">
+          <div className="border-t border-slate-100 bg-white px-4 py-3 shadow-lg md:hidden">
             <div className="flex flex-col gap-2.5">
               <a href="#home" onClick={() => setMenuOpen(false)} className="text-xs font-medium text-slate-700">
                 Home
@@ -358,7 +358,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* FEATURES SECTION (Transparent to show gradient) */}
+        {/* FEATURES SECTION (Transparent section to show gradient, solid cards) */}
         <section id="features" className="py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -399,7 +399,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* HOW IT WORKS (Transparent to show gradient) */}
+        {/* HOW IT WORKS (Transparent section to show gradient, solid cards) */}
         <section id="how-it-works" className="py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <div className="mx-auto mb-10 max-w-xl text-center">
@@ -420,13 +420,13 @@ export default function LandingPage() {
                 return (
                   <article
                     key={step.number}
-                    className="relative rounded-xl border border-white/50 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-blue-950/5"
+                    className="relative rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-950/5"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
                         <Icon size={22} />
                       </div>
-                      <span className="font-heading text-3xl font-black tracking-tight text-blue-100">
+                      <span className="font-heading text-3xl font-black tracking-tight text-slate-200">
                         {step.number}
                       </span>
                     </div>
@@ -492,7 +492,7 @@ export default function LandingPage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200/60 bg-white/40 py-6 backdrop-blur-md">
+      <footer className="border-t border-slate-200 bg-white py-6">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 text-center text-xs text-slate-500 sm:px-6 md:flex-row md:text-left">
           <p>
             © {new Date().getFullYear()} Lagos State University of Science and Technology.
@@ -561,7 +561,7 @@ function FeatureCard({
   color: string;
 }) {
   return (
-    <article className="group rounded-xl border border-white/60 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:border-blue-200 hover:shadow-lg hover:shadow-blue-950/5">
+    <article className="group rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-950/5">
       <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
         <Icon size={20} />
       </div>
@@ -589,7 +589,7 @@ function QuickAccess({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 rounded-xl border border-white/60 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition duration-300 hover:bg-white hover:border-blue-200 hover:shadow-md hover:shadow-blue-950/5"
+      className="group flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition duration-300 hover:border-blue-200 hover:shadow-md hover:shadow-blue-950/5"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 transition group-hover:bg-blue-700 group-hover:text-white">
         <Icon size={19} />
