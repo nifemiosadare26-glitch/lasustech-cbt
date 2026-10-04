@@ -1,0 +1,81 @@
+@import "../styles/tokens.css";
+@import "tailwindcss";
+
+@theme {
+  --color-blue-50: var(--color-blue-50);
+  --color-blue-100: var(--color-blue-100);
+  --color-blue-500: var(--color-blue-500);
+  --color-blue-600: var(--color-blue-600);
+  --color-blue-700: var(--color-blue-700);
+  --color-blue-900: var(--color-blue-900);
+
+  --color-gray-50: var(--color-gray-50);
+  --color-gray-100: var(--color-gray-100);
+  --color-gray-200: var(--color-gray-200);
+  --color-gray-300: var(--color-gray-300);
+  --color-gray-500: var(--color-gray-500);
+  --color-gray-700: var(--color-gray-700);
+  --color-gray-900: var(--color-gray-900);
+
+  --color-success: var(--color-success);
+  --color-success-tint: var(--color-success-tint);
+  --color-success-ink: var(--color-success-ink);
+
+  --color-warning: var(--color-warning);
+  --color-warning-tint: var(--color-warning-tint);
+  --color-warning-ink: var(--color-warning-ink);
+
+  --color-danger: var(--color-danger);
+  --color-danger-tint: var(--color-danger-tint);
+  --color-danger-ink: var(--color-danger-ink);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-float: var(--shadow-float);
+
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+body {
+  background-color: var(--color-gray-50);
+  color: var(--color-gray-900);
+  font-family: var(--font-sans);
+}
+
+/* Simplified Dark Mode: Pure Black and Grayscale Inversion */
+.dark {
+  /* Make the backgrounds purely black */
+  --color-white: #000000; 
+  --color-gray-50: #000000;
+  
+  /* Simple gray scaling for borders and subtle areas */
+  --color-gray-100: #111111; 
+  --color-gray-200: #222222; 
+  --color-gray-300: #333333; 
+  --color-gray-500: #888888; 
+  --color-gray-700: #cccccc; 
+  --color-gray-900: #ffffff; /* Text becomes pure white */
+  
+  /* Notice: I removed all the blue overrides to roll back the tinting. 
+     The original blue colors will stay exactly the same as in light mode. */
+}
+
+/* Base override to ensure bg-white maps to our custom --color-white variable 
+   since tailwind's native bg-white maps directly to #fff */
+.bg-white {
+  background-color: var(--color-white, #ffffff);
+}
+.text-white {
+  color: var(--color-white, #ffffff);
+}
+.border-white {
+  border-color: var(--color-white, #ffffff);
+}
