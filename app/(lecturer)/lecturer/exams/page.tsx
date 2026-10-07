@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreHorizontal, FileCheck, Calendar, Filter } from "lucide-react";
 
 const mockExams = [
-  { id: "E1", code: "CSC 301", title: "Data Structures Mid-semester", questions: 40, duration: "60 mins", status: "Approved", date: "Oct 15, 2026" },
-  { id: "E2", code: "CSC 305", title: "Algorithms Final Exam", questions: 60, duration: "120 mins", status: "Draft", date: "Unscheduled" },
-  { id: "E3", code: "CSC 411", title: "Artificial Intelligence", questions: 50, duration: "90 mins", status: "In Moderation", date: "Unscheduled" },
-  { id: "E4", code: "CSC 201", title: "Intro to Programming", questions: 30, duration: "45 mins", status: "Scheduled", date: "Oct 20, 2026" },
+  { id: "1", code: "CSC 301", title: "Data Structures Mid-semester", questions: 40, duration: "60 mins", status: "Approved", date: "Oct 15, 2026" },
+  { id: "2", code: "CSC 305", title: "Algorithms Final Exam", questions: 60, duration: "120 mins", status: "Draft", date: "Unscheduled" },
+  { id: "3", code: "CSC 411", title: "Artificial Intelligence", questions: 50, duration: "90 mins", status: "In Moderation", date: "Unscheduled" },
+  { id: "4", code: "CSC 201", title: "Intro to Programming", questions: 30, duration: "45 mins", status: "Scheduled", date: "Oct 20, 2026" },
 ];
 
 export default function ExamManagementList() {
+  const router = useRouter();
+
   return (
     <div className="space-y-6 pb-12 flex flex-col h-full relative">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -61,7 +64,11 @@ export default function ExamManagementList() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {mockExams.map((exam) => (
-                <tr key={exam.id} className="hover:bg-gray-50 transition-colors group cursor-pointer">
+                <tr 
+                  key={exam.id} 
+                  onClick={() => router.push(`/lecturer/exams/${exam.id}/preview`)}
+                  className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100 shrink-0">

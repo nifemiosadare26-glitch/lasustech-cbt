@@ -8,8 +8,15 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const isExam = pathname.includes("/exam/");
 
   if (isExam) {
-    return <div className="min-h-screen bg-gray-50 flex flex-col font-sans">{children}</div>;
+    // html/body are overflow:hidden globally, so this wrapper is the exam page's scroller
+    return (
+      <div className="page-scroll flex flex-col bg-gray-50 font-sans">{children}</div>
+    );
   }
 
-  return <AppShell role="student" title="Student Dashboard">{children}</AppShell>;
+  return (
+    <AppShell role="student" title="Student Dashboard">
+      {children}
+    </AppShell>
+  );
 }

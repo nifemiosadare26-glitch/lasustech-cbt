@@ -17,7 +17,7 @@ export function AppShell({ children, role, title, hideSidebar = false }: AppShel
       {!hideSidebar && <Sidebar role={role} />}
       
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        <Topbar title={title || "Dashboard"} />
+        <Topbar title={title || "Dashboard"} role={role} />
         <main className="flex-1 p-4 sm:p-6 max-w-[1280px] w-full mx-auto">
           {children}
         </main>

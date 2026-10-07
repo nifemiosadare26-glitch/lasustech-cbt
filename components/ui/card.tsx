@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: React.ReactNode;
@@ -30,10 +31,11 @@ interface StatCardProps {
   label: string;
   value: string | number;
   delta?: string;
+  trendType?: 'up' | 'down' | 'neutral';
   href?: string;
 }
 
-export function StatCard({ label, value, delta, href = "#" }: StatCardProps) {
+export function StatCard({ label, value, delta, trendType, href = "#" }: StatCardProps) {
   return (
     <Link 
       href={href} 
@@ -43,7 +45,15 @@ export function StatCard({ label, value, delta, href = "#" }: StatCardProps) {
       <div className="mt-2 flex items-baseline gap-2">
         <div className="text-[32px] font-semibold text-gray-900 leading-none tracking-tight">{value}</div>
         {delta && (
-          <div className="text-[12px] font-medium text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
+          <div className={cn(
+            "flex items-center gap-1 text-[12px] font-medium px-1.5 py-0.5 rounded",
+            trendType === 'up' ? "text-green-700 bg-green-50" : 
+            trendType === 'down' ? "text-red-700 bg-red-50" : 
+            "text-gray-600 bg-gray-100"
+          )}>
+            {trendType === 'up' && <TrendingUp size={14} />}
+            {trendType === 'down' && <TrendingDown size={14} />}
+            {trendType === 'neutral' && <Minus size={14} />}
             {delta}
           </div>
         )}

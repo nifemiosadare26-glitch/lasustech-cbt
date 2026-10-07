@@ -2,214 +2,232 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { KeyRound, ArrowLeft, CheckCircle2, Send } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, CheckCircle2, Send, Loader2, AlertCircle } from "lucide-react";
+import { Inter } from "next/font/google";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+const inter = Inter({ subsets: ["latin"], display: "swap" });
+
+const SCHOOL_NAME = "Lagos State University of Science and Technology";
+
+// One place to change the picture. File must be at public/info6.png
+const RESET_IMAGE = "/info6.png";
+
+// Dark input that survives Chrome autofill (same as the login page)
+const inputClass = [
+  "h-12 rounded-lg text-base",
+  "!bg-[#0f1d3d] border border-white/30 text-white placeholder:text-slate-400",
+  "focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:border-sky-400",
+  "[&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#0f1d3d]",
+  "[&:-webkit-autofill]:[-webkit-text-fill-color:#ffffff]",
+  "[&:-webkit-autofill]:caret-white",
+].join(" ");
 
 export default function ResetPasswordPage() {
   const [submitted, setSubmitted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [identifier, setIdentifier] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const headingRef = React.useRef<HTMLHeadingElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Move focus to the heading when the result appears so screen-reader users notice
+  React.useEffect(() => {
+    if (submitted) headingRef.current?.focus();
+  }, [submitted]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+    setError(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Backend connection template
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "An error occurred. Please try again.");
+      }
+
       setSubmitted(true);
-    }, 900);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("A network error occurred. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const reset = () => {
+    setSubmitted(false);
+    setIdentifier("");
+    setError(null);
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center w-full bg-[#081229] font-sans overflow-hidden px-4 py-10">
-      
-      {/* CBT CENTRE PICTURE OVERLAY */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center opacity-40 mix-blend-luminosity transition-transform duration-[20000ms] hover:scale-105"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000&auto=format&fit=crop')" }}
-      />
-      
-      {/* GRADIENT FADE */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#081229]/75 via-[#081229]/85 to-[#081229] backdrop-blur-[1px]"></div>
+    <main className={`${inter.className} min-h-dvh grid lg:grid-cols-2 bg-[#081229]`}>
+      {/* LEFT: picture panel (desktop only, decorative) */}
+      <section
+        aria-hidden="true"
+        className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden px-6 py-10 text-center bg-[radial-gradient(ellipse_at_center,_#14285a_0%,_#081229_70%)]"
+      >
+        <Image
+          src={RESET_IMAGE}
+          alt=""
+          width={900}
+          height={900}
+          sizes="50vw"
+          priority
+          className="h-auto w-full max-w-[860px] max-h-[62dvh] object-contain drop-shadow-[0_0_48px_rgba(125,211,252,0.45)]"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+        <p className="mt-6 text-2xl xl:text-3xl font-semibold text-white text-balance max-w-md">
+          {SCHOOL_NAME}
+        </p>
+        <p className="mt-2 text-base text-sky-200">Computer Based Test System</p>
+      </section>
 
-      {/* Decorative Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] rounded-full bg-blue-600/15 blur-[120px] z-0 pointer-events-none"></div>
+      {/* RIGHT: form panel */}
+      <section className="flex items-center justify-center px-4 py-8 sm:px-8 bg-[#0b1733] lg:border-l lg:border-white/10">
+        <div className="w-full max-w-[400px]">
+          {/* Small picture for phones and tablets, where the left panel is hidden */}
+          <Image
+            src={RESET_IMAGE}
+            alt=""
+            width={256}
+            height={256}
+            priority
+            className="mx-auto mb-4 h-auto w-36 sm:w-44 lg:hidden drop-shadow-[0_0_24px_rgba(125,211,252,0.45)]"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
 
-      {/* MAIN CONTENT CONTAINER */}
-      <div className="relative z-10 w-full flex flex-col items-center text-center max-w-[100vw] px-4 animate-fade-in">
-        
-        {/* BRAND HEADER */}
-        <div className="flex flex-col items-center text-center mb-6 w-full">
-          <div className="w-32 h-32 md:w-36 md:h-36 flex items-center justify-center mb-5 drop-shadow-2xl animate-float-slow">
-            <img 
-              src="/lasustech-logo.png" 
-              alt="LASUSTECH Logo" 
-              className="w-full h-full object-contain filter drop-shadow-[0_6px_20px_rgba(0,0,0,0.5)]"
-              onError={(e) => {
-                e.currentTarget.src = "https://ui-avatars.com/api/?name=LS&background=081229&color=fff";
-              }}
-            />
-          </div>
-          
-          <h1 className="font-heading font-semibold text-white uppercase drop-shadow-md tracking-[0.12em] text-lg sm:text-xl md:text-2xl lg:text-[1.85rem] leading-snug md:leading-relaxed">
-            Lagos State University of <br /> Science and Technology
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-3xl font-bold tracking-tight text-white mb-2 outline-none"
+          >
+            {submitted ? "Check your email" : "Reset your password"}
           </h1>
-          
-          <p className="text-blue-300/90 mt-3 text-[10px] md:text-xs font-semibold tracking-[0.35em] uppercase">
-            Computer Based Test System
-          </p>
-        </div>
-
-        {/* FLOATING CONTENT (NO CARDS) */}
-        <div className="w-full max-w-[360px] mx-auto text-left mt-2">
-          
-          {/* Animated Icon Header */}
-          <div className="flex flex-col items-center text-center mb-6">
-            <div className="relative w-14 h-14 mb-3 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-sky-500/20 blur-md animate-pulse"></div>
-              <div className="relative z-10 w-12 h-12 rounded-xl bg-white/5 border border-white/15 backdrop-blur-md flex items-center justify-center text-sky-400 shadow-lg animate-bounce-gentle">
-                {!submitted ? (
-                  <KeyRound className="w-6 h-6 animate-key-wiggle" />
-                ) : (
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400 animate-scale-in" />
-                )}
-              </div>
-            </div>
-
-            <h2 className="text-white font-bold text-lg tracking-wider uppercase drop-shadow-sm">
-              Reset Password
-            </h2>
-          </div>
 
           {!submitted ? (
-            <form onSubmit={handleSubmit} className="space-y-4 animate-scale-up">
-              <p className="text-[12px] md:text-[13px] text-blue-100/70 text-center leading-relaxed font-medium mb-4">
-                Enter your matric number or staff email address, and we&apos;ll send you instructions to reset your password.
+            <>
+              <p className="text-base text-slate-300 mb-6 leading-relaxed">
+                Enter your matric number or staff email and we&apos;ll send you instructions to
+                reset your password.
               </p>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-blue-100/90 block tracking-widest uppercase">
-                  Email or Matric No <span className="text-sky-400">*</span>
-                </label>
-                <Input 
-                  required 
-                  placeholder="e.g. CSC/2022/305" 
-                  className="h-11 bg-white/5 border border-white/15 text-white placeholder:text-blue-200/30 focus-visible:ring-sky-400 focus-visible:border-sky-400 backdrop-blur-md rounded-lg shadow-inner text-sm transition-all"
-                />
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="identifier" className="text-sm font-medium text-slate-100 block">
+                    Matric number or staff email{" "}
+                    <span className="text-rose-300" aria-hidden="true">*</span>
+                  </label>
+                  <Input
+                    id="identifier"
+                    name="username"
+                    required
+                    placeholder="e.g. CSC/2022/305 or name@lasustech.edu.ng"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    aria-invalid={!!error}
+                    aria-describedby={error ? "reset-error" : undefined}
+                    className={inputClass}
+                  />
+                </div>
+
+                {error && (
+                  <div
+                    id="reset-error"
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-100"
+                  >
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  aria-busy={isLoading}
+                  className="w-full h-12 text-sm font-semibold bg-white text-[#081229] hover:bg-slate-100 transition-colors rounded-lg disabled:opacity-80 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center gap-2" role="status">
+                      <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      Sending…
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      Send reset link
+                      <Send size={16} aria-hidden="true" />
+                    </span>
+                  )}
+                </Button>
+              </form>
+            </>
+          ) : (
+            <div aria-live="polite" className="mt-4">
+              <div className="flex items-start gap-3 rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-4 mb-5">
+                <CheckCircle2 size={22} className="shrink-0 mt-0.5 text-emerald-300" aria-hidden="true" />
+                <p className="text-base text-emerald-50 leading-relaxed">
+                  If an account matches what you entered, we&apos;ve sent reset instructions to the
+                  email linked to it.
+                </p>
               </div>
 
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="w-full h-11 text-[13px] font-bold bg-white text-[#081229] hover:bg-gray-100 shadow-[0_4px_14px_rgba(255,255,255,0.2)] transition-all mt-5 rounded-lg tracking-widest uppercase flex items-center justify-center gap-2 group"
-              >
-                {isLoading ? (
-                  "Sending Link..."
-                ) : (
-                  <>
-                    Send Reset Link
-                    <Send className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
-                  </>
-                )}
-              </Button>
-            </form>
-          ) : (
-            <div className="space-y-5 animate-scale-up text-center">
-              <p className="text-[13px] text-blue-100/80 leading-relaxed font-medium bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-md">
-                If an account matches that identifier, we have sent a password reset link. Please check your institutional email inbox.
+              <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+                Nothing yet? Check your spam folder and wait a few minutes. If you have no access to
+                that email,{" "}
+                <Link
+                  href="/support"
+                  className="text-sky-300 underline underline-offset-4 hover:text-white rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                >
+                  contact ICT Support
+                </Link>
+                .
               </p>
 
-              <Button 
-                variant="outline" 
-                className="w-full h-11 text-[12px] font-bold border-white/20 text-white bg-white/5 hover:bg-white/15 hover:text-white transition-all rounded-lg tracking-widest uppercase" 
-                onClick={() => setSubmitted(false)}
+              <button
+                type="button"
+                onClick={reset}
+                className="inline-flex w-full items-center justify-center min-h-12 rounded-lg border border-white/30 bg-white/5 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1733]"
               >
-                Try Another Address
-              </Button>
+                Use a different matric number or email
+              </button>
             </div>
           )}
 
-          {/* BACK TO SIGN IN LINK */}
-          <div className="mt-8 pt-4 border-t border-white/10 text-center">
-            <Link 
-              href="/login" 
-              className="inline-flex items-center justify-center text-[12px] font-semibold text-sky-400 hover:text-white transition-colors tracking-wider uppercase group"
+          <div className="mt-8 pt-5 border-t border-white/10 text-center">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center min-h-11 text-sm font-medium text-sky-300 hover:text-white underline-offset-4 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
             >
-              <ArrowLeft className="mr-2 w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" /> 
-              Back to Sign in
+              <ArrowLeft className="mr-2" size={16} aria-hidden="true" />
+              Back to sign in
             </Link>
           </div>
-
         </div>
-      </div>
-
-      {/* HIGH CUSTOM ANIMATIONS */}
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        .font-heading {
-          font-family: 'Inter', sans-serif;
-        }
-        body {
-          font-family: 'Inter', sans-serif;
-        }
-
-        /* Smooth Entrance */
-        @keyframes fade-in {
-          0% { opacity: 0; transform: translateY(15px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in { 
-          animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
-        }
-
-        /* Gentle floating logo */
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        .animate-float-slow {
-          animation: float-slow 6s ease-in-out infinite;
-        }
-
-        /* Subtle icon bounce */
-        @keyframes bounce-gentle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
-        .animate-bounce-gentle {
-          animation: bounce-gentle 3s ease-in-out infinite;
-        }
-
-        /* Key Wiggle Animation */
-        @keyframes key-wiggle {
-          0%, 100% { transform: rotate(0deg); }
-          20% { transform: rotate(-12deg); }
-          40% { transform: rotate(12deg); }
-          60% { transform: rotate(-6deg); }
-          80% { transform: rotate(6deg); }
-        }
-        .animate-key-wiggle {
-          animation: key-wiggle 3s ease-in-out infinite;
-        }
-
-        /* Scale In Transition */
-        @keyframes scale-in {
-          0% { opacity: 0; transform: scale(0.8); }
-          100% { opacity: 1; transform: scale(1); }
-        }
-        .animate-scale-in {
-          animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        /* State Switch Smooth Scale Up */
-        @keyframes scale-up {
-          0% { opacity: 0; transform: translateY(10px) scale(0.98); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-scale-up {
-          animation: scale-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
-    </div>
+      </section>
+    </main>
   );
 }

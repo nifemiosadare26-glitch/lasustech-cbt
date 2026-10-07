@@ -11,12 +11,12 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Input } from "@/components/ui/input";
 
 const scoreData = [
-  { range: "0-39", count: 12, label: "Fail (F)" },
-  { range: "40-44", count: 8, label: "Pass (E)" },
-  { range: "45-49", count: 15, label: "Fair (D)" },
-  { range: "50-59", count: 45, label: "Good (C)" },
-  { range: "60-69", count: 32, label: "V. Good (B)" },
-  { range: "70-100", count: 18, label: "Excell. (A)" },
+  { range: "0-39", count: 12, label: "F" },
+  { range: "40-44", count: 8, label: "E" },
+  { range: "45-49", count: 15, label: "D" },
+  { range: "50-59", count: 45, label: "C" },
+  { range: "60-69", count: 32, label: "B" },
+  { range: "70-100", count: 18, label: "A" },
 ];
 
 const mockStudents = [
@@ -27,7 +27,31 @@ const mockStudents = [
   { matric: "CSC/22/089", name: "Sarah J.", score: 35, grade: "F", time: "60m 00s" },
 ];
 
+const getGradeColor = (grade: string) => {
+  if (grade === "A" || grade === "B") return "bg-green-100 text-green-800";
+  if (grade === "C") return "bg-blue-100 text-blue-800";
+  if (grade === "D" || grade === "E") return "bg-orange-100 text-orange-800";
+  return "bg-red-100 text-red-800";
+};
+
 export default function ExamResults({ params }: { params: { id: string } }) {
+  const handleDownload = (format: "csv" | "pdf") => {
+    const filename = `CSC_301_Results.${format}`;
+    const content = format === "csv" 
+      ? "Matric,Name,Score,Grade,Time\n" + mockStudents.map(s => `${s.matric},${s.name},${s.score},${s.grade},${s.time}`).join("\n")
+      : "PDF document mock content";
+      
+    const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6 pb-12 flex flex-col h-full relative">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -41,15 +65,15 @@ export default function ExamResults({ params }: { params: { id: string } }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary"><Download size={16} className="mr-2"/> Export CSV</Button>
-          <Button><Download size={16} className="mr-2"/> Download PDF</Button>
+          <Button variant="secondary" onClick={() => handleDownload("csv")}><Download size={16} className="mr-2"/> Export CSV</Button>
+          <Button onClick={() => handleDownload("pdf")}><Download size={16} className="mr-2"/> Download PDF</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Total Students" value="130" icon={Users} trend={{ value: 100, label: "attendance", isPositive: true }} />
-        <StatCard title="Average Score" value="58.4%" icon={TrendingUp} />
-        <StatCard title="Pass Rate" value="90.7%" icon={Award} trend={{ value: 12, label: "failed", isPositive: false }} />
+        <StatCard label="Total Students" value="130" delta="+4% vs last year" trendType="up" />
+        <StatCard label="Average Score" value="58.4%" delta="-2.1% vs last year" trendType="down" />
+        <StatCard label="Pass Rate" value="90.7%" delta="+5.2% vs last year" trendType="up" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -91,7 +115,9 @@ export default function ExamResults({ params }: { params: { id: string } }) {
                       </td>
                       <td className="px-6 py-3 text-[14px] font-semibold text-gray-900">{s.score}%</td>
                       <td className="px-6 py-3">
-                        <Badge variant={s.grade === 'F' ? 'danger' : s.grade === 'A' ? 'success' : 'blue-tint'}>{s.grade}</Badge>
+                        <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-bold ${getGradeColor(s.grade)}`}>
+                          {s.grade}
+                        </div>
                       </td>
                       <td className="px-6 py-3 text-[13px] text-gray-500">{s.time}</td>
                       <td className="px-6 py-3">
@@ -108,19 +134,27 @@ export default function ExamResults({ params }: { params: { id: string } }) {
         </div>
         
         <div className="space-y-6">
-          <Card title="Score Distribution" className="h-[400px]">
-            <div className="h-[300px] mt-4">
+          <Card className="h-[400px] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 bg-white">
+              <h3 className="font-semibold text-[17px] text-gray-900 tracking-tight">Score Distribution</h3>
+              <div className="flex items-center gap-3 text-[12px] font-medium text-gray-500">
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>Pass</div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>Fail</div>
+              </div>
+            </div>
+            <div className="flex-1 p-4 mt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={scoreData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                  <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--color-gray-500)" }} dy={10} />
+                  <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--color-gray-500)" }} dy={10} interval={0} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--color-gray-500)" }} />
                   <Tooltip 
                     cursor={{ fill: 'var(--color-gray-50)' }}
                     contentStyle={{ borderRadius: '8px', border: '1px solid var(--color-gray-200)', boxShadow: 'var(--shadow-float)' }}
+                    formatter={(value: any, name: any, props: any) => [value, props.payload.label]}
                   />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {scoreData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.label.includes('F') ? 'var(--color-danger)' : 'var(--color-blue-600)'} />
+                      <Cell key={`cell-${index}`} fill={entry.label.includes('F') ? 'var(--color-danger, #ef4444)' : 'var(--color-blue-600, #2563eb)'} />
                     ))}
                   </Bar>
                 </BarChart>

@@ -1,121 +1,151 @@
 "use client";
 
-import * as React from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Download, History } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { ChevronDown, Download, MessageSquareWarning } from "lucide-react";
 
-const mockResults = [
-  { course: "MTH 201", title: "Mathematical Methods I", unit: 3, score: 68, grade: "B", status: "Published" },
-  { course: "CSC 201", title: "Intro to Programming", unit: 3, score: 74, grade: "A", status: "Published" },
-  { course: "PHY 101", title: "General Physics", unit: 2, score: 45, grade: "D", status: "Published" },
-  { course: "GST 111", title: "Communication in English", unit: 2, score: null, grade: "-", status: "Pending" },
-  { course: "CSC 301", title: "Data Structures", unit: 3, score: null, grade: "-", status: "Pending" },
-];
-
-export default function StudentResults() {
-  const publishedResults = mockResults.filter(r => r.status === 'Published');
-  
-  // Calculate GPA mock
-  const totalUnits = publishedResults.reduce((acc, curr) => acc + curr.unit, 0);
-  const gradePoints: Record<string, number> = { "A": 5, "B": 4, "C": 3, "D": 2, "E": 1, "F": 0 };
-  const totalPoints = publishedResults.reduce((acc, curr) => acc + (gradePoints[curr.grade] * curr.unit), 0);
-  const cgpa = (totalPoints / totalUnits).toFixed(2);
-
+export default function StudentResultsPage() {
   return (
-    <div className="space-y-6 pb-12 flex flex-col h-full relative max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">My Results</h2>
-          <p className="text-[14px] text-gray-500 mt-1">2025/2026 First Semester Examination</p>
-        </div>
-        <Button variant="secondary"><Download size={16} className="mr-2"/> Download Statement</Button>
+    <div className="max-w-4xl mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Results</h1>
+        <button className="flex items-center gap-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+          Session 2026/2027
+          <ChevronDown size={16} className="text-slate-500" />
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 space-y-6">
-          <Card className="bg-blue-900 text-[#ffffff] border-none shadow-md overflow-hidden relative">
-            <div className="absolute right-0 top-0 opacity-10 pointer-events-none">
-              <GraduationCap size={120} className="-mr-6 -mt-6" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* CSC 301 Result */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-6 flex-1 flex flex-col items-center justify-center text-center">
+            <h2 className="text-xl font-bold text-slate-900 mb-6">CSC 301</h2>
+            
+            {/* Score Ring */}
+            <div className="relative w-36 h-36 flex items-center justify-center mb-6">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" className="text-slate-100" strokeWidth="10" stroke="currentColor" fill="none" />
+                <circle 
+                  cx="50" cy="50" r="42" 
+                  className="text-blue-600" 
+                  strokeWidth="10" 
+                  strokeDasharray="263.89" 
+                  strokeDashoffset={263.89 - (263.89 * 0.78)} 
+                  strokeLinecap="round" 
+                  stroke="currentColor" 
+                  fill="none" 
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center justify-center">
+                <span className="text-3xl font-bold text-slate-900">78%</span>
+                <span className="text-sm font-semibold text-slate-600 mt-1">Grade A</span>
+              </div>
             </div>
-            <div className="relative z-10 p-2">
-              <p className="text-[14px] text-blue-200 font-medium mb-1">Current CGPA</p>
-              <h3 className="text-[42px] font-bold tracking-tight">{cgpa}</h3>
-              <p className="text-[13px] text-blue-200 mt-2">Based on {totalUnits} credited units</p>
-            </div>
-          </Card>
 
-          <Card title="Grading System">
-            <div className="space-y-2 mt-2">
-              {[
-                { grade: 'A', range: '70-100', pt: '5.0' },
-                { grade: 'B', range: '60-69', pt: '4.0' },
-                { grade: 'C', range: '50-59', pt: '3.0' },
-                { grade: 'D', range: '45-49', pt: '2.0' },
-                { grade: 'E', range: '40-44', pt: '1.0' },
-                { grade: 'F', range: '0-39', pt: '0.0' },
-              ].map(g => (
-                <div key={g.grade} className="flex items-center justify-between text-[13px]">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-gray-900 w-4">{g.grade}</span>
-                    <span className="text-gray-500">({g.range})</span>
-                  </div>
-                  <span className="font-mono text-gray-700">{g.pt} pt</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="md:col-span-2">
-          <Card className="h-full flex flex-col" noPadding>
-            <div className="flex items-center gap-2 p-4 border-b border-gray-100 bg-gray-50/50">
-              <History size={18} className="text-gray-400" />
-              <h3 className="font-semibold text-[15px] text-gray-900">Transcript Preview</h3>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm">
+              Passed
+            </span>
+          </div>
+          
+          <div className="border-t border-slate-100 bg-slate-50 p-5">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Detail: sections and scores</h3>
+            <div className="space-y-3 text-sm text-slate-700">
+              <div className="flex justify-between items-center">
+                <span>Section A</span>
+                <span className="font-semibold text-slate-900">30 / 40</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Section B</span>
+                <span className="font-semibold text-slate-900">18 / 20</span>
+              </div>
             </div>
             
-            <div className="flex-1 overflow-x-auto bg-white">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50/50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Course</th>
-                    <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Unit</th>
-                    <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Score</th>
-                    <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Grade</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {mockResults.map(res => (
-                    <tr key={res.course} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="font-mono text-[13px] font-medium text-gray-900">{res.course}</div>
-                        <div className="text-[12px] text-gray-500 mt-0.5">{res.title}</div>
-                      </td>
-                      <td className="px-6 py-4 text-[13px] text-gray-700">{res.unit}</td>
-                      <td className="px-6 py-4">
-                        {res.score !== null ? (
-                          <span className="text-[14px] font-semibold text-gray-900">{res.score}%</span>
-                        ) : (
-                          <Badge variant="gray-solid">Processing</Badge>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {res.status === 'Published' ? (
-                          <Badge variant={res.grade === 'A' ? 'success' : res.grade === 'F' ? 'danger' : 'blue-tint'}>
-                            {res.grade}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400 font-mono">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Class Average Bar */}
+            <div className="mt-5 space-y-1.5">
+              <div className="flex justify-between text-xs font-medium text-slate-500">
+                <span>You</span>
+                <span>Class average 62%</span>
+              </div>
+              <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden relative">
+                 <div className="absolute top-0 left-0 h-full bg-slate-400 w-[62%] rounded-full opacity-50" />
+                 <div className="absolute top-0 left-0 h-full bg-blue-600 w-[78%] rounded-full" />
+              </div>
             </div>
-          </Card>
+
+            <div className="mt-6 flex items-center gap-3">
+              <button className="flex-1 inline-flex items-center justify-center gap-2 h-10 rounded-lg bg-white border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                <Download size={16} /> PDF
+              </button>
+              <button className="flex-1 inline-flex items-center justify-center gap-2 h-10 rounded-lg bg-white border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                <MessageSquareWarning size={16} /> Request remark
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* MTH 201 Result */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-6 flex-1 flex flex-col items-center justify-center text-center">
+            <h2 className="text-xl font-bold text-slate-900 mb-6">MTH 201</h2>
+            
+            <div className="relative w-36 h-36 flex items-center justify-center mb-6">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" className="text-slate-100" strokeWidth="10" stroke="currentColor" fill="none" />
+                <circle 
+                  cx="50" cy="50" r="42" 
+                  className="text-blue-600" 
+                  strokeWidth="10" 
+                  strokeDasharray="263.89" 
+                  strokeDashoffset={263.89 - (263.89 * 0.61)} 
+                  strokeLinecap="round" 
+                  stroke="currentColor" 
+                  fill="none" 
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center justify-center">
+                <span className="text-3xl font-bold text-slate-900">61%</span>
+                <span className="text-sm font-semibold text-slate-600 mt-1">Grade B</span>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm">
+              Passed
+            </span>
+          </div>
+          
+          <div className="border-t border-slate-100 bg-slate-50 p-5">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Detail: sections and scores</h3>
+            <div className="space-y-3 text-sm text-slate-700">
+              <div className="flex justify-between items-center">
+                <span>Section A</span>
+                <span className="font-semibold text-slate-900">40 / 50</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Section B</span>
+                <span className="font-semibold text-slate-900">21 / 50</span>
+              </div>
+            </div>
+            
+            <div className="mt-5 space-y-1.5">
+              <div className="flex justify-between text-xs font-medium text-slate-500">
+                <span>You</span>
+                <span>Class average 54%</span>
+              </div>
+              <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden relative">
+                 <div className="absolute top-0 left-0 h-full bg-slate-400 w-[54%] rounded-full opacity-50" />
+                 <div className="absolute top-0 left-0 h-full bg-blue-600 w-[61%] rounded-full" />
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
+              <button className="flex-1 inline-flex items-center justify-center gap-2 h-10 rounded-lg bg-white border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                <Download size={16} /> PDF
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

@@ -1,139 +1,305 @@
-"use client";
-
-import * as React from "react";
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { PlayCircle, Calendar, Clock, MapPin, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Play,
+  FlaskConical,
+  ChevronRight,
+  ExternalLink,
+} from "lucide-react";
+
+/* ------------------------------------------------------------------ */
+/* MOCK DATA - replace with a server fetch (session + exam schedule). */
+/* ------------------------------------------------------------------ */
+const STUDENT = { firstName: "Nifemi" };
+
+type Exam = {
+  id: string;
+  code: string;
+  title: string;
+  status: "live" | "upcoming" | "completed";
+  dateLabel: string;
+  windowLabel?: string;
+  timeLabel?: string;
+  durationLabel: string;
+  venue: string | null;
+  seat?: string;
+  lateText?: string;
+  score?: string;
+};
+
+const EXAMS: Exam[] = [
+  {
+    id: "csc301",
+    code: "CSC 301",
+    title: "Data Structures",
+    status: "live",
+    dateLabel: "Today, 7 Oct",
+    windowLabel: "09:00 to 10:30",
+    durationLabel: "60 min",
+    venue: "CBT Centre 1",
+    seat: "Seat 42",
+    lateText: "Started 8 min ago, join until 09:15",
+  },
+  {
+    id: "mth201",
+    code: "MTH 201",
+    title: "Mathematical Methods I",
+    status: "upcoming",
+    dateLabel: "Tomorrow, 8 Oct",
+    timeLabel: "11:30 AM",
+    durationLabel: "90 min",
+    venue: "CBT Centre 3",
+  },
+  {
+    id: "phy101",
+    code: "PHY 101",
+    title: "General Physics",
+    status: "upcoming",
+    dateLabel: "Thursday, 10 Oct",
+    timeLabel: "09:00 AM",
+    durationLabel: "120 min",
+    venue: null,
+  },
+  {
+    id: "gst101",
+    code: "GST 101",
+    title: "Use of English",
+    status: "completed",
+    dateLabel: "Monday, 2 Oct",
+    durationLabel: "60 min",
+    venue: "CBT Centre 2",
+    score: "72%",
+  }
+];
+
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2";
+
+/* ------------------------------ UI bits ----------------------------- */
+
+function DetailItem({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <Icon size={18} className="mt-0.5 shrink-0 text-blue-700" aria-hidden />
+      <div>
+        <dt className="text-sm font-medium text-slate-600">{label}</dt>
+        <dd className="text-base font-semibold text-slate-900">{children}</dd>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------- Page ------------------------------ */
 
 export default function StudentDashboard() {
+  const live = EXAMS.filter((e) => e.status === "live");
+  const upcoming = EXAMS.filter((e) => e.status === "upcoming");
+  const completed = EXAMS.filter((e) => e.status === "completed");
+
   return (
-    <div className="space-y-6 pb-12 flex flex-col h-full max-w-5xl mx-auto relative">
-      
-      {/* Welcome Banner */}
-      <div className="bg-blue-900 rounded-2xl p-6 sm:p-8 text-[#ffffff] shadow-sm relative overflow-hidden flex flex-col justify-center min-h-[160px]">
-        <div className="relative z-10">
-          <h2 className="text-[28px] font-bold tracking-tight mb-2">Welcome, Nifemi! 👋</h2>
-          <p className="text-blue-200 text-[15px] max-w-xl">
-            You are successfully cleared for the 2025/2026 First Semester Examinations. Good luck with your upcoming papers.
-          </p>
-        </div>
-        {/* Decorative background element */}
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-blue-600/40 to-transparent pointer-events-none"></div>
+    <div className="mx-auto w-full max-w-4xl space-y-8 pb-12 pt-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Hello, {STUDENT.firstName}
+        </h1>
+        <Link
+          href="/support"
+          className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"
+        >
+          Exam day support <ExternalLink size={14} />
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Main Upcoming Exams Column */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[18px] font-semibold text-gray-900">Upcoming Exams</h3>
-            <Badge variant="blue-tint">3 scheduled</Badge>
-          </div>
-
-          {/* Active Exam Card (Ready to take) */}
-          <Card className="border-blue-200 shadow-md ring-1 ring-blue-600/10 overflow-hidden relative">
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>
-            <div className="p-1">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <Badge variant="warning" className="mb-2 animate-pulse"><div className="w-1.5 h-1.5 bg-warning-ink rounded-full mr-1.5"></div> Live Now</Badge>
-                  <h4 className="text-[18px] font-bold text-gray-900">CSC 301</h4>
-                  <p className="text-[14px] text-gray-600">Data Structures</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-[14px] font-semibold text-gray-900">09:00 AM</div>
-                  <div className="text-[12px] text-gray-500">60 Minutes</div>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 mt-6 p-3 bg-blue-50/50 rounded-lg border border-blue-100/50 text-[13px] text-gray-700">
-                <div className="flex items-center gap-1.5"><Calendar size={15} className="text-blue-600"/> Today</div>
-                <div className="flex items-center gap-1.5"><MapPin size={15} className="text-blue-600"/> CBT Centre 1, Seat 42</div>
-                <div className="flex items-center gap-1.5 text-success font-medium"><CheckCircle2 size={15} /> Biometric Verified</div>
-              </div>
-
-              <Link href="/student/exam/csc301" className="block mt-4">
-                <Button className="w-full text-[15px] h-11"><PlayCircle size={18} className="mr-2"/> Start Exam</Button>
-              </Link>
-            </div>
-          </Card>
-
-          {/* Future Exams */}
-          <Card>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <Badge variant="gray-solid" className="mb-2">Upcoming</Badge>
-                <h4 className="text-[16px] font-bold text-gray-900">MTH 201</h4>
-                <p className="text-[13px] text-gray-600">Mathematical Methods I</p>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-4 mt-4 text-[13px] text-gray-600">
-              <div className="flex items-center gap-1.5"><Calendar size={15} className="text-gray-400"/> Tomorrow, Oct 21</div>
-              <div className="flex items-center gap-1.5"><Clock size={15} className="text-gray-400"/> 11:30 AM (90 mins)</div>
-              <div className="flex items-center gap-1.5"><MapPin size={15} className="text-gray-400"/> CBT Centre 3</div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <Badge variant="gray-solid" className="mb-2">Upcoming</Badge>
-                <h4 className="text-[16px] font-bold text-gray-900">PHY 101</h4>
-                <p className="text-[13px] text-gray-600">General Physics</p>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-4 mt-4 text-[13px] text-gray-600">
-              <div className="flex items-center gap-1.5"><Calendar size={15} className="text-gray-400"/> Thursday, Oct 23</div>
-              <div className="flex items-center gap-1.5"><Clock size={15} className="text-gray-400"/> 09:00 AM (120 mins)</div>
-              <div className="flex items-center gap-1.5"><MapPin size={15} className="text-gray-400"/> Venue TBD</div>
-            </div>
-          </Card>
+      {/* Urgent Notification Banner */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-start gap-3">
+        <div className="mt-0.5 shrink-0 rounded-full bg-blue-600 p-1">
+          <MapPin size={14} className="text-white" aria-hidden />
         </div>
+        <div>
+          <h3 className="text-sm font-bold text-blue-900">Venue updated</h3>
+          <p className="text-sm font-medium text-blue-800 mt-0.5">
+            Your exam <strong>MTH 201</strong> tomorrow has been moved to <strong>CBT Centre 3</strong>.
+          </p>
+        </div>
+      </div>
 
-        {/* Sidebar Column */}
-        <div className="space-y-6">
-          <Card title="Quick Actions">
-            <div className="space-y-3 mt-2">
-              <Link href="/student/mock" className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-colors group">
-                <div>
-                  <h4 className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-700">Practice Mock Exam</h4>
-                  <p className="text-[12px] text-gray-500">Familiarize with the CBT interface</p>
-                </div>
-                <PlayCircle size={20} className="text-gray-400 group-hover:text-blue-600" />
-              </Link>
-              
-              <Link href="/student/results" className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-colors group">
-                <div>
-                  <h4 className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-700">View Results</h4>
-                  <p className="text-[12px] text-gray-500">Check published grades</p>
-                </div>
-                <CheckCircle2 size={20} className="text-gray-400 group-hover:text-blue-600" />
-              </Link>
-            </div>
-          </Card>
+      <div className="grid grid-cols-1 gap-8">
+        
+        {/* BLOCK 1: Available now (Live) */}
+        {live.length > 0 && (
+          <section aria-labelledby="live-heading" className="space-y-4">
+            <h2 id="live-heading" className="text-lg font-semibold text-slate-900">
+              Available now
+            </h2>
+            {live.map((exam) => (
+              <div
+                key={exam.id}
+                className="relative overflow-hidden rounded-xl border border-blue-200 border-l-[6px] border-l-blue-600 bg-white shadow-sm ring-1 ring-blue-600/10 p-6"
+              >
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                  
+                  <div className="flex-1">
+                    <p className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-800 mb-3">
+                      <span className="relative flex h-2 w-2" aria-hidden>
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-blue-600 opacity-60 motion-safe:animate-ping" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600" />
+                      </span>
+                      Live
+                    </p>
+                    <h3 className="text-xl font-bold text-slate-900">{exam.code}</h3>
+                    <p className="text-base font-medium text-slate-700">{exam.title}</p>
+                    
+                    <dl className="mt-5 grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+                      <DetailItem icon={Calendar} label="Date">
+                        {exam.dateLabel}
+                      </DetailItem>
+                      <DetailItem icon={MapPin} label="Venue">
+                        {exam.venue ?? "To be announced"}
+                        {exam.seat ? `, ${exam.seat}` : ""}
+                      </DetailItem>
+                    </dl>
+                  </div>
 
-          <Card className="bg-gray-50/80 border-gray-200" title="Important Rules">
-            <ul className="space-y-3 mt-3 text-[13px] text-gray-700">
-              <li className="flex items-start gap-2">
-                <AlertCircle size={14} className="text-warning-ink mt-0.5 shrink-0" />
-                <span>You must be seated 30 minutes before the exam begins.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <AlertCircle size={14} className="text-warning-ink mt-0.5 shrink-0" />
-                <span>Navigating away from the exam screen will automatically trigger a malpractice alert.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <AlertCircle size={14} className="text-warning-ink mt-0.5 shrink-0" />
-                <span>No calculators or mobile devices allowed in the centre.</span>
-              </li>
+                  <div className="w-full md:w-[320px] shrink-0 flex flex-col justify-center bg-slate-50 p-5 rounded-xl border border-slate-100">
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-slate-600">Window</p>
+                      <p className="text-xl font-bold tabular-nums text-slate-900">{exam.windowLabel}</p>
+                      <p className="text-sm font-medium text-slate-700 mt-1">Duration {exam.durationLabel}</p>
+                      {exam.lateText && (
+                        <p className="text-sm font-medium text-amber-700 mt-2 bg-amber-50 inline-block px-2 py-1 rounded">
+                          {exam.lateText}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <Link
+                      href={`/student/exam/${exam.id}/start`}
+                      className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 text-base font-semibold text-white transition-colors hover:bg-blue-800 shadow-sm ${focusRing}`}
+                    >
+                      Continue to instructions
+                    </Link>
+                    <div className="mt-3 text-center">
+                      <Link
+                        href="/rules"
+                        className={`text-sm font-medium text-blue-700 underline underline-offset-4 hover:text-blue-900 ${focusRing}`}
+                      >
+                        Read exam-day rules
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* BLOCK 2: Upcoming */}
+        {upcoming.length > 0 && (
+          <section aria-labelledby="upcoming-heading" className="space-y-4">
+            <h2 id="upcoming-heading" className="text-lg font-semibold text-slate-900">
+              Upcoming
+            </h2>
+            <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+              {upcoming.map((exam) => (
+                <li key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-base font-bold text-slate-900">{exam.code}</p>
+                    <p className="text-sm font-medium text-slate-700">{exam.title}</p>
+                  </div>
+                  <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium text-slate-700">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={16} className="text-slate-500" aria-hidden />
+                      <dd>{exam.dateLabel}</dd>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={16} className="text-slate-500" aria-hidden />
+                      <dd className="tabular-nums">
+                        {exam.timeLabel} ({exam.durationLabel})
+                      </dd>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin size={16} className="text-slate-500" aria-hidden />
+                      <dd className={exam.venue ? "" : "text-slate-500 italic"}>
+                        {exam.venue ?? "To be announced"}
+                      </dd>
+                    </div>
+                  </dl>
+                </li>
+              ))}
             </ul>
-          </Card>
-        </div>
-        
+          </section>
+        )}
+
+        {/* BLOCK 3: Mock exam */}
+        <section aria-labelledby="mock-heading" className="space-y-4">
+          <h2 id="mock-heading" className="text-lg font-semibold text-slate-900">
+            Practice
+          </h2>
+          <Link
+            href="/student/mock"
+            className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 transition-colors hover:border-blue-300 hover:bg-blue-50 shadow-sm ${focusRing}`}
+          >
+            <div className="flex items-center gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                <FlaskConical size={24} aria-hidden />
+              </span>
+              <div>
+                <span className="block text-base font-bold text-slate-900">
+                  Take a Mock Exam
+                </span>
+                <span className="block text-sm font-medium text-slate-700">
+                  Get familiar with the CBT interface and controls
+                </span>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex text-blue-700 font-medium items-center gap-1">
+              Start practice <ChevronRight size={18} aria-hidden className="transition-transform group-hover:translate-x-1" />
+            </span>
+          </Link>
+        </section>
+
+        {/* BLOCK 4: Completed */}
+        {completed.length > 0 && (
+          <section aria-labelledby="completed-heading" className="space-y-4">
+            <h2 id="completed-heading" className="text-lg font-semibold text-slate-900">
+              Completed
+            </h2>
+            <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+              {completed.map((exam) => (
+                <li key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-base font-bold text-slate-900">{exam.code}</p>
+                    <p className="text-sm font-medium text-slate-700">{exam.title}</p>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium text-slate-700">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={16} className="text-slate-500" aria-hidden />
+                        <dd>{exam.dateLabel}</dd>
+                      </div>
+                    </dl>
+                    {exam.score && (
+                      <span className="rounded-md bg-slate-100 px-3 py-1 text-sm font-bold text-slate-900">
+                        {exam.score}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
       </div>
     </div>
   );
