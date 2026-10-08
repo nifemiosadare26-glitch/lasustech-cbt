@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,9 @@ const getGradeColor = (grade: string) => {
   return "bg-red-100 text-red-800";
 };
 
-export default function ExamResults({ params }: { params: { id: string } }) {
+export default function ExamResults() {
+  const router = useRouter();
+
   const handleDownload = (format: "csv" | "pdf") => {
     const filename = `CSC_301_Results.${format}`;
     const content = format === "csv" 
@@ -56,9 +58,9 @@ export default function ExamResults({ params }: { params: { id: string } }) {
     <div className="space-y-6 pb-12 flex flex-col h-full relative">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/lecturer/exams">
-            <Button variant="secondary" className="px-2 h-9"><ArrowLeft size={18} /></Button>
-          </Link>
+          <Button variant="secondary" className="px-2 h-9" onClick={() => router.back()}>
+            <ArrowLeft size={18} />
+          </Button>
           <div>
             <h2 className="text-[20px] font-semibold text-gray-900 tracking-tight">CSC 301 Mid-semester Results</h2>
             <p className="text-[13px] text-gray-500">Exam completed Oct 15, 2026</p>
