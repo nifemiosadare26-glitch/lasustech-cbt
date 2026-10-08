@@ -26,9 +26,9 @@ export default function ExamManagementList() {
           <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Exams</h2>
           <p className="text-[14px] text-gray-500">Create, manage, and track your exams.</p>
         </div>
-        <Link href="/lecturer/exams/new">
-          <Button><Plus className="mr-2" size={16} /> Create exam</Button>
-        </Link>
+        <Button onClick={() => router.push("/lecturer/exams/new")}>
+          <Plus className="mr-2" size={16} /> Create exam
+        </Button>
       </div>
 
       <Card className="flex-1 overflow-hidden flex flex-col relative" noPadding>

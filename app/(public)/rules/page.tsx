@@ -95,10 +95,11 @@ export default function RulesPage() {
           >
             <Printer size={15} className="mr-1.5" /> Print Rules
           </Button>
-          <Link href="/student">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-[13px]">
-              Go to Student Portal
-            </Button>
+          <Link
+            href="/student"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-[13px] font-semibold text-white shadow-sm transition"
+          >
+            Go to Student Portal
           </Link>
         </div>
       </header>
@@ -482,15 +483,17 @@ export default function RulesPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link href="/student">
-              <Button variant="secondary" className="h-10 text-[13.5px]">
-                Student Dashboard
-              </Button>
+            <Link
+              href="/student"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-[13.5px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Student Dashboard
             </Link>
-            <Link href="/student/mock">
-              <Button className="h-10 bg-blue-600 hover:bg-blue-700 text-[13.5px]">
-                Try CBT Practice Mock &rarr;
-              </Button>
+            <Link
+              href="/student/mock"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-4 text-[13.5px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              Try CBT Practice Mock &rarr;
             </Link>
           </div>
         </div>

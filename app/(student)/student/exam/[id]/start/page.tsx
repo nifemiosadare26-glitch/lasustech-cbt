@@ -42,7 +42,7 @@ export default function ExamStartPage() {
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
     if (canStart) {
-      router.push(`/student/exam/${examId}/attempt`);
+      router.push(`/student/exam/${examId}`);
     }
   };
 

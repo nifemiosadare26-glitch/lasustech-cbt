@@ -283,20 +283,19 @@ export default function LandingPage() {
 
           {/* DESKTOP ACTIONS */}
           <div className="hidden items-center gap-2 md:flex">
-            <Link href="/login">
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-blue-200 bg-white px-3.5 text-xs font-semibold text-blue-900 transition hover:border-blue-300 hover:bg-blue-50"
-              >
-                Staff Portal
-              </Button>
+            <Link
+              href="/login"
+              className="inline-flex h-9 items-center rounded-lg border border-blue-200 bg-white px-3.5 text-xs font-semibold text-blue-900 transition hover:border-blue-300 hover:bg-blue-50"
+            >
+              Staff Portal
             </Link>
 
-            <Link href="/login">
-              <Button className="h-9 gap-1.5 rounded-lg bg-blue-700 px-4 text-xs font-bold shadow-sm transition hover:bg-blue-800">
-                Student Login
-                <ArrowRight size={14} />
-              </Button>
+            <Link
+              href="/login"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-700 px-4 text-xs font-bold text-white shadow-sm transition hover:bg-blue-800"
+            >
+              Student Login
+              <ArrowRight size={14} />
             </Link>
           </div>
 
@@ -427,24 +426,19 @@ export default function LandingPage() {
 
               {/* ACTIONS */}
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link href="/login">
-                  <Button
-                    size="lg"
-                    className="h-12 w-full gap-2 rounded-lg bg-blue-600 px-6 text-sm font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-500 sm:w-auto"
-                  >
-                    Access Examination Portal
-                    <ArrowRight size={17} />
-                  </Button>
+                <Link
+                  href="/login"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-sm font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-500 sm:w-auto"
+                >
+                  Access Examination Portal
+                  <ArrowRight size={17} />
                 </Link>
 
-                <a href="#how-it-works">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="h-12 w-full rounded-lg border-white/30 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20 hover:text-white sm:w-auto"
-                  >
-                    How It Works
-                  </Button>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex h-12 w-full items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20 hover:text-white sm:w-auto"
+                >
+                  How It Works
                 </a>
               </div>
 
@@ -604,14 +598,12 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-12 text-center">
-              <Link href="/login">
-                <Button
-                  size="lg"
-                  className="h-12 gap-2 rounded-lg bg-blue-950 px-7 text-sm font-bold text-white transition hover:bg-blue-800"
-                >
-                  Continue to Login
-                  <ArrowRight size={17} />
-                </Button>
+              <Link
+                href="/login"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-blue-950 px-7 text-sm font-bold text-white transition hover:bg-blue-800"
+              >
+                Continue to Login
+                <ArrowRight size={17} />
               </Link>
             </div>
           </div>
@@ -667,14 +659,12 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <Link href="/reset">
-              <Button
-                size="lg"
-                className="h-12 gap-2 rounded-lg bg-white px-6 text-sm font-bold text-blue-950 transition hover:bg-blue-50"
-              >
-                Get IT Support
-                <ArrowRight size={17} />
-              </Button>
+            <Link
+              href="/reset"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-white px-6 text-sm font-bold text-blue-950 transition hover:bg-blue-50"
+            >
+              Get IT Support
+              <ArrowRight size={17} />
             </Link>
           </div>
         </section>
