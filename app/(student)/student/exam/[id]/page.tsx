@@ -322,7 +322,7 @@ export default function ExamAttemptPage() {
               <div className="flex items-center gap-2.5"><div className="w-4 h-4 bg-white border-[2.5px] border-blue-900 rounded"></div> Current</div>
             </div>
             <Link href={`/student/exam/${examId}/done`}>
-              <button className="w-full h-12 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+              <button className="w-full h-12 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer">
                 Submit exam
               </button>
             </Link>

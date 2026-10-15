@@ -21,7 +21,8 @@ import {
   Calendar,
   Layers,
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  Radio
 } from "lucide-react";
 import {
   AreaChart,
@@ -69,11 +70,11 @@ const fullTrafficData = [
 
 const initialAuditEvents = [
   { id: "req_9f8a", time: "10:42 AM", user: "N. Osadare", action: "Created session 2026/2027" },
-  { id: "req_8b3c", time: "09:15 AM", user: "T. Bello", action: "Approved CSC 301 exam" },
+  { id: "req_8b3c", time: "09:15 AM", user: "T. Bello", action: "Scheduled CSC 301 exam" },
   { id: "req_7d1e", time: "08:50 AM", user: "System", action: "Automated backup completed" },
-  { id: "req_6c9f", time: "Yesterday", user: "A. Ibrahim", action: "Paused student exam (CSC/22/101)" },
-  { id: "req_5e4d", time: "Yesterday", user: "N. Osadare", action: "Changed password rules" },
-  { id: "req_4a2b", time: "Yesterday", user: "System", action: "Realtime sync reset" },
+  { id: "req_6c9f", time: "Yesterday", user: "A. Ibrahim", action: "Assigned invigilators to Hall A" },
+  { id: "req_5e4d", time: "Yesterday", user: "N. Osadare", action: "Published semester results" },
+  { id: "req_4a2b", time: "Yesterday", user: "System", action: "Realtime sync verified" },
 ];
 
 export default function AdminDashboard() {
@@ -255,9 +256,9 @@ export default function AdminDashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="w-full">
         {/* 2. Proper Interactive Platform Activity Graph */}
-        <Card className="col-span-1 lg:col-span-2">
+        <Card className="w-full">
           {/* Header Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
             <div>
@@ -473,46 +474,6 @@ export default function AdminDashboard() {
             )}
           </div>
         </Card>
-
-        {/* 3. System Health Card */}
-        <Card title="System health">
-          <div className="space-y-6 mt-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="text-emerald-600" size={20} />
-                <span className="text-[15px] font-medium text-gray-900">API Gateway</span>
-              </div>
-              <span className="text-[13px] text-gray-500 font-mono">12 ms</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="text-emerald-600" size={20} />
-                <span className="text-[15px] font-medium text-gray-900">Database</span>
-              </div>
-              <span className="text-[13px] text-gray-500 font-mono">45 ms</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="text-amber-500" size={20} />
-                <span className="text-[15px] font-medium text-gray-900">Realtime Socket</span>
-              </div>
-              <span className="text-[13px] text-amber-600 font-mono font-medium">320 ms</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="text-emerald-600" size={20} />
-                <span className="text-[15px] font-medium text-gray-900">File Storage</span>
-              </div>
-              <span className="text-[13px] text-gray-500 font-mono">80 ms</span>
-            </div>
-            <div className="pt-4 border-t border-gray-100 flex items-center justify-between text-[13px] text-gray-500">
-              <span>Last checked 20s ago</span>
-              <Link href="/admin/settings" className="text-blue-600 hover:underline font-medium">
-                Diagnostics &rarr;
-              </Link>
-            </div>
-          </div>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -584,29 +545,51 @@ export default function AdminDashboard() {
               <ArrowRight size={16} className="text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
             </button>
 
-            {/* Action 3: Open settings */}
+            {/* Action 3: Live Invigilation */}
             <Link
-              href="/admin/settings"
+              href="/admin/live"
+              className="w-full flex items-center justify-between p-3.5 rounded-lg border border-gray-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/30 text-gray-900 transition-all text-left group shadow-2xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <Radio size={18} />
+                </div>
+                <div>
+                  <div className="text-[14px] font-semibold text-gray-900 group-hover:text-emerald-700">Live invigilation</div>
+                  <div className="text-[12px] text-gray-500">Monitor terminals & candidate states</div>
+                </div>
+              </div>
+              <ArrowRight size={16} className="text-gray-400 group-hover:text-emerald-700 group-hover:translate-x-0.5 transition-all" />
+            </Link>
+
+            {/* Action 4: Exam Schedule */}
+            <Link
+              href="/admin/schedule"
               className="w-full flex items-center justify-between p-3.5 rounded-lg border border-gray-200 bg-white hover:border-blue-500 hover:bg-blue-50/30 text-gray-900 transition-all text-left group shadow-2xs"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-md bg-slate-100 text-slate-700 group-hover:bg-slate-800 group-hover:text-white transition-colors">
-                  <Settings size={18} />
+                <div className="p-2 rounded-md bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <Calendar size={18} />
                 </div>
                 <div>
-                  <div className="text-[14px] font-semibold text-gray-900 group-hover:text-slate-900">Open settings</div>
-                  <div className="text-[12px] text-gray-500">System configuration & backups</div>
+                  <div className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-700">Exam schedule</div>
+                  <div className="text-[12px] text-gray-500">Allocate venues, halls & invigilators</div>
                 </div>
               </div>
-              <ArrowRight size={16} className="text-gray-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all" />
+              <ArrowRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
             </Link>
           </div>
 
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[12px] text-gray-500">
-            <span>More administration:</span>
-            <Link href="/admin/structure" className="text-blue-600 hover:underline font-medium">
-              Departments & Courses &rarr;
-            </Link>
+            <span>Administration:</span>
+            <div className="flex gap-3">
+              <Link href="/admin/structure" className="text-blue-600 hover:underline font-medium">
+                Colleges & Depts &rarr;
+              </Link>
+              <Link href="/admin/results" className="text-blue-600 hover:underline font-medium">
+                Results &rarr;
+              </Link>
+            </div>
           </div>
         </Card>
       </div>

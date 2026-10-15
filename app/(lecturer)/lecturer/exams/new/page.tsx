@@ -6,13 +6,49 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Settings2, Info } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2, Settings2, Info, CheckCircle2 } from "lucide-react";
 
 export default function ExamBuilder() {
-  const [step, setStep] = useState(5); // Starting at Preview step based on wireframe screenshot
+  const router = useRouter();
+  const [step, setStep] = useState(5);
+  const [toast, setToast] = useState<string | null>(null);
+  const [rules, setRules] = useState([
+    { id: "1", diff: "Easy", count: 10, available: 40, badge: "success" as const },
+    { id: "2", diff: "Medium", count: 20, available: 55, badge: "blue-tint" as const },
+    { id: "3", diff: "Hard", count: 10, available: 25, badge: "danger" as const },
+  ]);
+
+  const handleDeleteRule = (id: string) => {
+    setRules(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleAddRule = () => {
+    const newId = String(Date.now());
+    setRules(prev => [
+      ...prev,
+      { id: newId, diff: "Medium", count: 10, available: 30, badge: "blue-tint" }
+    ]);
+  };
+
+  const handleSaveDraft = () => {
+    setToast("Exam draft saved successfully!");
+    setTimeout(() => router.push("/lecturer/exams"), 1200);
+  };
+
+  const handlePublish = () => {
+    setToast("Exam created and scheduled successfully!");
+    setTimeout(() => router.push("/lecturer/exams"), 1200);
+  };
 
   return (
     <div className="space-y-6 pb-20 flex flex-col h-full relative">
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg border border-gray-700 animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />
+          <span className="text-sm font-medium">{toast}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Create exam</h2>
@@ -103,32 +139,19 @@ export default function ExamBuilder() {
                 </div>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="flex items-center gap-4">
-                      <Badge variant="success">Easy</Badge>
-                      <span className="text-[14px] font-medium text-gray-900">[10] questions</span>
-                      <span className="text-[13px] text-gray-500">from 40 available</span>
+                  {rules.map((rule) => (
+                    <div key={rule.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="flex items-center gap-4">
+                        <Badge variant={rule.badge}>{rule.diff}</Badge>
+                        <span className="text-[14px] font-medium text-gray-900">[{rule.count}] questions</span>
+                        <span className="text-[13px] text-gray-500">from {rule.available} available</span>
+                      </div>
+                      <button onClick={() => handleDeleteRule(rule.id)} className="text-gray-400 hover:text-danger"><Trash2 size={16}/></button>
                     </div>
-                    <button className="text-gray-400 hover:text-danger"><Trash2 size={16}/></button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="flex items-center gap-4">
-                      <Badge variant="blue-tint">Medium</Badge>
-                      <span className="text-[14px] font-medium text-gray-900">[20] questions</span>
-                      <span className="text-[13px] text-gray-500">from 55 available</span>
-                    </div>
-                    <button className="text-gray-400 hover:text-danger"><Trash2 size={16}/></button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="flex items-center gap-4">
-                      <Badge variant="danger">Hard</Badge>
-                      <span className="text-[14px] font-medium text-gray-900">[10] questions</span>
-                      <span className="text-[13px] text-gray-500">from 25 available</span>
-                    </div>
-                    <button className="text-gray-400 hover:text-danger"><Trash2 size={16}/></button>
-                  </div>
+                  ))}
+                  {rules.length === 0 && (
+                    <p className="text-sm text-gray-400 py-3 text-center">No rules defined. Click below to add rules.</p>
+                  )}
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-100 text-[13px] text-gray-500 flex items-center gap-2">
@@ -136,10 +159,10 @@ export default function ExamBuilder() {
                 </div>
 
                 <div className="mt-6 flex gap-3">
-                  <Button variant="secondary" size="sm"><Plus size={16} className="mr-2"/> Add rule</Button>
+                  <Button variant="secondary" size="sm" onClick={handleAddRule}><Plus size={16} className="mr-2"/> Add rule</Button>
                 </div>
               </Card>
-              <Button variant="tertiary" className="text-blue-700 w-full border border-dashed border-blue-200 bg-blue-50/50 h-12">
+              <Button variant="tertiary" onClick={() => setToast("Section B added")} className="text-blue-700 w-full border border-dashed border-blue-200 bg-blue-50/50 h-12">
                 <Plus size={18} className="mr-2"/> Add section
               </Button>
             </>
@@ -237,13 +260,13 @@ export default function ExamBuilder() {
       <div className="fixed sm:sticky bottom-0 left-0 right-0 sm:left-auto sm:right-auto bg-white border-t border-gray-200 p-4 mt-auto flex items-center justify-between z-20">
         <Button variant="secondary" onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1}>Back</Button>
         <div className="flex gap-3">
-          <Button variant="tertiary">Save draft</Button>
+          <Button variant="tertiary" onClick={handleSaveDraft}>Save draft</Button>
           {step < 5 ? (
             <Button variant="primary" onClick={() => setStep(Math.min(5, step + 1))}>Next Step</Button>
           ) : (
             <>
-              <Button variant="secondary">Preview paper</Button>
-              <Button variant="primary">Send to moderation</Button>
+              <Button variant="secondary" onClick={() => router.push("/lecturer/exams/1/preview")}>Preview paper</Button>
+              <Button variant="primary" onClick={handlePublish}>Publish & Schedule Exam</Button>
             </>
           )}
         </div>

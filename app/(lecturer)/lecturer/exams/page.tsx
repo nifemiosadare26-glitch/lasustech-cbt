@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreHorizontal, FileCheck, Calendar, Filter } from "lucide-react";
 
 const mockExams = [
-  { id: "1", code: "CSC 301", title: "Data Structures Mid-semester", questions: 40, duration: "60 mins", status: "Approved", date: "Oct 15, 2026" },
-  { id: "2", code: "CSC 305", title: "Algorithms Final Exam", questions: 60, duration: "120 mins", status: "Draft", date: "Unscheduled" },
-  { id: "3", code: "CSC 411", title: "Artificial Intelligence", questions: 50, duration: "90 mins", status: "In Moderation", date: "Unscheduled" },
+  { id: "1", code: "CSC 301", title: "Data Structures Mid-semester", questions: 40, duration: "60 mins", status: "Scheduled", date: "Oct 15, 2026" },
+  { id: "2", code: "CSC 305", title: "Algorithms Final Exam", questions: 60, duration: "120 mins", status: "Ready", date: "Oct 22, 2026" },
+  { id: "3", code: "CSC 411", title: "Artificial Intelligence", questions: 50, duration: "90 mins", status: "Ready", date: "Oct 25, 2026" },
   { id: "4", code: "CSC 201", title: "Intro to Programming", questions: 30, duration: "45 mins", status: "Scheduled", date: "Oct 20, 2026" },
 ];
 
@@ -24,7 +24,7 @@ export default function ExamManagementList() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Exams</h2>
-          <p className="text-[14px] text-gray-500">Create, manage, and track your exams.</p>
+          <p className="text-[14px] text-gray-500">Create, manage, and schedule your course examinations directly.</p>
         </div>
         <Button onClick={() => router.push("/lecturer/exams/new")}>
           <Plus className="mr-2" size={16} /> Create exam
@@ -42,10 +42,9 @@ export default function ExamManagementList() {
           <div className="flex gap-2">
             <select className="h-9 rounded-[6px] border border-gray-300 bg-white px-3 py-1.5 text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option>All Statuses</option>
-              <option>Draft</option>
-              <option>In Moderation</option>
-              <option>Approved</option>
+              <option>Ready</option>
               <option>Scheduled</option>
+              <option>Draft</option>
             </select>
           </div>
         </div>
@@ -98,7 +97,15 @@ export default function ExamManagementList() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <button className="text-gray-400 hover:text-gray-900 rounded p-1 transition-colors">
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/lecturer/exams/${exam.id}/preview`);
+                      }}
+                      className="text-gray-400 hover:text-gray-900 rounded p-1 transition-colors cursor-pointer"
+                      title="View exam details"
+                    >
                       <MoreHorizontal size={18} />
                     </button>
                   </td>

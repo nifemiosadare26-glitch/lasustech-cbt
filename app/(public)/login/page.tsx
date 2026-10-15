@@ -53,12 +53,10 @@ export default function LoginPage() {
         throw new Error(data.message || "Invalid credentials");
       }
 
-      // Route based on role returned from the backend
+      // Route based on role returned from the backend (consolidated roles)
       const role = data.role?.toLowerCase();
-      if (role === "admin") router.push("/admin");
+      if (role === "admin" || role === "officer" || role === "invigilator") router.push("/admin");
       else if (role === "lecturer" || role === "staff") router.push("/lecturer");
-      else if (role === "officer") router.push("/officer");
-      else if (role === "invigilator") router.push("/invigilator");
       else router.push("/student");
 
     } catch (err) {

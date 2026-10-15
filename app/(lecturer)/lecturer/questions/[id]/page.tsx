@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Bold, Italic, Type, Image as ImageIcon, Link2 } from "lucide-react";
+import { ArrowLeft, Bold, Italic, Type, Image as ImageIcon, Link2, CheckCircle2 } from "lucide-react";
 
 export default function QuestionEditor() {
   const params = useParams();
@@ -14,8 +14,37 @@ export default function QuestionEditor() {
   const id = params?.id as string;
   const isNew = id === "new";
 
+  const [options, setOptions] = React.useState([
+    { id: "A", text: !isNew ? "Stack" : "", correct: false },
+    { id: "B", text: !isNew ? "Queue" : "", correct: !isNew },
+    { id: "C", text: !isNew ? "Binary tree" : "", correct: false },
+    { id: "D", text: !isNew ? "Graph" : "", correct: false },
+  ]);
+  const [toast, setToast] = React.useState<string | null>(null);
+
+  const handleAddOption = () => {
+    const nextLetter = String.fromCharCode(65 + options.length);
+    if (options.length < 8) {
+      setOptions([...options, { id: nextLetter, text: "", correct: false }]);
+    }
+  };
+
+  const handleSave = (status: "draft" | "published") => {
+    setToast(status === "draft" ? "Question saved as draft!" : "Question saved to question bank!");
+    setTimeout(() => {
+      router.push("/lecturer/questions");
+    }, 1200);
+  };
+
   return (
     <div className="space-y-6 pb-24 flex flex-col h-full max-w-4xl mx-auto relative">
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg border border-gray-700 animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />
+          <span className="text-sm font-medium">{toast}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <Button variant="secondary" className="px-2 h-9" onClick={() => router.push("/lecturer/questions")}>
           <ArrowLeft size={18} />
@@ -52,12 +81,7 @@ export default function QuestionEditor() {
             <p className="text-[13px] text-gray-500 mb-4">Select the radio button next to the correct answer.</p>
 
             <div className="space-y-3">
-              {[
-                { id: "A", text: !isNew ? "Stack" : "" },
-                { id: "B", text: !isNew ? "Queue" : "", correct: !isNew },
-                { id: "C", text: !isNew ? "Binary tree" : "" },
-                { id: "D", text: !isNew ? "Graph" : "" },
-              ].map((opt) => (
+              {options.map((opt) => (
                 <div
                   key={opt.id}
                   className={`flex items-center p-3 border rounded-lg transition-colors ${
@@ -68,7 +92,7 @@ export default function QuestionEditor() {
                     type="radio"
                     name="correct_answer"
                     defaultChecked={opt.correct}
-                    className="w-4 h-4 text-success border-gray-300 focus:ring-success mt-0.5"
+                    className="w-4 h-4 text-success border-gray-300 focus:ring-success mt-0.5 cursor-pointer"
                   />
                   <div className="font-semibold text-gray-700 w-8 text-center">{opt.id}.</div>
                   <Input
@@ -80,9 +104,10 @@ export default function QuestionEditor() {
               ))}
             </div>
             <Button
+              type="button"
               variant="tertiary"
-              className="mt-4 text-blue-700 w-full border border-dashed border-blue-200"
-              onClick={() => {}}
+              className="mt-4 text-blue-700 w-full border border-dashed border-blue-200 cursor-pointer"
+              onClick={handleAddOption}
             >
               Add option
             </Button>
@@ -146,8 +171,19 @@ export default function QuestionEditor() {
           Discard
         </Button>
         <div className="flex gap-3 items-center">
-          <Button variant="secondary" onClick={() => {}}>Save as draft</Button>
-          <Button onClick={() => {}}>Submit for moderation</Button>
+          <Button 
+            variant="secondary" 
+            className="cursor-pointer"
+            onClick={() => handleSave("draft")}
+          >
+            Save as draft
+          </Button>
+          <Button 
+            className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => handleSave("published")}
+          >
+            Save Question
+          </Button>
         </div>
       </div>
     </div>

@@ -13,12 +13,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const initialQuestions = [
-  { id: "q1", text: "Which data structure uses first-in, first-out ordering?", type: "MCQ", topic: "Data structures", diff: "Easy", marks: 2, status: "Approved", date: "24 Sep 2026" },
-  { id: "q2", text: "Match the following sorting algorithms to their worst-case time complexities.", type: "Matching", topic: "Algorithms", diff: "Hard", marks: 4, status: "Approved", date: "25 Sep 2026" },
-  { id: "q3", text: "Select all valid balanced binary trees from the list below.", type: "Multi-answer", topic: "Trees", diff: "Medium", marks: 3, status: "Pending", date: "01 Oct 2026" },
+  { id: "q1", text: "Which data structure uses first-in, first-out ordering?", type: "MCQ", topic: "Data structures", diff: "Easy", marks: 2, status: "Active", date: "24 Sep 2026" },
+  { id: "q2", text: "Match the following sorting algorithms to their worst-case time complexities.", type: "Matching", topic: "Algorithms", diff: "Hard", marks: 4, status: "Active", date: "25 Sep 2026" },
+  { id: "q3", text: "Select all valid balanced binary trees from the list below.", type: "Multi-answer", topic: "Trees", diff: "Medium", marks: 3, status: "Active", date: "01 Oct 2026" },
   { id: "q4", text: "Identify the missing node in this graph traversal.", type: "Image", topic: "Graphs", diff: "Medium", marks: 2, status: "Draft", date: "02 Oct 2026" },
-  { id: "q5", text: "Solve the time complexity equation for Master's Theorem case 2.", type: "Equation", topic: "Algorithms", diff: "Hard", marks: 5, status: "Locked", date: "15 Sep 2026" },
-  { id: "q6", text: "Explain the difference between a stack and a queue.", type: "MCQ", topic: "Data structures", diff: "Easy", marks: 2, status: "Returned", date: "03 Oct 2026" },
+  { id: "q5", text: "Solve the time complexity equation for Master's Theorem case 2.", type: "Equation", topic: "Algorithms", diff: "Hard", marks: 5, status: "Active", date: "15 Sep 2026" },
+  { id: "q6", text: "Explain the difference between a stack and a queue.", type: "MCQ", topic: "Data structures", diff: "Easy", marks: 2, status: "Active", date: "03 Oct 2026" },
 ];
 
 export default function QuestionBank() {
@@ -27,6 +27,9 @@ export default function QuestionBank() {
   const [filterType, setFilterType] = React.useState("All types");
   const [filterStatus, setFilterStatus] = React.useState("All statuses");
   const [filterCourse, setFilterCourse] = React.useState("CSC 301 - Data Structures");
+
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const pageSize = 4;
 
   const filteredQuestions = React.useMemo(() => {
     return initialQuestions.filter(q => {
@@ -37,12 +40,19 @@ export default function QuestionBank() {
     });
   }, [searchQuery, filterType, filterStatus]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
+  const paginatedQuestions = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredQuestions.slice(start, start + pageSize);
+  }, [filteredQuestions, currentPage]);
+
   const hasActiveFilters = searchQuery !== "" || filterType !== "All types" || filterStatus !== "All statuses";
 
   const clearFilters = () => {
     setSearchQuery("");
     setFilterType("All types");
     setFilterStatus("All statuses");
+    setCurrentPage(1);
   };
 
   return (
@@ -98,11 +108,8 @@ export default function QuestionBank() {
             onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option>All statuses</option>
+            <option>Active</option>
             <option>Draft</option>
-            <option>Pending</option>
-            <option>Returned</option>
-            <option>Approved</option>
-            <option>Locked</option>
           </select>
 
           {hasActiveFilters && (
@@ -146,14 +153,14 @@ export default function QuestionBank() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredQuestions.length === 0 ? (
+              {paginatedQuestions.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-gray-500 text-[14px]">
                     No questions found matching your filters.
                   </td>
                 </tr>
               ) : (
-                filteredQuestions.map((q) => (
+                paginatedQuestions.map((q) => (
                   <tr key={q.id} className="hover:bg-blue-50/50 transition-colors group">
                     <td className="px-4 py-3">
                       <input type="checkbox" className="rounded-[4px] border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
@@ -182,18 +189,16 @@ export default function QuestionBank() {
                     </td>
                     <td className="px-4 py-3 text-[13px] text-gray-700 font-mono">{q.marks}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={
-                        q.status === 'Approved' ? 'blue-solid' :
-                        q.status === 'Pending' ? 'warning' :
-                        q.status === 'Locked' ? 'gray-solid' :
-                        q.status === 'Returned' ? 'danger' : 'gray-tint'
-                      }>
-                        {q.status === 'Locked' && <Lock size={10} className="mr-1" />}
+                      <Badge variant={q.status === 'Active' ? 'blue-solid' : 'gray-tint'}>
                         {q.status}
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <button className="text-gray-400 hover:text-gray-900 rounded p-1">
+                      <button 
+                        onClick={() => router.push(`/lecturer/questions/${q.id}`)}
+                        className="text-gray-400 hover:text-gray-900 rounded p-1 cursor-pointer"
+                        title="Edit question"
+                      >
                         <MoreHorizontal size={18} />
                       </button>
                     </td>
@@ -206,10 +211,28 @@ export default function QuestionBank() {
 
         {/* Pagination */}
         <div className="p-4 border-t border-gray-100 flex items-center justify-between text-[13px] text-gray-500 bg-white">
-          <span>Showing 1 to {filteredQuestions.length} of {filteredQuestions.length}</span>
+          <span>
+            Page {currentPage} of {totalPages} ({filteredQuestions.length} questions)
+          </span>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" className="h-8">Previous</Button>
-            <Button variant="secondary" size="sm" className="h-8">Next</Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="h-8 cursor-pointer disabled:opacity-40"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            >
+              Previous
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="h-8 cursor-pointer disabled:opacity-40"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            >
+              Next
+            </Button>
           </div>
         </div>
       </Card>
