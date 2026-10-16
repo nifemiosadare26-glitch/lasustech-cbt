@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Network, Users, CalendarRange, ScrollText, Settings,
   Library, Upload, CheckSquare, FileCheck, BarChart3, CalendarClock,
   UserSquare, MessageSquareWarning, Radio, GraduationCap, LogOut, FlaskConical,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, ShieldAlert
 } from "lucide-react";
 
 type Role = "admin" | "lecturer" | "officer" | "invigilator" | "student";
@@ -42,6 +42,7 @@ const roleMenus = {
   invigilator: [
     { name: "Today's exams", href: "/invigilator", icon: CalendarRange },
     { name: "Live monitor", href: "/invigilator/live/1", icon: Radio }, 
+    { name: "Incident reports", href: "/invigilator/incidents", icon: ShieldAlert },
   ],
   student: [
     { name: "My exams", href: "/student", icon: FileCheck },

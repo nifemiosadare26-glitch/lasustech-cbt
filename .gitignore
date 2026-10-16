@@ -39,5 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# local dumps & scripts
 codebase.txt
 reap.js
+
+# generated designs & mock outputs
+Claude outputs/

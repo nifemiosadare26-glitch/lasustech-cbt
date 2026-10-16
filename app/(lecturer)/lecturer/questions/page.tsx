@@ -10,6 +10,7 @@ import {
   AlignLeft, Image as ImageIcon, CheckCircle2, Lock, X
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const initialQuestions = [
   { id: "q1", text: "Which data structure uses first-in, first-out ordering?", type: "MCQ", topic: "Data structures", diff: "Easy", marks: 2, status: "Approved", date: "24 Sep 2026" },
@@ -21,6 +22,7 @@ const initialQuestions = [
 ];
 
 export default function QuestionBank() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [filterType, setFilterType] = React.useState("All types");
   const [filterStatus, setFilterStatus] = React.useState("All statuses");
@@ -49,12 +51,10 @@ export default function QuestionBank() {
         <div>
           <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Question bank</h2>
         </div>
-        <Link href="/lecturer/questions/new">
-          <Button>
-            <Plus className="mr-2" size={18} />
-            Add question
-          </Button>
-        </Link>
+        <Button onClick={() => router.push("/lecturer/questions/new")}>
+          <Plus className="mr-2" size={18} />
+          Add question
+        </Button>
       </div>
 
       <Card className="flex flex-col">
