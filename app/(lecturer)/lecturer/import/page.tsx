@@ -116,35 +116,13 @@ const GOOD_COUNT = PREVIEW_ROWS.filter((r) => r.status === "ok").length;
 const WARN_COUNT = PREVIEW_ROWS.filter((r) => r.status === "warning").length;
 
 // ---------------------------------------------------------------------------
-// Aiken template content to download
+// CSV template content to download
 // ---------------------------------------------------------------------------
-const AIKEN_TEMPLATE = `Which data structure uses First-In, First-Out (FIFO) ordering?
-A. Stack
-B. Queue
-C. Tree
-D. Graph
-ANSWER: B
-
-What is the time complexity of binary search on a sorted array of n elements?
-A. O(n)
-B. O(n^2)
-C. O(log n)
-D. O(1)
-ANSWER: C
-
-Which OSI layer is responsible for end-to-end error recovery and flow control?
-A. Network
-B. Data Link
-C. Session
-D. Transport
-ANSWER: D
-
-Which sorting algorithm has an average time complexity of O(n log n)?
-A. Bubble Sort
-B. Merge Sort
-C. Insertion Sort
-D. Selection Sort
-ANSWER: B
+const CSV_TEMPLATE = `Question,Option A,Option B,Option C,Option D,Answer,Marks
+Which data structure uses First-In First-Out (FIFO) ordering?,Stack,Queue,Tree,Graph,B,1
+What is the time complexity of binary search on a sorted array?,O(n),O(n^2),O(log n),O(1),C,1
+Which OSI layer is responsible for end-to-end error recovery?,Network,Data Link,Session,Transport,D,1
+Which sorting algorithm has an average time complexity of O(n log n)?,Bubble Sort,Merge Sort,Insertion Sort,Selection Sort,B,1
 `;
 
 // ---------------------------------------------------------------------------
@@ -236,11 +214,11 @@ export default function BulkImport() {
   // ── download template ──────────────────────────────────────────────────────
 
   const handleDownloadTemplate = () => {
-    const blob = new Blob([AIKEN_TEMPLATE], { type: "text/plain" });
+    const blob = new Blob([CSV_TEMPLATE], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "aiken_template.txt";
+    a.download = "questions_template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -256,7 +234,7 @@ export default function BulkImport() {
 
   // ── derived display label ──────────────────────────────────────────────────
 
-  const displayName = fileName || "sample_questions.txt";
+  const displayName = fileName || "sample_questions.csv";
 
   // =========================================================================
   // RENDER
@@ -269,7 +247,7 @@ export default function BulkImport() {
           Bulk Import Questions
         </h2>
         <p className="text-[14px] text-gray-500 mt-1">
-          Upload questions via Aiken (.txt) or CSV format.
+          Upload questions via standard CSV spreadsheet format.
         </p>
       </div>
 
@@ -355,8 +333,7 @@ export default function BulkImport() {
               )}
 
               <p className="text-[13px] text-gray-500 max-w-xs mb-6">
-                Supports <strong>.txt</strong> (Aiken format) and{" "}
-                <strong>.csv</strong>. Maximum file size 5 MB.
+                Supports standard <strong>.csv</strong> files. Maximum file size 5 MB.
               </p>
 
               <Button
@@ -376,17 +353,16 @@ export default function BulkImport() {
             <Card>
               <div className="p-5 space-y-4">
                 <h3 className="text-[14px] font-semibold text-gray-900">
-                  Aiken Format Guide
+                  CSV Format Guide
                 </h3>
-                <p className="text-[13px] text-gray-600">
-                  Each question is followed by lettered options and an{" "}
-                  <code className="bg-gray-100 px-1 py-0.5 rounded text-[12px]">
-                    ANSWER:
-                  </code>{" "}
-                  line.
+                <p className="text-[13px] text-gray-600 leading-relaxed">
+                  Provide column headers:{" "}
+                  <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px] font-mono">
+                    Question, Option A, Option B, Option C, Option D, Answer, Marks
+                  </code>
                 </p>
-                <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-[11px] leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                  {`What is the capital of Nigeria?\nA. Lagos\nB. Abuja\nC. Kano\nD. Ibadan\nANSWER: B`}
+                <pre className="bg-gray-900 text-gray-100 rounded-lg p-3 font-mono text-[11px] leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                  {`Question,Option A,Option B,Option C,Option D,Answer,Marks\nWhat is the capital of Nigeria?,Lagos,Abuja,Kano,Ibadan,B,1`}
                 </pre>
                 <Button
                   variant="secondary"
@@ -394,7 +370,7 @@ export default function BulkImport() {
                   onClick={handleDownloadTemplate}
                 >
                   <Download size={15} />
-                  Download Template
+                  Download CSV Template
                 </Button>
               </div>
             </Card>
@@ -405,15 +381,10 @@ export default function BulkImport() {
                   Tips
                 </h3>
                 <ul className="text-[13px] text-gray-600 space-y-1.5 list-disc list-inside">
-                  <li>Use uppercase letters for options (A, B, C, D)</li>
-                  <li>Separate each question with a blank line</li>
-                  <li>
-                    <code className="bg-gray-100 px-1 rounded text-[11px]">
-                      ANSWER:
-                    </code>{" "}
-                    must be uppercase
-                  </li>
-                  <li>Save file as UTF-8 encoding</li>
+                  <li>Include all option columns (A, B, C, D)</li>
+                  <li>Set Answer as the letter corresponding to the correct option</li>
+                  <li>Set Marks for each question (default: 1)</li>
+                  <li>Save spreadsheet as CSV (Comma delimited UTF-8)</li>
                 </ul>
               </div>
             </Card>

@@ -63,7 +63,7 @@ const initialMockUsers: UserItem[] = [
     name: "Mr. Tunde",
     staffId: "STAFF/112",
     email: "tunde@lasustech.edu.ng",
-    roles: ["Exam officer", "Invigilator"],
+    roles: ["Admin"],
     dept: "Registry",
     status: "Active",
     lastLogin: "Yesterday"
@@ -123,7 +123,7 @@ const initialMockUsers: UserItem[] = [
     name: "Mrs. K. Ibrahim",
     staffId: "STAFF/145",
     email: "k.ibrahim@lasustech.edu.ng",
-    roles: ["Exam officer"],
+    roles: ["Admin"],
     dept: "Registry",
     status: "Active",
     lastLogin: "Today, 10:15 AM"
@@ -474,8 +474,6 @@ export default function UsersAndRoles() {
               <option>All roles</option>
               <option>Admin</option>
               <option>Lecturer</option>
-              <option>Exam officer</option>
-              <option>Invigilator</option>
               <option>Student</option>
             </select>
 
@@ -809,9 +807,7 @@ export default function UsersAndRoles() {
                   >
                     <option value="Student">Student</option>
                     <option value="Lecturer">Lecturer</option>
-                    <option value="Exam officer">Exam officer</option>
                     <option value="Admin">Administrator</option>
-                    <option value="Invigilator">Invigilator</option>
                   </select>
                 </div>
               </div>
@@ -911,8 +907,6 @@ export default function UsersAndRoles() {
                 >
                   <option value="Admin">Administrator</option>
                   <option value="Lecturer">Lecturer</option>
-                  <option value="Exam officer">Exam officer</option>
-                  <option value="Invigilator">Invigilator</option>
                   <option value="Student">Student</option>
                 </select>
               </div>
@@ -1036,9 +1030,7 @@ export default function UsersAndRoles() {
                   >
                     <option value="Student">Student</option>
                     <option value="Lecturer">Lecturer</option>
-                    <option value="Exam officer">Exam officer</option>
                     <option value="Admin">Administrator</option>
-                    <option value="Invigilator">Invigilator</option>
                   </select>
                 </div>
               </div>

@@ -62,8 +62,11 @@ export default function ExamResults() {
             <ArrowLeft size={18} />
           </Button>
           <div>
-            <h2 className="text-[20px] font-semibold text-gray-900 tracking-tight">CSC 301 Mid-semester Results</h2>
-            <p className="text-[13px] text-gray-500">Exam completed Oct 15, 2026</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[20px] font-semibold text-gray-900 tracking-tight">CSC 301 Mid-semester Results</h2>
+              <Badge variant="outline" className="text-gray-600 bg-gray-50 text-[11px]">View Only • Locked</Badge>
+            </div>
+            <p className="text-[13px] text-gray-500">Exam completed Oct 15, 2026 • Official Records</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -105,7 +108,7 @@ export default function ExamResults() {
                     <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Score</th>
                     <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Grade</th>
                     <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Time taken</th>
-                    <th className="px-6 py-3 w-12"></th>
+                    <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -122,10 +125,12 @@ export default function ExamResults() {
                         </div>
                       </td>
                       <td className="px-6 py-3 text-[13px] text-gray-500">{s.time}</td>
-                      <td className="px-6 py-3">
-                        <button className="text-gray-400 hover:text-gray-900 rounded p-1 transition-colors">
-                          <MoreHorizontal size={18} />
-                        </button>
+                      <td className="px-6 py-3 text-right">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                          s.grade !== 'F' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                        }`}>
+                          {s.grade !== 'F' ? 'Passed' : 'Failed'}
+                        </span>
                       </td>
                     </tr>
                   ))}

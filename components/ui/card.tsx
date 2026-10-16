@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   title?: React.ReactNode;
   action?: { label: string; href: string };
   noPadding?: boolean;

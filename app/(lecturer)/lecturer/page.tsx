@@ -3,17 +3,16 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Upload, AlertCircle, FileClock, CalendarClock, ArrowRight, X } from "lucide-react";
+import { Plus, Upload, AlertCircle, FileClock, CalendarClock, ArrowRight, X, Library, FileCheck } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LabelList } from 'recharts';
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 
 const courseProgress = [
-  { name: 'Approved', value: 102 },
-  { name: 'Pending', value: 18 }
+  { name: 'Active', value: 120 },
 ];
-const COLORS = ['#3B7BEA', '#E1E5EB'];
+const COLORS = ['#2563EB'];
 
 const difficultyMix = [
   { course: 'CSC 301', Easy: 40, Medium: 55, Hard: 25 },
@@ -50,6 +49,7 @@ export default function LecturerDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-[32px] font-semibold text-gray-900 tracking-tight">{greeting}, Dr. Bello</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Department of Computer Science • College of Basic Sciences</p>
           </div>
           <div className="flex gap-3">
             <input 
@@ -81,7 +81,7 @@ export default function LecturerDashboard() {
                     <h3 className="text-[17px] font-bold text-gray-900">CSC 301</h3>
                     <p className="text-[13px] text-gray-700 font-medium">Data Structures</p>
                   </div>
-                  <Badge variant="blue-solid">Live</Badge>
+                  <Badge variant="blue-solid">Active</Badge>
                 </div>
                 <div className="mt-6 flex items-center justify-between">
                   <div className="w-16 h-16 relative">
@@ -91,18 +91,16 @@ export default function LecturerDashboard() {
                           data={courseProgress}
                           innerRadius={22}
                           outerRadius={30}
-                          paddingAngle={2}
+                          paddingAngle={0}
                           dataKey="value"
                           stroke="none"
                         >
-                          {courseProgress.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
+                          <Cell fill="#2563EB" />
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pt-0.5">
-                      <span className="text-[13px] font-bold text-blue-900 leading-none">85%</span>
+                      <span className="text-[13px] font-bold text-blue-900 leading-none">100%</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -110,10 +108,10 @@ export default function LecturerDashboard() {
                     <div className="text-[12px] text-gray-700 mt-1 font-medium">questions</div>
                   </div>
                 </div>
-                <div className="mt-1 text-[11px] text-gray-500 font-medium">102 of 120 approved</div>
+                <div className="mt-1 text-[11px] text-emerald-600 font-medium">120 active & ready for exam</div>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100 text-[13px] text-blue-700 font-medium">
-                View bank &rarr;
+                View question bank &rarr;
               </div>
             </Card>
           </Link>
@@ -127,49 +125,65 @@ export default function LecturerDashboard() {
                     <h3 className="text-[17px] font-bold text-gray-900">CSC 305</h3>
                     <p className="text-[13px] text-gray-700 font-medium">Algorithms</p>
                   </div>
-                  <Badge variant="blue-outline">Draft</Badge>
+                  <Badge variant="blue-solid">Active</Badge>
                 </div>
                 <div className="mt-6 flex items-center justify-between">
-                  <div className="w-16 h-16 relative flex items-center justify-center bg-gray-50 rounded-full">
-                    <span className="text-gray-400 text-[13px] font-bold">0%</span>
+                  <div className="w-16 h-16 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={courseProgress}
+                          innerRadius={22}
+                          outerRadius={30}
+                          paddingAngle={0}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          <Cell fill="#2563EB" />
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pt-0.5">
+                      <span className="text-[13px] font-bold text-blue-900 leading-none">100%</span>
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-[24px] font-semibold text-gray-900 leading-none">64</div>
                     <div className="text-[12px] text-gray-700 mt-1 font-medium">questions</div>
                   </div>
                 </div>
-                <div className="mt-1 text-[11px] text-warning-ink font-medium">0 of 64 approved</div>
+                <div className="mt-1 text-[11px] text-emerald-600 font-medium">64 active & ready for exam</div>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100 text-[13px] text-blue-700 font-medium">
-                Submit 64 drafts for moderation &rarr;
+                View question bank &rarr;
               </div>
             </Card>
           </Link>
 
-          {/* Needs Attention */}
+          {/* Quick Schedule & Overview */}
           <Card className="col-span-1 lg:col-span-2 bg-blue-50/50 border-blue-100 h-full flex flex-col justify-between">
-            <h3 className="font-semibold text-[17px] text-gray-900 mb-4">Needs attention</h3>
+            <h3 className="font-semibold text-[17px] text-gray-900 mb-4">Course activity</h3>
             <div className="space-y-3">
-              <Link href="/lecturer/questions?status=returned" className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all">
+              <Link href="/lecturer/questions?course=csc301" className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-danger-tint/20 rounded-md text-danger-ink">
-                    <AlertCircle size={18} />
+                  <div className="p-2 bg-blue-100 rounded-md text-blue-700">
+                    <Library size={18} />
                   </div>
                   <div>
-                    <span className="text-[14px] font-medium text-gray-900 block">CSC 301: 3 returned questions</span>
-                    <span className="text-[12px] text-gray-500">Returned 2 days ago</span>
+                    <span className="text-[14px] font-medium text-gray-900 block">CSC 301: 120 questions ready in bank</span>
+                    <span className="text-[12px] text-gray-500">Includes MCQs, multi-answer & diagrams</span>
                   </div>
                 </div>
                 <ArrowRight className="text-gray-400" size={16} />
               </Link>
               <Link href="/lecturer/exams" className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-warning-tint/30 rounded-md text-warning-ink">
-                    <FileClock size={18} />
+                  <div className="p-2 bg-emerald-100 rounded-md text-emerald-700">
+                    <FileCheck size={18} />
                   </div>
                   <div>
-                    <span className="text-[14px] font-medium text-gray-900 block">CSC 305: 1 exam awaiting approval</span>
-                    <span className="text-[12px] text-gray-500">Submitted yesterday</span>
+                    <span className="text-[14px] font-medium text-gray-900 block">CSC 301 Mid-semester examination</span>
+                    <span className="text-[12px] text-gray-500">Scheduled for Today • CBT Centre 1</span>
                   </div>
                 </div>
                 <ArrowRight className="text-gray-400" size={16} />
@@ -180,8 +194,8 @@ export default function LecturerDashboard() {
                     <CalendarClock size={18} />
                   </div>
                   <div>
-                    <span className="text-[14px] font-medium text-gray-900 block">CSC 301 starts in 5 days</span>
-                    <span className="text-[12px] text-gray-500">12 Oct 2026</span>
+                    <span className="text-[14px] font-medium text-gray-900 block">MTH 201 Examination starts tomorrow</span>
+                    <span className="text-[12px] text-gray-500">11:30 AM • CBT Centre 3</span>
                   </div>
                 </div>
                 <ArrowRight className="text-gray-400" size={16} />

@@ -18,192 +18,24 @@ import {
   X,
   CheckCircle2,
   Trash2,
-  Building,
+  Building2,
   GraduationCap,
   Layers,
-  Sparkles
+  Sparkles,
+  School
 } from "lucide-react";
-
-interface Course {
-  id: string;
-  code: string;
-  title: string;
-  level: string;
-  sem: string;
-  lecturers: string[];
-  status: "Active" | "Archived";
-}
-
-interface Programme {
-  id: string;
-  name: string;
-  degree: string;
-  levels: string[];
-}
-
-interface Department {
-  id: string;
-  name: string;
-  code: string;
-  head: string;
-  programmes: Programme[];
-  courses: Course[];
-}
-
-interface Faculty {
-  id: string;
-  name: string;
-  code: string;
-  dean: string;
-  departments: Department[];
-}
-
-const initialStructure: Faculty[] = [
-  {
-    id: "fac_sci",
-    name: "Faculty of Science",
-    code: "SCI",
-    dean: "Prof. O. Adebayo",
-    departments: [
-      {
-        id: "dept_csc",
-        name: "Department of Computer Science",
-        code: "CSC",
-        head: "Dr. Adeyemi",
-        programmes: [
-          {
-            id: "prog_bsc_csc",
-            name: "B.Sc. Computer Science",
-            degree: "B.Sc.",
-            levels: ["100 level", "200 level", "300 level", "400 level"],
-          },
-          {
-            id: "prog_bsc_se",
-            name: "B.Sc. Software Engineering",
-            degree: "B.Sc.",
-            levels: ["100 level", "200 level", "300 level", "400 level"],
-          },
-        ],
-        courses: [
-          {
-            id: "c_csc301",
-            code: "CSC 301",
-            title: "Data Structures",
-            level: "300",
-            sem: "1st",
-            lecturers: ["Dr. Bello"],
-            status: "Active",
-          },
-          {
-            id: "c_csc305",
-            code: "CSC 305",
-            title: "Algorithms",
-            level: "300",
-            sem: "1st",
-            lecturers: ["Dr. Bello", "Mr. Tunde"],
-            status: "Active",
-          },
-          {
-            id: "c_csc101",
-            code: "CSC 101",
-            title: "Intro to Computing",
-            level: "100",
-            sem: "1st",
-            lecturers: [],
-            status: "Archived",
-          },
-          {
-            id: "c_csc201",
-            code: "CSC 201",
-            title: "Computer Programming I",
-            level: "200",
-            sem: "1st",
-            lecturers: ["Dr. Adeyemi"],
-            status: "Active",
-          },
-        ],
-      },
-      {
-        id: "dept_mth",
-        name: "Department of Mathematics",
-        code: "MTH",
-        head: "Dr. K. Salami",
-        programmes: [
-          {
-            id: "prog_bsc_mth",
-            name: "B.Sc. Mathematics",
-            degree: "B.Sc.",
-            levels: ["100 level", "200 level", "300 level", "400 level"],
-          },
-        ],
-        courses: [
-          {
-            id: "c_mth101",
-            code: "MTH 101",
-            title: "Elementary Mathematics I",
-            level: "100",
-            sem: "1st",
-            lecturers: ["Dr. K. Salami"],
-            status: "Active",
-          },
-          {
-            id: "c_mth201",
-            code: "MTH 201",
-            title: "Mathematical Methods I",
-            level: "200",
-            sem: "1st",
-            lecturers: ["Dr. K. Salami"],
-            status: "Active",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "fac_eng",
-    name: "Faculty of Engineering",
-    code: "ENG",
-    dean: "Prof. E. Johnson",
-    departments: [
-      {
-        id: "dept_mee",
-        name: "Department of Mechanical Engineering",
-        code: "MEE",
-        head: "Engr. F. Alabi",
-        programmes: [
-          {
-            id: "prog_beng_mee",
-            name: "B.Eng. Mechanical Engineering",
-            degree: "B.Eng.",
-            levels: ["100 level", "200 level", "300 level", "400 level", "500 level"],
-          },
-        ],
-        courses: [
-          {
-            id: "c_mee201",
-            code: "MEE 201",
-            title: "Engineering Mechanics",
-            level: "200",
-            sem: "1st",
-            lecturers: ["Engr. F. Alabi"],
-            status: "Active",
-          },
-        ],
-      },
-    ],
-  },
-];
+import { LASUSTECH_COLLEGES, College, Department, Programme, Course } from "@/lib/lasustech-structure";
 
 export default function AcademicStructure() {
-  const [structure, setStructure] = useState<Faculty[]>(initialStructure);
-  const [selectedFacultyId, setSelectedFacultyId] = useState<string>("fac_sci");
+  const [structure, setStructure] = useState<College[]>(LASUSTECH_COLLEGES);
+  const [selectedCollegeId, setSelectedCollegeId] = useState<string>("col_cbs");
   const [selectedDeptId, setSelectedDeptId] = useState<string>("dept_csc");
-  const [selectedProgId, setSelectedProgId] = useState<string | null>("prog_bsc_csc");
+  const [selectedProgId, setSelectedProgId] = useState<string | null>("prog_csc");
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
 
   // Expanded nodes in tree
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
-    new Set(["fac_sci", "dept_csc", "prog_bsc_csc"])
+    new Set(["col_cbs", "dept_csc", "prog_csc"])
   );
 
   // Search filter
@@ -213,7 +45,7 @@ export default function AcademicStructure() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modals visibility
-  const [isAddFacultyOpen, setIsAddFacultyOpen] = useState(false);
+  const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false);
   const [isEditDeptOpen, setIsEditDeptOpen] = useState(false);
   const [isAddProgrammeOpen, setIsAddProgrammeOpen] = useState(false);
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
@@ -221,7 +53,7 @@ export default function AcademicStructure() {
   const [activeCourseToEdit, setActiveCourseToEdit] = useState<Course | null>(null);
 
   // Form states
-  const [facultyForm, setFacultyForm] = useState({ name: "", code: "", dean: "" });
+  const [collegeForm, setCollegeForm] = useState({ name: "", code: "", dean: "" });
   const [deptForm, setDeptForm] = useState({ name: "", code: "", head: "" });
   const [progForm, setProgForm] = useState({ name: "", degree: "B.Sc." });
   const [courseForm, setCourseForm] = useState({
@@ -247,11 +79,11 @@ export default function AcademicStructure() {
     });
   };
 
-  // Find currently selected faculty & department
-  const currentFaculty = structure.find((f) => f.id === selectedFacultyId) || structure[0];
+  // Find currently selected college & department
+  const currentCollege = structure.find((c) => c.id === selectedCollegeId) || structure[0];
   const currentDept =
-    currentFaculty?.departments.find((d) => d.id === selectedDeptId) ||
-    currentFaculty?.departments[0];
+    currentCollege?.departments.find((d) => d.id === selectedDeptId) ||
+    currentCollege?.departments[0];
 
   // Filtered courses based on selected level (if any)
   const displayedCourses = useMemo(() => {
@@ -261,26 +93,26 @@ export default function AcademicStructure() {
     return currentDept.courses.filter((c) => c.level === levelNumber);
   }, [currentDept, selectedLevel]);
 
-  // Handle Add Faculty
-  const handleAddFaculty = (e: React.FormEvent) => {
+  // Handle Add College
+  const handleAddCollege = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!facultyForm.name.trim()) return;
+    if (!collegeForm.name.trim()) return;
 
-    const newFaculty: Faculty = {
-      id: `fac_${Date.now()}`,
-      name: facultyForm.name,
-      code: facultyForm.code || facultyForm.name.substring(0, 3).toUpperCase(),
-      dean: facultyForm.dean || "Unassigned",
+    const newCollege: College = {
+      id: `col_${Date.now()}`,
+      name: collegeForm.name,
+      code: collegeForm.code || collegeForm.name.substring(0, 4).toUpperCase(),
+      dean: collegeForm.dean || "Unassigned",
       departments: [],
     };
 
-    setStructure([...structure, newFaculty]);
-    setSelectedFacultyId(newFaculty.id);
+    setStructure([...structure, newCollege]);
+    setSelectedCollegeId(newCollege.id);
     setSelectedDeptId("");
-    setExpandedNodes((prev) => new Set(prev).add(newFaculty.id));
-    setIsAddFacultyOpen(false);
-    setFacultyForm({ name: "", code: "", dean: "" });
-    showToast(`Faculty "${newFaculty.name}" created successfully!`);
+    setExpandedNodes((prev) => new Set(prev).add(newCollege.id));
+    setIsAddCollegeOpen(false);
+    setCollegeForm({ name: "", code: "", dean: "" });
+    showToast(`College "${newCollege.name}" created successfully!`);
   };
 
   // Open Edit Dept Modal
@@ -300,11 +132,11 @@ export default function AcademicStructure() {
     if (!currentDept) return;
 
     setStructure((prev) =>
-      prev.map((f) => {
-        if (f.id !== currentFaculty.id) return f;
+      prev.map((col) => {
+        if (col.id !== currentCollege.id) return col;
         return {
-          ...f,
-          departments: f.departments.map((d) =>
+          ...col,
+          departments: col.departments.map((d) =>
             d.id === currentDept.id
               ? { ...d, name: deptForm.name, code: deptForm.code, head: deptForm.head }
               : d
@@ -330,11 +162,11 @@ export default function AcademicStructure() {
     };
 
     setStructure((prev) =>
-      prev.map((f) => {
-        if (f.id !== currentFaculty.id) return f;
+      prev.map((col) => {
+        if (col.id !== currentCollege.id) return col;
         return {
-          ...f,
-          departments: f.departments.map((d) =>
+          ...col,
+          departments: col.departments.map((d) =>
             d.id === currentDept.id
               ? { ...d, programmes: [...d.programmes, newProg] }
               : d
@@ -366,11 +198,11 @@ export default function AcademicStructure() {
     };
 
     setStructure((prev) =>
-      prev.map((f) => {
-        if (f.id !== currentFaculty.id) return f;
+      prev.map((col) => {
+        if (col.id !== currentCollege.id) return col;
         return {
-          ...f,
-          departments: f.departments.map((d) =>
+          ...col,
+          departments: col.departments.map((d) =>
             d.id === currentDept.id
               ? { ...d, courses: [newCourse, ...d.courses] }
               : d
@@ -423,11 +255,11 @@ export default function AcademicStructure() {
     };
 
     setStructure((prev) =>
-      prev.map((f) => {
-        if (f.id !== currentFaculty.id) return f;
+      prev.map((col) => {
+        if (col.id !== currentCollege.id) return col;
         return {
-          ...f,
-          departments: f.departments.map((d) =>
+          ...col,
+          departments: col.departments.map((d) =>
             d.id === currentDept.id
               ? {
                   ...d,
@@ -449,11 +281,11 @@ export default function AcademicStructure() {
   const handleDeleteCourse = (courseId: string) => {
     if (!currentDept) return;
     setStructure((prev) =>
-      prev.map((f) => {
-        if (f.id !== currentFaculty.id) return f;
+      prev.map((col) => {
+        if (col.id !== currentCollege.id) return col;
         return {
-          ...f,
-          departments: f.departments.map((d) =>
+          ...col,
+          departments: col.departments.map((d) =>
             d.id === currentDept.id
               ? {
                   ...d,
@@ -481,17 +313,19 @@ export default function AcademicStructure() {
       {/* Header */}
       <div>
         <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Academic structure</h2>
-        <p className="text-[14px] text-gray-500">Manage faculties, departments, programmes, and courses.</p>
+        <p className="text-[14px] text-gray-500">
+          LASUSTECH official 5 colleges, academic departments, programmes, and course catalogues.
+        </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
         {/* Left: Dynamic Interactive Tree */}
-        <Card className="w-full lg:w-[320px] flex-shrink-0 flex flex-col h-[620px] overflow-hidden">
+        <Card className="w-full lg:w-[350px] flex-shrink-0 flex flex-col h-[640px] overflow-hidden">
           <div className="p-3 border-b border-gray-100 bg-gray-50">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <Input
-                placeholder="Search structure..."
+                placeholder="Search colleges and departments..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-9 text-[13px] bg-white"
@@ -499,16 +333,16 @@ export default function AcademicStructure() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-1 text-[14px] select-none">
-            {structure.map((fac) => {
-              const isFacExpanded = expandedNodes.has(fac.id);
-              const isFacSelected = selectedFacultyId === fac.id && !selectedDeptId;
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 text-[13.5px] select-none">
+            {structure.map((col) => {
+              const isColExpanded = expandedNodes.has(col.id);
+              const isColSelected = selectedCollegeId === col.id && !selectedDeptId;
 
               // Search query matching
               if (
                 searchQuery &&
-                !fac.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-                !fac.departments.some(
+                !col.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+                !col.departments.some(
                   (d) =>
                     d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     d.courses.some((c) =>
@@ -520,54 +354,57 @@ export default function AcademicStructure() {
               }
 
               return (
-                <div key={fac.id} className="space-y-1">
-                  {/* Faculty Node */}
+                <div key={col.id} className="space-y-1">
+                  {/* College Node */}
                   <div
                     onClick={() => {
-                      setSelectedFacultyId(fac.id);
-                      toggleExpand(fac.id);
-                      if (fac.departments.length > 0 && selectedFacultyId !== fac.id) {
-                        setSelectedDeptId(fac.departments[0].id);
+                      setSelectedCollegeId(col.id);
+                      toggleExpand(col.id);
+                      if (col.departments.length > 0 && selectedCollegeId !== col.id) {
+                        setSelectedDeptId(col.departments[0].id);
                       }
                     }}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
-                      isFacSelected
-                        ? "bg-blue-50 text-blue-900 font-semibold"
-                        : "hover:bg-gray-100 text-gray-900 font-medium"
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+                      isColSelected
+                        ? "bg-blue-50 text-blue-900 font-bold"
+                        : "hover:bg-gray-100 text-gray-900 font-semibold"
                     }`}
                   >
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleExpand(fac.id);
+                        toggleExpand(col.id);
                       }}
                       className="p-0.5 text-gray-400 hover:text-gray-600 rounded"
                     >
-                      {isFacExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      {isColExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
-                    {isFacExpanded ? (
-                      <FolderOpen size={16} className="text-blue-500 shrink-0" />
+                    {isColExpanded ? (
+                      <School size={16} className="text-blue-600 shrink-0" />
                     ) : (
-                      <Folder size={16} className="text-blue-500 shrink-0" />
+                      <Building2 size={16} className="text-blue-600 shrink-0" />
                     )}
-                    <span className="truncate">{fac.name}</span>
+                    <span className="truncate flex-1">{col.name}</span>
+                    <span className="text-[11px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded">
+                      {col.departments.length}
+                    </span>
                   </div>
 
                   {/* Departments */}
-                  {isFacExpanded && (
+                  {isColExpanded && (
                     <div className="pl-5 space-y-1">
-                      {fac.departments.map((dept) => {
+                      {col.departments.map((dept) => {
                         const isDeptExpanded = expandedNodes.has(dept.id);
                         const isDeptSelected =
-                          selectedFacultyId === fac.id && selectedDeptId === dept.id;
+                          selectedCollegeId === col.id && selectedDeptId === dept.id;
 
                         return (
                           <div key={dept.id} className="space-y-1">
                             {/* Department Node */}
                             <div
                               onClick={() => {
-                                setSelectedFacultyId(fac.id);
+                                setSelectedCollegeId(col.id);
                                 setSelectedDeptId(dept.id);
                                 setSelectedLevel(null);
                                 toggleExpand(dept.id);
@@ -586,12 +423,12 @@ export default function AcademicStructure() {
                                 }}
                                 className="p-0.5 text-blue-500 hover:text-blue-700 rounded"
                               >
-                                {isDeptExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                                {isDeptExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                               </button>
                               {isDeptExpanded ? (
-                                <FolderOpen size={16} className="text-blue-600 shrink-0" />
+                                <FolderOpen size={15} className="text-blue-600 shrink-0" />
                               ) : (
-                                <Folder size={16} className="text-gray-400 shrink-0" />
+                                <Folder size={15} className="text-gray-400 shrink-0" />
                               )}
                               <span className="truncate">{dept.name}</span>
                             </div>
@@ -609,13 +446,13 @@ export default function AcademicStructure() {
                                       {/* Programme Node */}
                                       <div
                                         onClick={() => {
-                                          setSelectedFacultyId(fac.id);
+                                          setSelectedCollegeId(col.id);
                                           setSelectedDeptId(dept.id);
                                           setSelectedProgId(prog.id);
                                           setSelectedLevel(null);
                                           toggleExpand(prog.id);
                                         }}
-                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+                                        className={`flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-colors ${
                                           isProgSelected && !selectedLevel
                                             ? "bg-blue-50 text-blue-800 font-medium"
                                             : "hover:bg-gray-100 text-gray-600"
@@ -629,10 +466,10 @@ export default function AcademicStructure() {
                                           }}
                                           className="p-0.5 text-gray-400 hover:text-gray-600 rounded"
                                         >
-                                          {isProgExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                          {isProgExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                                         </button>
-                                        <Folder size={15} className="text-gray-400 shrink-0" />
-                                        <span className="truncate text-[13px]">{prog.name}</span>
+                                        <Folder size={14} className="text-gray-400 shrink-0" />
+                                        <span className="truncate text-[12.5px]">{prog.name}</span>
                                       </div>
 
                                       {/* Levels */}
@@ -645,20 +482,20 @@ export default function AcademicStructure() {
                                               <div
                                                 key={lvl}
                                                 onClick={() => {
-                                                  setSelectedFacultyId(fac.id);
+                                                  setSelectedCollegeId(col.id);
                                                   setSelectedDeptId(dept.id);
                                                   setSelectedProgId(prog.id);
                                                   setSelectedLevel(
                                                     selectedLevel === lvl ? null : lvl
                                                   );
                                                 }}
-                                                className={`flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-colors text-[13px] ${
+                                                className={`flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-colors text-[12px] ${
                                                   isLvlSelected
                                                     ? "bg-blue-50 text-blue-700 font-semibold"
                                                     : "hover:bg-gray-100 text-gray-500"
                                                 }`}
                                               >
-                                                <Book size={13} className={isLvlSelected ? "text-blue-600" : "text-gray-400"} />
+                                                <Book size={12} className={isLvlSelected ? "text-blue-600" : "text-gray-400"} />
                                                 <span>{lvl}</span>
                                                 {isLvlSelected && (
                                                   <span className="text-[10px] ml-auto bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-medium">
@@ -685,21 +522,21 @@ export default function AcademicStructure() {
             })}
           </div>
 
-          {/* "+ Add faculty" Button - Fully Clickable */}
+          {/* "+ Add College" Button */}
           <div className="p-3 border-t border-gray-100 bg-gray-50">
             <Button
               type="button"
               variant="tertiary"
-              onClick={() => setIsAddFacultyOpen(true)}
+              onClick={() => setIsAddCollegeOpen(true)}
               className="w-full text-blue-700 hover:bg-blue-50 hover:text-blue-800 h-9 font-medium"
             >
-              <Plus size={16} className="mr-2" /> Add faculty
+              <Plus size={16} className="mr-2" /> Add college
             </Button>
           </div>
         </Card>
 
         {/* Right: Department Details & Courses */}
-        <Card className="flex-1 flex flex-col h-[620px] overflow-hidden">
+        <Card className="flex-1 flex flex-col h-[640px] overflow-hidden">
           {/* Detail header */}
           <div className="p-6 border-b border-gray-100 bg-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -713,7 +550,7 @@ export default function AcademicStructure() {
                     }}
                     className="hover:text-blue-700 cursor-pointer"
                   >
-                    {currentFaculty?.name || "Faculty of Science"}
+                    {currentCollege?.name || "College of Basic Sciences"}
                   </span>
                   <ChevronRight size={12} className="text-gray-400" />
                   <span className="text-blue-700 font-semibold">
@@ -733,8 +570,9 @@ export default function AcademicStructure() {
                   {currentDept?.name || "Department of Computer Science"}
                 </h3>
                 <p className="text-[14px] text-gray-500 mt-1">
-                  Code: <strong className="text-gray-700">{currentDept?.code || "CSC"}</strong> •
+                  Code: <strong className="text-gray-700">{currentDept?.code || "CSC"}</strong> •{" "}
                   Head: <strong className="text-gray-700">{currentDept?.head || "Dr. Adeyemi"}</strong> •{" "}
+                  Dean: <strong className="text-gray-700">{currentCollege?.dean}</strong> •{" "}
                   {currentDept?.programmes.length || 0} Programmes
                 </p>
               </div>
@@ -779,7 +617,7 @@ export default function AcademicStructure() {
                 </span>
               </div>
 
-              {/* "Add course" Button - Fully Clickable */}
+              {/* "Add course" Button */}
               <Button
                 type="button"
                 variant="secondary"
@@ -800,14 +638,14 @@ export default function AcademicStructure() {
                   <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Sem</th>
                   <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Lecturers</th>
                   <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Status</th>
-                  <th className="px-4 py-3 text-[13px] font-semibold text-gray-900 text-right">Actions</th>
+                  <th className="px-6 py-3 text-[13px] font-semibold text-gray-900 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 text-[14px]">
                 {displayedCourses.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400 text-[14px]">
-                      No courses found in this category. Click &quot;Add course&quot; above to create one.
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
+                      No courses found in this department. Click &quot;Add course&quot; to create one.
                     </td>
                   </tr>
                 ) : (
@@ -815,52 +653,37 @@ export default function AcademicStructure() {
                     <tr
                       key={c.id}
                       onClick={() => openEditCourse(c)}
-                      className={`hover:bg-blue-50/60 cursor-pointer transition-colors ${
-                        c.status === "Archived" ? "opacity-60 bg-gray-50/40" : ""
-                      }`}
+                      className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                     >
-                      <td className="px-6 py-3.5 font-mono text-[13px] text-blue-700 font-semibold">
-                        {c.code}
-                      </td>
-                      <td className="px-6 py-3.5 text-[14px] font-medium text-gray-900">
-                        {c.title}
-                      </td>
-                      <td className="px-6 py-3.5 text-[14px] text-gray-500">{c.level}</td>
-                      <td className="px-6 py-3.5 text-[14px] text-gray-500">{c.sem}</td>
-                      <td className="px-6 py-3.5">
-                        {c.lecturers.length === 0 ? (
-                          <span className="text-[13px] text-gray-400">None assigned</span>
-                        ) : (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="inline-flex px-2 py-0.5 rounded bg-blue-100 text-blue-900 text-[12px] font-medium">
-                              {c.lecturers[0]}
-                            </span>
-                            {c.lecturers.length > 1 && (
-                              <span className="inline-flex px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-[11px] font-medium">
-                                +{c.lecturers.length - 1}
-                              </span>
-                            )}
-                          </div>
+                      <td className="px-6 py-3.5 font-bold text-gray-900 font-mono">{c.code}</td>
+                      <td className="px-6 py-3.5 font-medium text-gray-900">{c.title}</td>
+                      <td className="px-6 py-3.5 text-gray-600">{c.level} level</td>
+                      <td className="px-6 py-3.5 text-gray-600">{c.sem}</td>
+                      <td className="px-6 py-3.5 text-gray-600">
+                        {c.lecturers.length > 0 ? c.lecturers.join(", ") : (
+                          <span className="text-gray-400 italic">None</span>
                         )}
                       </td>
                       <td className="px-6 py-3.5">
-                        <Badge variant={c.status === "Active" ? "success" : "default"}>
+                        <Badge
+                          variant={c.status === "Active" ? "success-solid" : "gray-solid"}
+                          className="font-medium"
+                        >
                           {c.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <Button
+                      <td className="px-6 py-3.5 text-right">
+                        <button
                           type="button"
-                          variant="tertiary"
-                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEditCourse(c);
                           }}
-                          className="h-8 px-2 text-gray-500 hover:text-blue-700"
+                          className="text-gray-400 hover:text-blue-600 p-1 rounded transition-colors"
+                          title="Edit course"
                         >
-                          <Edit2 size={14} />
-                        </Button>
+                          <Edit2 size={15} />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -871,259 +694,200 @@ export default function AcademicStructure() {
         </Card>
       </div>
 
-      {/* MODAL 1: ADD FACULTY */}
-      {isAddFacultyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <Building size={18} />
-                </div>
-                <div>
-                  <h3 className="text-[17px] font-semibold text-gray-900">Add faculty</h3>
-                  <p className="text-[12px] text-gray-500">Create a new academic faculty division</p>
-                </div>
-              </div>
+      {/* MODAL: Add College */}
+      {isAddCollegeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-[17px]">Add New College</h3>
               <button
                 type="button"
-                onClick={() => setIsAddFacultyOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
+                onClick={() => setIsAddCollegeOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded"
               >
                 <X size={18} />
               </button>
             </div>
-
-            <form onSubmit={handleAddFaculty} className="p-5 space-y-4">
+            <form onSubmit={handleAddCollege} className="p-5 space-y-4">
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Faculty Name <span className="text-red-500">*</span>
+                  College Name *
                 </label>
                 <Input
                   required
-                  placeholder="e.g. Faculty of Environmental Sciences"
-                  value={facultyForm.name}
-                  onChange={(e) => setFacultyForm({ ...facultyForm, name: e.target.value })}
+                  placeholder="e.g. College of Basic Sciences"
+                  value={collegeForm.name}
+                  onChange={(e) => setCollegeForm({ ...collegeForm, name: e.target.value })}
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Code <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    required
-                    placeholder="e.g. ENV"
-                    value={facultyForm.code}
-                    onChange={(e) => setFacultyForm({ ...facultyForm, code: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Dean / Head
-                  </label>
-                  <Input
-                    placeholder="e.g. Prof. G. Balogun"
-                    value={facultyForm.dean}
-                    onChange={(e) => setFacultyForm({ ...facultyForm, dean: e.target.value })}
-                  />
-                </div>
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">
+                  College Code
+                </label>
+                <Input
+                  placeholder="e.g. CBS"
+                  value={collegeForm.code}
+                  onChange={(e) => setCollegeForm({ ...collegeForm, code: e.target.value })}
+                />
               </div>
-
-              <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsAddFacultyOpen(false)}
-                >
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">
+                  Dean of College
+                </label>
+                <Input
+                  placeholder="e.g. Prof. O. Adebayo"
+                  value={collegeForm.dean}
+                  onChange={(e) => setCollegeForm({ ...collegeForm, dean: e.target.value })}
+                />
+              </div>
+              <div className="flex justify-end gap-2.5 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setIsAddCollegeOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Create faculty</Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Save College
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 2: EDIT DEPARTMENT */}
+      {/* MODAL: Edit Department */}
       {isEditDeptOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <Edit2 size={18} />
-                </div>
-                <div>
-                  <h3 className="text-[17px] font-semibold text-gray-900">Edit department</h3>
-                  <p className="text-[12px] text-gray-500">Update code, title, and head of department</p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-[17px]">Edit Department</h3>
               <button
                 type="button"
                 onClick={() => setIsEditDeptOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded"
               >
                 <X size={18} />
               </button>
             </div>
-
             <form onSubmit={handleSaveDept} className="p-5 space-y-4">
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Department Name <span className="text-red-500">*</span>
+                  Department Name *
                 </label>
                 <Input
                   required
-                  placeholder="e.g. Department of Computer Science"
                   value={deptForm.name}
                   onChange={(e) => setDeptForm({ ...deptForm, name: e.target.value })}
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Dept Code <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    required
-                    placeholder="e.g. CSC"
-                    value={deptForm.code}
-                    onChange={(e) => setDeptForm({ ...deptForm, code: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Head of Dept (HOD)
-                  </label>
-                  <Input
-                    placeholder="e.g. Dr. Adeyemi"
-                    value={deptForm.head}
-                    onChange={(e) => setDeptForm({ ...deptForm, head: e.target.value })}
-                  />
-                </div>
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">
+                  Department Code *
+                </label>
+                <Input
+                  required
+                  value={deptForm.code}
+                  onChange={(e) => setDeptForm({ ...deptForm, code: e.target.value })}
+                />
               </div>
-
-              <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsEditDeptOpen(false)}
-                >
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">
+                  Head of Department (HOD)
+                </label>
+                <Input
+                  value={deptForm.head}
+                  onChange={(e) => setDeptForm({ ...deptForm, head: e.target.value })}
+                />
+              </div>
+              <div className="flex justify-end gap-2.5 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setIsEditDeptOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Save changes</Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Save Changes
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 3: ADD PROGRAMME */}
+      {/* MODAL: Add Programme */}
       {isAddProgrammeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <GraduationCap size={18} />
-                </div>
-                <div>
-                  <h3 className="text-[17px] font-semibold text-gray-900">Add programme</h3>
-                  <p className="text-[12px] text-gray-500">
-                    Add degree programme to {currentDept?.name}
-                  </p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-[17px]">Add Academic Programme</h3>
               <button
                 type="button"
                 onClick={() => setIsAddProgrammeOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded"
               >
                 <X size={18} />
               </button>
             </div>
-
             <form onSubmit={handleAddProgramme} className="p-5 space-y-4">
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Programme Title <span className="text-red-500">*</span>
+                  Programme Name *
                 </label>
                 <Input
                   required
-                  placeholder="e.g. B.Sc. Cybersecurity"
+                  placeholder="e.g. B.Sc. Computer Science"
                   value={progForm.name}
                   onChange={(e) => setProgForm({ ...progForm, name: e.target.value })}
                 />
               </div>
-
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
                   Degree Awarded
                 </label>
                 <select
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={progForm.degree}
                   onChange={(e) => setProgForm({ ...progForm, degree: e.target.value })}
+                  className="w-full h-10 px-3 rounded-md border border-gray-200 text-[14px]"
                 >
-                  <option value="B.Sc.">B.Sc. (Bachelor of Science)</option>
-                  <option value="B.Eng.">B.Eng. (Bachelor of Engineering)</option>
-                  <option value="B.Tech.">B.Tech. (Bachelor of Technology)</option>
-                  <option value="HND">HND (Higher National Diploma)</option>
+                  <option>B.Sc.</option>
+                  <option>B.Eng.</option>
+                  <option>B.Agric.</option>
+                  <option>B.A.</option>
+                  <option>B.Fisheries</option>
                 </select>
               </div>
-
-              <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsAddProgrammeOpen(false)}
-                >
+              <div className="flex justify-end gap-2.5 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setIsAddProgrammeOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Create programme</Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Add Programme
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 4: ADD COURSE */}
+      {/* MODAL: Add Course */}
       {isAddCourseOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <Book size={18} />
-                </div>
-                <div>
-                  <h3 className="text-[17px] font-semibold text-gray-900">Add course</h3>
-                  <p className="text-[12px] text-gray-500">
-                    Add new course to {currentDept?.name}
-                  </p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-[17px]">Add New Course</h3>
               <button
                 type="button"
                 onClick={() => setIsAddCourseOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded"
               >
                 <X size={18} />
               </button>
             </div>
-
             <form onSubmit={handleAddCourse} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Course Code <span className="text-red-500">*</span>
+                    Course Code *
                   </label>
                   <Input
                     required
-                    placeholder="e.g. CSC 303"
+                    placeholder="e.g. CSC 301"
                     value={courseForm.code}
                     onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
                   />
@@ -1131,26 +895,26 @@ export default function AcademicStructure() {
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">Level</label>
                   <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={courseForm.level}
                     onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-[14px]"
                   >
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                    <option value="300">300</option>
-                    <option value="400">400</option>
-                    <option value="500">500</option>
+                    <option value="100">100 Level</option>
+                    <option value="200">200 Level</option>
+                    <option value="300">300 Level</option>
+                    <option value="400">400 Level</option>
+                    <option value="500">500 Level</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Course Title <span className="text-red-500">*</span>
+                  Course Title *
                 </label>
                 <Input
                   required
-                  placeholder="e.g. Database Management Systems"
+                  placeholder="e.g. Data Structures & Algorithms"
                   value={courseForm.title}
                   onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
                 />
@@ -1160,18 +924,17 @@ export default function AcademicStructure() {
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">Semester</label>
                   <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={courseForm.sem}
                     onChange={(e) => setCourseForm({ ...courseForm, sem: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-[14px]"
                   >
-                    <option value="1st">1st Semester</option>
-                    <option value="2nd">2nd Semester</option>
+                    <option value="1st">1st (Harmattan)</option>
+                    <option value="2nd">2nd (Rain)</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">Status</label>
                   <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={courseForm.status}
                     onChange={(e) =>
                       setCourseForm({
@@ -1179,6 +942,7 @@ export default function AcademicStructure() {
                         status: e.target.value as "Active" | "Archived",
                       })
                     }
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-[14px]"
                   >
                     <option value="Active">Active</option>
                     <option value="Archived">Archived</option>
@@ -1188,7 +952,7 @@ export default function AcademicStructure() {
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Assigned Lecturer
+                  Assigned Lecturer(s)
                 </label>
                 <Input
                   placeholder="e.g. Dr. Bello"
@@ -1197,51 +961,38 @@ export default function AcademicStructure() {
                 />
               </div>
 
-              <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsAddCourseOpen(false)}
-                >
+              <div className="flex justify-end gap-2.5 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setIsAddCourseOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Create course</Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Add Course
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 5: EDIT COURSE / DELETE COURSE */}
+      {/* MODAL: Edit Course */}
       {isEditCourseOpen && activeCourseToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <Edit2 size={18} />
-                </div>
-                <div>
-                  <h3 className="text-[17px] font-semibold text-gray-900">
-                    Edit {activeCourseToEdit.code}
-                  </h3>
-                  <p className="text-[12px] text-gray-500">Update course details or status</p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-[17px]">Edit Course</h3>
               <button
                 type="button"
                 onClick={() => setIsEditCourseOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded"
               >
                 <X size={18} />
               </button>
             </div>
-
             <form onSubmit={handleSaveEditedCourse} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Course Code <span className="text-red-500">*</span>
+                    Course Code *
                   </label>
                   <Input
                     required
@@ -1252,22 +1003,22 @@ export default function AcademicStructure() {
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">Level</label>
                   <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={courseForm.level}
                     onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-[14px]"
                   >
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                    <option value="300">300</option>
-                    <option value="400">400</option>
-                    <option value="500">500</option>
+                    <option value="100">100 Level</option>
+                    <option value="200">200 Level</option>
+                    <option value="300">300 Level</option>
+                    <option value="400">400 Level</option>
+                    <option value="500">500 Level</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Course Title <span className="text-red-500">*</span>
+                  Course Title *
                 </label>
                 <Input
                   required
@@ -1280,18 +1031,17 @@ export default function AcademicStructure() {
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">Semester</label>
                   <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={courseForm.sem}
                     onChange={(e) => setCourseForm({ ...courseForm, sem: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-[14px]"
                   >
-                    <option value="1st">1st Semester</option>
-                    <option value="2nd">2nd Semester</option>
+                    <option value="1st">1st (Harmattan)</option>
+                    <option value="2nd">2nd (Rain)</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-[13px] font-medium text-gray-700 block mb-1">Status</label>
                   <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={courseForm.status}
                     onChange={(e) =>
                       setCourseForm({
@@ -1299,6 +1049,7 @@ export default function AcademicStructure() {
                         status: e.target.value as "Active" | "Archived",
                       })
                     }
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-[14px]"
                   >
                     <option value="Active">Active</option>
                     <option value="Archived">Archived</option>
@@ -1308,7 +1059,7 @@ export default function AcademicStructure() {
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Lecturers (comma separated)
+                  Assigned Lecturer(s)
                 </label>
                 <Input
                   value={courseForm.lecturer}
@@ -1316,24 +1067,22 @@ export default function AcademicStructure() {
                 />
               </div>
 
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                 <Button
                   type="button"
-                  variant="danger-outline"
+                  variant="tertiary"
                   onClick={() => handleDeleteCourse(activeCourseToEdit.id)}
-                  className="text-[13px]"
+                  className="text-red-600 hover:bg-red-50"
                 >
-                  <Trash2 size={14} className="mr-1" /> Delete
+                  <Trash2 size={15} className="mr-1.5" /> Delete
                 </Button>
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsEditCourseOpen(false)}
-                  >
+                  <Button type="button" variant="secondary" onClick={() => setIsEditCourseOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit">Save changes</Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                    Save Changes
+                  </Button>
                 </div>
               </div>
             </form>

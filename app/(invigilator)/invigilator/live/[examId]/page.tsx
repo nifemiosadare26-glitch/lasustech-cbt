@@ -647,27 +647,6 @@ export default function LiveMonitorPage() {
             <Megaphone size={14} className="text-amber-600" />
             Hall Announcement
           </Button>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setIsGlobalTimeModalOpen(true)}
-            className="h-9 text-[12px] font-bold gap-1.5 cursor-pointer"
-          >
-            <Plus size={14} className="text-blue-600" />
-            Global +5m
-          </Button>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleExportProctorLog}
-            className="h-9 text-[12px] font-bold gap-1.5 cursor-pointer"
-            title="Download proctoring telemetry audit log"
-          >
-            <Download size={14} className="text-gray-600" />
-            Export Log
-          </Button>
         </div>
       </div>
 

@@ -4,7 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import { Bell, Menu, X, MapPin, ChevronDown, Check, Calendar, ArrowRight } from "lucide-react";
 
-export function Topbar({ title = "Dashboard", role = "student" }: { title?: string; role?: string }) {
+export function Topbar({ 
+  title = "Dashboard", 
+  role = "student",
+  onToggleMobileMenu
+}: { 
+  title?: string; 
+  role?: string;
+  onToggleMobileMenu?: () => void;
+}) {
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [sessionDropdownOpen, setSessionDropdownOpen] = React.useState(false);
   const [currentSession, setCurrentSession] = React.useState("Session 2026/2027");
@@ -19,7 +27,12 @@ export function Topbar({ title = "Dashboard", role = "student" }: { title?: stri
     <>
       <header className="h-[56px] bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-20 sticky top-0">
         <div className="flex items-center gap-4">
-          <button className="sm:hidden text-gray-500 hover:text-gray-900">
+          <button 
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="sm:hidden text-gray-500 hover:text-gray-900 p-1 rounded-md cursor-pointer"
+            aria-label="Open navigation menu"
+          >
             <Menu size={20} />
           </button>
           <h1 className="text-[17px] font-semibold text-gray-900 hidden sm:block">{title}</h1>
@@ -27,7 +40,8 @@ export function Topbar({ title = "Dashboard", role = "student" }: { title?: stri
         
         <div className="flex items-center gap-4 text-[14px]">
           {/* Interactive Session Switcher Pill */}
-          <div className="relative">
+          {role !== "student" && (
+            <div className="relative">
             <button
               type="button"
               onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
@@ -114,8 +128,9 @@ export function Topbar({ title = "Dashboard", role = "student" }: { title?: stri
               </>
             )}
           </div>
+          )}
           
-          <div className="h-4 w-px bg-gray-300 hidden sm:block"></div>
+          {role !== "student" && <div className="h-4 w-px bg-gray-300 hidden sm:block"></div>}
           
           <button 
             className="relative text-gray-500 hover:text-gray-900 transition-colors ml-2 cursor-pointer"
