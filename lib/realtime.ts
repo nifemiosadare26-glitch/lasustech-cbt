@@ -19,6 +19,7 @@ export function getRealtimeSocket(): Socket {
     socketInstance = io(REALTIME_URL, {
       auth: { token },
       transports: ["websocket", "polling"],
+      extraHeaders: { "ngrok-skip-browser-warning": "true" },
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,

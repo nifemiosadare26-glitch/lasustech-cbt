@@ -27,7 +27,7 @@ let refreshing: Promise<string | null> | null = null;
 function refreshAccessToken(): Promise<string | null> {
   refreshing ??= (async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include" });
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", headers: { "ngrok-skip-browser-warning": "true" }, credentials: "include" });
       if (!res.ok) return null;
       const token = (await res.json())?.data?.accessToken as string | undefined;
       if (token) localStorage.setItem("accessToken", token);
@@ -49,6 +49,7 @@ function endSession() {
 
 async function request(endpoint: string, options: RequestInit, canRetry = true): Promise<Response> {
   const headers = new Headers(options.headers);
+  headers.set("ngrok-skip-browser-warning", "true");
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }

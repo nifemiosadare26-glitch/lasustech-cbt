@@ -34,6 +34,7 @@ export async function publicApi<T>(
 ): Promise<T> {
   const { token, ...init } = options;
   const headers = new Headers(init.headers);
+  headers.set("ngrok-skip-browser-warning", "true");
   if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
