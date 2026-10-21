@@ -2,18 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2, AlertCircle, KeyRound, ShieldCheck } from "lucide-react";
 import { Inter } from "next/font/google";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SCHOOL_NAME } from "@/lib/school";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
-
-const SCHOOL_NAME = "Lagos State University of Science and Technology";
-
-// One place to change the picture. File must be at public/info4.png
-const SETUP_IMAGE = "/info4.png";
 
 // Dark input that survives Chrome autofill (same as the login page)
 const inputClass = [
@@ -44,8 +39,8 @@ export default function AccountSetupPage() {
     setIsLoading(true);
 
     try {
-      // Backend connection template
-      const response = await fetch("/api/auth/verify", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+      const response = await fetch(`${baseUrl}/auth/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
@@ -54,7 +49,7 @@ export default function AccountSetupPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "That code isn't valid or has already been used.");
+        throw new Error(data.error?.message || data.message || "That code isn't valid or has already been used.");
       }
 
       setStep(2);
@@ -71,24 +66,15 @@ export default function AccountSetupPage() {
 
   return (
     <main className={`${inter.className} min-h-dvh grid lg:grid-cols-2 bg-[#081229]`}>
-      {/* LEFT: picture panel (desktop only) */}
+      {/* LEFT: institutional branding panel (desktop only) */}
       <section
         aria-hidden="true"
         className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden px-6 py-10 text-center bg-[radial-gradient(ellipse_at_center,_#14285a_0%,_#081229_70%)]"
       >
-        <Image
-          src={SETUP_IMAGE}
-          alt=""
-          width={900}
-          height={900}
-          sizes="50vw"
-          priority
-          className="h-auto w-full max-w-[860px] max-h-[62dvh] object-contain drop-shadow-[0_0_48px_rgba(125,211,252,0.45)]"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
-        <p className="mt-6 text-2xl xl:text-3xl font-semibold text-white text-balance max-w-md">
+        <div className="flex h-36 w-36 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 shadow-[0_0_50px_rgba(56,189,248,0.25)] backdrop-blur-md mb-6">
+          <KeyRound className="h-16 w-16 text-sky-400 drop-shadow-[0_0_16px_rgba(56,189,248,0.5)]" />
+        </div>
+        <p className="text-2xl xl:text-3xl font-semibold text-white text-balance max-w-md">
           {SCHOOL_NAME}
         </p>
         <p className="mt-2 text-base text-sky-200">Computer Based Test System</p>
@@ -97,18 +83,10 @@ export default function AccountSetupPage() {
       {/* RIGHT: form panel */}
       <section className="flex items-center justify-center px-4 py-8 sm:px-8 bg-[#0b1733] lg:border-l lg:border-white/10">
         <div className="w-full max-w-[400px]">
-          {/* Small picture for phones and tablets, where the left panel is hidden */}
-          <Image
-            src={SETUP_IMAGE}
-            alt=""
-            width={256}
-            height={256}
-            priority
-            className="mx-auto mb-4 h-auto w-36 sm:w-44 lg:hidden drop-shadow-[0_0_24px_rgba(125,211,252,0.45)]"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
+          {/* Small emblem for mobile */}
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 lg:hidden shadow-[0_0_24px_rgba(56,189,248,0.25)]">
+            <KeyRound className="h-10 w-10 text-sky-400" />
+          </div>
 
           <p className="inline-flex items-center rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-sm font-medium text-sky-200 mb-3">
             Step {step} of 2

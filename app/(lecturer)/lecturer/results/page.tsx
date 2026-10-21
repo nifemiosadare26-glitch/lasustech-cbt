@@ -1,485 +1,202 @@
 "use client";
 
-import * as React from "react";
-import { useState, useMemo } from "react";
-import { Card, StatCard } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Download,
-  Search,
-  Lock,
-  FileCheck2,
-  CheckCircle2,
-  AlertCircle,
-  Calendar,
-  Users,
-  Award,
-  Filter
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell
-} from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { ChevronRight, FileCheck, Globe, Building2, Loader2, Search, Users } from "lucide-react";
+import { useApi } from "@/lib/useApi";
+import { ErrorBanner } from "@/components/admin/ui";
 
-interface StudentResult {
-  matric: string;
-  name: string;
-  score: number;
-  grade: "A" | "B" | "C" | "D" | "E" | "F";
-  time: string;
-  status: "Passed" | "Failed";
-}
+type Audience = "INSTITUTIONAL" | "PUBLIC";
 
-interface ExamResultsData {
+interface ExamRow {
   id: string;
-  code: string;
   title: string;
-  date: string;
-  totalStudents: number;
-  averageScore: number;
-  passRate: number;
-  highestScore: number;
-  scoreDistribution: { range: string; count: number; label: string }[];
-  students: StudentResult[];
+  kind: string;
+  kindLabel: string | null;
+  audience: Audience;
+  status: string;
+  ownerLabel: string;
+  publishedAt: string | null;
+  questionCount: number;
+  attemptCount: number;
 }
 
-const COURSES_DATA: Record<string, ExamResultsData> = {
-  "CSC 301": {
-    id: "csc301",
-    code: "CSC 301",
-    title: "Data Structures & Algorithms",
-    date: "Oct 15, 2026",
-    totalStudents: 130,
-    averageScore: 58.4,
-    passRate: 90.7,
-    highestScore: 94,
-    scoreDistribution: [
-      { range: "0-39", count: 12, label: "F" },
-      { range: "40-44", count: 8, label: "E" },
-      { range: "45-49", count: 15, label: "D" },
-      { range: "50-59", count: 45, label: "C" },
-      { range: "60-69", count: 32, label: "B" },
-      { range: "70-100", count: 18, label: "A" }
-    ],
-    students: [
-      { matric: "CSC/22/101", name: "Ada O.", score: 85, grade: "A", time: "55m 20s", status: "Passed" },
-      { matric: "CSC/22/117", name: "Tunde B.", score: 62, grade: "B", time: "59m 10s", status: "Passed" },
-      { matric: "CSC/22/045", name: "Chinedu M.", score: 48, grade: "D", time: "60m 00s", status: "Passed" },
-      { matric: "CSC/22/130", name: "Zainab K.", score: 74, grade: "A", time: "42m 15s", status: "Passed" },
-      { matric: "CSC/22/089", name: "Sarah J.", score: 35, grade: "F", time: "60m 00s", status: "Failed" },
-      { matric: "CSC/22/012", name: "Femi A.", score: 91, grade: "A", time: "38m 40s", status: "Passed" },
-      { matric: "CSC/22/034", name: "Bisi O.", score: 54, grade: "C", time: "52m 10s", status: "Passed" },
-      { matric: "CSC/22/078", name: "Musa K.", score: 68, grade: "B", time: "49m 30s", status: "Passed" },
-      { matric: "CSC/22/095", name: "Emeka U.", score: 42, grade: "E", time: "60m 00s", status: "Passed" },
-      { matric: "CSC/22/144", name: "Grace T.", score: 79, grade: "A", time: "45m 12s", status: "Passed" }
-    ]
-  },
-  "CSC 305": {
-    id: "csc305",
-    code: "CSC 305",
-    title: "Operating Systems",
-    date: "Oct 12, 2026",
-    totalStudents: 118,
-    averageScore: 61.2,
-    passRate: 93.2,
-    highestScore: 96,
-    scoreDistribution: [
-      { range: "0-39", count: 8, label: "F" },
-      { range: "40-44", count: 6, label: "E" },
-      { range: "45-49", count: 12, label: "D" },
-      { range: "50-59", count: 38, label: "C" },
-      { range: "60-69", count: 35, label: "B" },
-      { range: "70-100", count: 19, label: "A" }
-    ],
-    students: [
-      { matric: "CSC/22/101", name: "Ada O.", score: 78, grade: "A", time: "52m 10s", status: "Passed" },
-      { matric: "CSC/22/117", name: "Tunde B.", score: 69, grade: "B", time: "58m 00s", status: "Passed" },
-      { matric: "CSC/22/045", name: "Chinedu M.", score: 55, grade: "C", time: "60m 00s", status: "Passed" },
-      { matric: "CSC/22/130", name: "Zainab K.", score: 88, grade: "A", time: "44m 30s", status: "Passed" },
-      { matric: "CSC/22/089", name: "Sarah J.", score: 38, grade: "F", time: "60m 00s", status: "Failed" }
-    ]
-  },
-  "CSC 411": {
-    id: "csc411",
-    code: "CSC 411",
-    title: "Artificial Intelligence",
-    date: "Oct 10, 2026",
-    totalStudents: 92,
-    averageScore: 64.8,
-    passRate: 95.6,
-    highestScore: 98,
-    scoreDistribution: [
-      { range: "0-39", count: 4, label: "F" },
-      { range: "40-44", count: 5, label: "E" },
-      { range: "45-49", count: 9, label: "D" },
-      { range: "50-59", count: 28, label: "C" },
-      { range: "60-69", count: 30, label: "B" },
-      { range: "70-100", count: 16, label: "A" }
-    ],
-    students: [
-      { matric: "CSC/21/005", name: "Ibrahim K.", score: 92, grade: "A", time: "40m 10s", status: "Passed" },
-      { matric: "CSC/21/022", name: "Khadija S.", score: 81, grade: "A", time: "46m 25s", status: "Passed" },
-      { matric: "CSC/21/049", name: "Oluwaseun D.", score: 65, grade: "B", time: "55m 00s", status: "Passed" },
-      { matric: "CSC/21/088", name: "Blessing N.", score: 58, grade: "C", time: "58m 40s", status: "Passed" }
-    ]
-  }
+const KIND_LABEL: Record<string, string> = {
+  MID_SEMESTER: "Mid-semester",
+  END_OF_SEMESTER: "Final exam",
+  MOCK: "Mock",
+  QUIZ: "Quiz",
+  RESIT: "Resit",
+  SUPPLEMENTARY: "Supplementary",
+  CUSTOM: "Custom",
 };
 
-const getGradeBadge = (grade: string) => {
-  switch (grade) {
-    case "A":
-      return "bg-emerald-100 text-emerald-800 border-emerald-200";
-    case "B":
-      return "bg-blue-100 text-blue-800 border-blue-200";
-    case "C":
-      return "bg-cyan-100 text-cyan-800 border-cyan-200";
-    case "D":
-      return "bg-amber-100 text-amber-800 border-amber-200";
-    case "E":
-      return "bg-orange-100 text-orange-800 border-orange-200";
-    default:
-      return "bg-red-100 text-red-800 border-red-200";
-  }
-};
+const fmtDate = (iso: string | null) =>
+  iso
+    ? new Intl.DateTimeFormat("en-NG", {
+        timeZone: "Africa/Lagos",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(iso))
+    : "—";
 
-export default function LecturerResultsHub() {
-  const [selectedCourse, setSelectedCourse] = useState("CSC 301");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("All");
+/**
+ * The results landing page the sidebar has always linked to. Each paper's own
+ * results page lives at /lecturer/exams/[id]/results; this is the index that
+ * makes it reachable without opening every exam first.
+ */
+export default function LecturerResultsIndex() {
+  const router = useRouter();
+  const [search, setSearch] = useState("");
 
-  const currentData = COURSES_DATA[selectedCourse] || COURSES_DATA["CSC 301"];
+  const { data, error, loading, reload } = useApi<ExamRow[]>("/lecturer/exams", {
+    keepPrevious: true,
+  });
 
-  const filteredStudents = useMemo(() => {
-    return currentData.students.filter((s) => {
-      const matchQuery =
-        s.matric.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchGrade = gradeFilter === "All" || s.grade === gradeFilter;
-      return matchQuery && matchGrade;
-    });
-  }, [currentData, searchQuery, gradeFilter]);
+  const rows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (data ?? [])
+      .filter((exam) => {
+        if (!term) return true;
+        return (
+          exam.title.toLowerCase().includes(term) ||
+          exam.ownerLabel.toLowerCase().includes(term)
+        );
+      })
+      // Papers people have actually sat are the ones a lecturer opens; the rest
+      // stay below in publication order.
+      .sort((a, b) => {
+        if (b.attemptCount !== a.attemptCount) return b.attemptCount - a.attemptCount;
+        return (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "");
+      });
+  }, [data, search]);
 
-  const handleDownload = (format: "csv" | "pdf") => {
-    const filename = `${currentData.code.replace(/\s+/g, "_")}_Official_Results.${format}`;
-    const content =
-      format === "csv"
-        ? "Matric No,Student Name,Score (%),Grade,Status,Time Taken\n" +
-          currentData.students
-            .map(
-              (s) =>
-                `"${s.matric}","${s.name}",${s.score},${s.grade},${s.status},"${s.time}"`
-            )
-            .join("\n")
-        : `LASUSTECH CBT Official Results - ${currentData.code} (${currentData.title})\nVerified Records`;
-
-    const blob = new Blob([content], {
-      type: format === "csv" ? "text/csv" : "application/pdf"
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  const papersWithSittings = (data ?? []).filter((exam) => exam.attemptCount > 0).length;
+  const totalCandidates = (data ?? []).reduce((sum, exam) => sum + exam.attemptCount, 0);
 
   return (
-    <div className="space-y-6 pb-12 flex flex-col h-full max-w-7xl mx-auto">
-      {/* Top Header */}
+    <div className="space-y-6 pb-12 flex flex-col h-full relative">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Course Examination Results
-            </h1>
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
-              <Lock size={12} className="text-slate-500" /> View Only
-            </span>
-          </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Official validated examination assessment records for Lagos State University of Science and Technology.
+          <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Results</h2>
+          <p className="text-[14px] text-gray-500">
+            {data
+              ? `${totalCandidates} candidate${totalCandidates === 1 ? "" : "s"} across ${papersWithSittings} paper${
+                  papersWithSittings === 1 ? "" : "s"
+                }. Open a paper for its full breakdown and CSV export.`
+              : "Loading your papers…"}
           </p>
         </div>
+      </div>
 
-        <div className="flex items-center gap-2.5">
-          <Button variant="secondary" onClick={() => handleDownload("csv")}>
-            <Download size={16} className="mr-2" /> Export CSV
-          </Button>
-          <Button onClick={() => handleDownload("pdf")}>
-            <Download size={16} className="mr-2" /> Download PDF Slip
-          </Button>
+      {error && <ErrorBanner error={error} onRetry={() => void reload()} />}
+
+      <Card className="flex-1 overflow-hidden flex flex-col relative" noPadding>
+        <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3 bg-gray-50/50">
+          <div className="relative flex-1 min-w-[240px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Input
+              placeholder="Search by paper title, course or subject..."
+              className="pl-9 h-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Official Read-Only Compliance Banner */}
-      <div className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900 text-xs sm:text-sm">
-        <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-          <FileCheck2 size={18} />
-        </div>
-        <div className="flex-1">
-          <strong>Official Examination Board Record:</strong> Results are locked for integrity verification. Lecturers have full viewing and export privileges, but cannot edit student scores or alter grades directly.
-        </div>
-      </div>
-
-      {/* Course Selector Strip */}
-      <div className="flex flex-wrap items-center gap-2 bg-white p-3 rounded-xl border border-gray-200 shadow-2xs">
-        <span className="text-xs font-bold uppercase tracking-wider text-gray-400 pl-2">
-          Select Course:
-        </span>
-        {Object.keys(COURSES_DATA).map((courseCode) => (
-          <button
-            key={courseCode}
-            onClick={() => {
-              setSelectedCourse(courseCode);
-              setSearchQuery("");
-              setGradeFilter("All");
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              selectedCourse === courseCode
-                ? "bg-blue-600 text-white shadow-2xs"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {courseCode} – {COURSES_DATA[courseCode].title}
-          </button>
-        ))}
-      </div>
-
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Candidates"
-          value={currentData.totalStudents.toString()}
-          delta="Completed exam"
-          trendType="neutral"
-        />
-        <StatCard
-          label="Class Average"
-          value={`${currentData.averageScore}%`}
-          delta="Harmattan Session"
-          trendType="up"
-        />
-        <StatCard
-          label="Overall Pass Rate"
-          value={`${currentData.passRate}%`}
-          delta="Score >= 40%"
-          trendType="up"
-        />
-        <StatCard
-          label="Highest Score"
-          value={`${currentData.highestScore}%`}
-          delta="Top performance"
-          trendType="up"
-        />
-      </div>
-
-      {/* Main Content: Breakdown & Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Students Result Breakdown */}
-        <div className="lg:col-span-2 flex flex-col min-h-[460px]">
-          <Card className="flex-1 flex flex-col overflow-hidden" noPadding>
-            {/* Table Search & Filter Toolbar */}
-            <div className="p-4 border-b border-gray-100 flex flex-wrap items-center gap-3 bg-gray-50/70">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={16}
-                />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search matric number or student name..."
-                  className="pl-9 h-9 bg-white"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium">Grade:</span>
-                <select
-                  value={gradeFilter}
-                  onChange={(e) => setGradeFilter(e.target.value)}
-                  className="h-9 rounded-[6px] border border-gray-300 bg-white px-3 text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="All">All Grades</option>
-                  <option value="A">Grade A (70-100%)</option>
-                  <option value="B">Grade B (60-69%)</option>
-                  <option value="C">Grade C (50-59%)</option>
-                  <option value="D">Grade D (45-49%)</option>
-                  <option value="E">Grade E (40-44%)</option>
-                  <option value="F">Grade F (0-39%)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Read-Only Table */}
-            <div className="flex-1 overflow-x-auto overflow-y-auto bg-white">
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-white z-0 border-b border-gray-200 shadow-2xs">
-                  <tr>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Matric & Name
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
-                      Score
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
-                      Grade
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
-                      Time Taken
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredStudents.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="px-6 py-12 text-center text-gray-400 text-sm"
-                      >
-                        No student results found matching your criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredStudents.map((s) => (
-                      <tr key={s.matric} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="px-6 py-3.5">
-                          <div className="font-mono text-sm font-semibold text-gray-900">
-                            {s.matric}
+        <div className="flex-1 overflow-x-auto overflow-y-auto bg-white">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-white z-0 outline outline-1 outline-gray-200 shadow-sm">
+              <tr>
+                <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Paper</th>
+                <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Audience</th>
+                <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Questions</th>
+                <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Candidates</th>
+                <th className="px-6 py-3 text-[13px] font-semibold text-gray-900">Published</th>
+                <th className="px-6 py-3 w-12"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading && !rows.length ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-[14px] text-gray-500">
+                    <Loader2 size={18} className="animate-spin inline mr-2" /> Loading results...
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <p className="text-[14px] text-gray-500">
+                      {data?.length
+                        ? "No papers match your search."
+                        : "You have not created any papers yet, so there are no results."}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                rows.map((exam) => (
+                  <tr
+                    key={exam.id}
+                    onClick={() => router.push(`/lecturer/exams/${exam.id}/results`)}
+                    className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100 shrink-0">
+                          <FileCheck size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-[14px] text-gray-900 truncate">
+                            {exam.title}
                           </div>
-                          <div className="text-xs text-gray-500 mt-0.5">{s.name}</div>
-                        </td>
-                        <td className="px-6 py-3.5 text-center">
-                          <span className="font-semibold text-base text-gray-900 tabular-nums">
-                            {s.score}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-3.5 text-center">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getGradeBadge(
-                              s.grade
-                            )}`}
-                          >
-                            {s.grade}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3.5 text-center text-xs text-gray-500 font-mono">
-                          {s.time}
-                        </td>
-                        <td className="px-6 py-3.5 text-right">
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
-                              s.status === "Passed"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-red-50 text-red-700 border-red-200"
-                            }`}
-                          >
-                            {s.status === "Passed" ? (
-                              <CheckCircle2 size={12} />
-                            ) : (
-                              <AlertCircle size={12} />
-                            )}
-                            {s.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table Footer with Summary */}
-            <div className="p-3.5 px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-              <span>Showing {filteredStudents.length} candidate results</span>
-              <span className="font-medium text-gray-700">Official Exam Record • Locked</span>
-            </div>
-          </Card>
-        </div>
-
-        {/* Right: Score Distribution Chart */}
-        <div className="space-y-6">
-          <Card className="h-[460px] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white">
-              <div>
-                <h3 className="font-semibold text-base text-gray-900 tracking-tight">
-                  Score Distribution
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Grade curve analysis</p>
-              </div>
-              <div className="flex items-center gap-3 text-xs font-medium text-gray-500">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                  Pass
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                  Fail
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 p-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={currentData.scoreDistribution}
-                  margin={{ top: 15, right: 10, left: -20, bottom: 20 }}
-                >
-                  <XAxis
-                    dataKey="range"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "var(--color-gray-500, #6b7280)" }}
-                    dy={8}
-                    interval={0}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "var(--color-gray-500, #6b7280)" }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "var(--color-gray-50, #f9fafb)" }}
-                    contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid #e5e7eb",
-                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-                    }}
-                    formatter={(value: any, name: any, props: any) => [
-                      `${value} students`,
-                      `Grade ${props.payload.label}`
-                    ]}
-                  />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {currentData.scoreDistribution.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          entry.label.includes("F")
-                            ? "#ef4444"
-                            : "#2563eb"
-                        }
+                          <div className="text-[12px] text-gray-500 mt-0.5 truncate">
+                            {exam.ownerLabel} • {KIND_LABEL[exam.kind] ?? exam.kindLabel ?? exam.kind}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {exam.audience === "PUBLIC" ? (
+                        <Badge variant="blue-tint" className="gap-1.5">
+                          <Globe size={12} /> Public
+                        </Badge>
+                      ) : (
+                        <Badge variant="gray-tint" className="gap-1.5">
+                          <Building2 size={12} /> School
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-[13px] text-gray-700">{exam.questionCount}</td>
+                    <td className="px-6 py-4">
+                      {exam.attemptCount > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-900">
+                          <Users size={14} className="text-gray-400" />
+                          {exam.attemptCount}
+                        </span>
+                      ) : (
+                        <span className="text-[13px] text-gray-400">No candidates yet</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-[13px] text-gray-500">
+                      {fmtDate(exam.publishedAt)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <ChevronRight
+                        size={18}
+                        className="inline text-gray-400 group-hover:text-gray-900 transition-colors"
                       />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

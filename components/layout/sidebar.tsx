@@ -3,16 +3,17 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { 
+import {
   LayoutDashboard, Network, Users, CalendarRange, ScrollText, Settings,
   Library, Upload, FileCheck, BarChart3, CalendarClock,
-  MessageSquareWarning, Radio, LogOut,
+  Radio, LogOut, Loader2, Headphones,
   PanelLeftClose, PanelLeftOpen, ShieldAlert, X
 } from "lucide-react";
-
-type Role = "admin" | "lecturer" | "officer" | "invigilator" | "student";
+import { initialsOf, useUser } from "@/components/auth/user-context";
+import { roleLabel, type UiRole } from "@/lib/roles";
+import { signOut } from "@/lib/me";
 
 const roleMenus = {
   admin: [
@@ -20,6 +21,7 @@ const roleMenus = {
     { name: "Exam schedule", href: "/admin/schedule", icon: CalendarClock },
     { name: "Live invigilation", href: "/admin/live", icon: Radio },
     { name: "Incident reports", href: "/admin/incidents", icon: ShieldAlert },
+    { name: "Support desk", href: "/admin/support", icon: Headphones },
     { name: "Colleges & Depts", href: "/admin/structure", icon: Network },
     { name: "Users and roles", href: "/admin/users", icon: Users },
     { name: "Results", href: "/admin/results", icon: BarChart3 },
@@ -32,37 +34,27 @@ const roleMenus = {
     { name: "Question bank", href: "/lecturer/questions", icon: Library },
     { name: "Import", href: "/lecturer/import", icon: Upload },
     { name: "Exams", href: "/lecturer/exams", icon: FileCheck },
-    { name: "Results", href: "/lecturer/results", icon: BarChart3 }, 
-  ],
-  officer: [
-    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-    { name: "Exam schedule", href: "/admin/schedule", icon: CalendarClock },
-    { name: "Live invigilation", href: "/admin/live", icon: Radio },
-    { name: "Results", href: "/admin/results", icon: BarChart3 },
-    { name: "Student appeals", href: "/admin/appeals", icon: MessageSquareWarning },
-    { name: "Audit logs", href: "/admin/audit", icon: ScrollText },
-  ],
-  invigilator: [
-    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-    { name: "Live invigilation", href: "/admin/live", icon: Radio },
-    { name: "Incident reports", href: "/admin/incidents", icon: ShieldAlert },
+    { name: "Results", href: "/lecturer/results", icon: BarChart3 },
+    { name: "Settings", href: "/lecturer/settings", icon: Settings },
   ],
   student: [
     { name: "My exams", href: "/student", icon: FileCheck },
     { name: "Results", href: "/student/results", icon: BarChart3 },
+    { name: "Help & Support", href: "/support", icon: Headphones },
   ]
 };
 
-export function Sidebar({ 
-  role, 
-  mobileOpen = false, 
-  onCloseMobile 
-}: { 
-  role: Role; 
-  mobileOpen?: boolean; 
-  onCloseMobile?: () => void; 
+export function Sidebar({
+  role,
+  mobileOpen = false,
+  onCloseMobile
+}: {
+  role: UiRole;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const menu = roleMenus[role] || roleMenus.admin;
   const [isCollapsed, setIsCollapsed] = React.useState(false);
 
@@ -73,9 +65,22 @@ export function Sidebar({
       .find(item => pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href + "/")));
   }, [pathname, menu]);
 
-  const userName = role === "student" ? "Nifemi Osadare" : role === "lecturer" ? "Dr. Bello" : "Chief Admin / Officer";
-  const userRoleDisplay = role === "student" ? "Student" : role === "lecturer" ? "Lecturer" : "Admin & Exam Officer";
-  const userInitials = role === "student" ? "NO" : role === "lecturer" ? "DB" : "CA";
+  const user = useUser();
+  const userName = user?.me.names ?? "Signed in";
+  // The account may hold several roles; show the one that chose this dashboard.
+  const userRoleDisplay = roleLabel(role.toUpperCase());
+  const userInitials = initialsOf(userName);
+
+  const [signingOut, setSigningOut] = React.useState(false);
+  const handleSignOut = async (isDrawer: boolean) => {
+    if (signingOut) return;
+    setSigningOut(true);
+    // A full navigation, not router.push: it discards every cached server
+    // component, so no dashboard data survives into the next session.
+    if (isDrawer) onCloseMobile?.();
+    await signOut();
+    window.location.assign("/login");
+  };
 
   const renderNavLinks = (isDrawer = false) => (
     <nav className="flex-1 py-4 px-3 space-y-1 overflow-x-hidden">
@@ -118,18 +123,52 @@ export function Sidebar({
           </div>
         )}
       </div>
-      <Link 
-        href="/login" 
-        onClick={() => isDrawer && onCloseMobile?.()}
+
+      {user?.me.roles && user.me.roles.length > 1 && (
+        <div className={cn("mt-2 pt-2 border-t border-blue-800/40 space-y-1", !isDrawer && isCollapsed ? "w-full" : "")}>
+          {user.me.roles
+            .filter((r) => r.toLowerCase() !== role)
+            .map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  if (isDrawer) onCloseMobile?.();
+                  window.location.assign(
+                    r === "ADMIN" ? "/admin" : r === "LECTURER" ? "/lecturer" : "/student"
+                  );
+                }}
+                className={cn(
+                  "flex items-center text-[11.5px] text-sky-200 hover:text-white hover:bg-blue-800/80 rounded px-2 py-1 transition-colors w-full cursor-pointer",
+                  !isDrawer && isCollapsed ? "justify-center px-0 text-[10px]" : ""
+                )}
+                title={`Switch to ${roleLabel(r)}`}
+              >
+                {!isDrawer && isCollapsed
+                  ? r.slice(0, 3)
+                  : `Switch to ${r === "ADMIN" ? "Admin" : r === "LECTURER" ? "Lecturer" : "Student"}`}
+              </button>
+            ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => handleSignOut(isDrawer)}
+        disabled={signingOut}
         title={!isDrawer && isCollapsed ? "Sign out" : undefined}
         className={cn(
-          "mt-3 flex items-center h-8 text-[13px] text-blue-200 hover:text-[#ffffff] hover:bg-blue-800 rounded-md transition-colors",
+          "mt-3 flex items-center h-8 text-[13px] text-blue-200 hover:text-[#ffffff] hover:bg-blue-800 rounded-md transition-colors cursor-pointer disabled:opacity-60",
           !isDrawer && isCollapsed ? "justify-center w-10 px-0" : "px-2 -mx-2 w-full"
         )}
       >
-        <LogOut className={cn("h-4 w-4 shrink-0", (isDrawer || !isCollapsed) && "mr-2")} />
-        {(isDrawer || !isCollapsed) && "Sign out"}
-      </Link>
+        {signingOut ? (
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+        ) : (
+          <LogOut className={cn("h-4 w-4 shrink-0", (isDrawer || !isCollapsed) && "mr-2")} />
+        )}
+        {(isDrawer || !isCollapsed) && (signingOut ? "Signing out…" : "Sign out")}
+      </button>
     </div>
   );
 
@@ -145,7 +184,11 @@ export function Sidebar({
           <div className="relative flex-1 flex flex-col max-w-xs w-full bg-blue-900 text-[#ffffff] shadow-2xl z-10">
             <div className="h-[56px] flex items-center justify-between px-6 border-b border-blue-800/50">
               <div className="flex items-center">
-                <div className="bg-white p-0.5 rounded-sm shrink-0">
+                {/* Literal white, not `bg-white`: that token is the card surface and
+                    goes navy in dark mode, which would sink this plate into the rail
+                    it exists to contrast against. Same reason the rail hardcodes
+                    `text-[#ffffff]`. */}
+                <div className="bg-[#ffffff] p-0.5 rounded-sm shrink-0">
                   <Image src="/lasustech-logo.png" alt="Logo" width={20} height={20} className="w-5 h-5 object-contain" />
                 </div>
                 <span className="font-bold text-[16px] tracking-tight ml-3 truncate">LASUSTECH CBT</span>
@@ -174,7 +217,8 @@ export function Sidebar({
       >
         {/* Brand */}
         <div className={cn("h-[56px] flex items-center border-b border-blue-800/50 relative", isCollapsed ? "justify-center" : "px-6")}>
-          <div className="bg-white p-0.5 rounded-sm shrink-0">
+          {/* Literal white; see the mobile drawer's plate above. */}
+          <div className="bg-[#ffffff] p-0.5 rounded-sm shrink-0">
             <Image src="/lasustech-logo.png" alt="Logo" width={20} height={20} className="w-5 h-5 object-contain" />
           </div>
           {!isCollapsed && <span className="font-bold text-[16px] tracking-tight ml-3 truncate">LASUSTECH CBT</span>}

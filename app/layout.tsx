@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
+import "katex/dist/katex.min.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -15,12 +15,14 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // No root theme provider: each layout opens a theme *scope* via
+  // <RoleThemeProvider> (components/role-theme.tsx), so the class lands on a
+  // wrapper element instead of <html>. Admin and student share the `site` scope;
+  // the lecturer has its own. Public pages get neither and stay light.
   return (
     <html lang="en" suppressHydrationWarning className={`h-full antialiased ${ibmPlexSans.variable}`}>
       <body className="min-h-full flex flex-col transition-colors duration-300 font-sans">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light" disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   );

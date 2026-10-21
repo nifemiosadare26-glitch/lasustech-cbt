@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export default function RulesPage() {
-  const [activeCategory, setActiveCategory] = useState<"all" | "entry" | "terminal" | "glitches" | "prohibited">("all");
+  const [activeCategory, setActiveCategory] = useState<"all" | "entry" | "workstation" | "glitches" | "prohibited">("all");
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
@@ -47,7 +47,7 @@ export default function RulesPage() {
   const faqs = [
     {
       q: "What happens if NEPA takes light or my computer turns off suddenly?",
-      a: "Don't panic! The LASUSTECH CBT engine automatically saves your selected answer every 3 seconds to our server. If the power blinks or your computer restarts, simply raise your hand. The invigilator will log you back in on the same terminal (or move you to a standby machine), and your exam and timer will resume exactly where you stopped."
+      a: "Don't panic! The LASUSTECH CBT engine automatically saves your selected answer every 3 seconds to our server. If the power blinks or your computer restarts, simply raise your hand. The invigilator will log you back in on the same workstation (or move you to a standby machine), and your exam and timer will resume exactly where you stopped."
     },
     {
       q: "Can I review or change my answers before final submission?",
@@ -63,7 +63,7 @@ export default function RulesPage() {
     },
     {
       q: "What if my mouse freezes or the questions won't load?",
-      a: "Do not bang on the table or try unplugging cables. Quietly raise your hand. A roving IT support technician in your hall will fix the terminal or migrate your session in under 30 seconds without losing any of your allotted time."
+      a: "Do not bang on the table or try unplugging cables. Quietly raise your hand. A roving IT support technician in your hall will fix the workstation or migrate your session in under 30 seconds without losing any of your allotted time."
     }
   ];
 
@@ -151,7 +151,7 @@ export default function RulesPage() {
           {[
             { id: "all", label: "All Guidelines" },
             { id: "entry", label: "🎒 Before Entering Hall" },
-            { id: "terminal", label: "🖥️ At Your Computer" },
+            { id: "workstation", label: "🖥️ At Your Computer" },
             { id: "glitches", label: "⚡ If Tech Glitches Occur" },
             { id: "prohibited", label: "🚫 What Stays Outside" },
           ].map((tab) => (
@@ -227,8 +227,8 @@ export default function RulesPage() {
             </div>
           )}
 
-          {/* SECTION 2: AT THE TERMINAL */}
-          {(activeCategory === "all" || activeCategory === "terminal") && (
+          {/* SECTION 2: AT THE WORKSTATION */}
+          {(activeCategory === "all" || activeCategory === "workstation") && (
             <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
                 <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
@@ -236,7 +236,7 @@ export default function RulesPage() {
                 </div>
                 <div>
                   <h2 className="text-[17px] font-bold text-slate-900">
-                    2. Sitting at Your Computer Terminal
+                    2. Sitting at Your Computer Workstation
                   </h2>
                   <p className="text-[12.5px] text-slate-500">How the test screen works and how to protect your score</p>
                 </div>
@@ -250,7 +250,7 @@ export default function RulesPage() {
                     Stay Locked in Full-Screen: Keep Your Eyes and Cursor on the Test
                   </span>
                   <p className="text-[13px] text-amber-900 leading-relaxed">
-                    The CBT platform runs in a locked fullscreen environment. <strong>Do not press the Windows key, Alt+Tab, or attempt to minimize the browser.</strong> The proctoring system flags window switches automatically. More than 2 tab-switch events will lock your terminal and require invigilator intervention.
+                    The CBT platform runs in a locked fullscreen environment. <strong>Do not press the Windows key, Alt+Tab, or attempt to minimize the browser.</strong> The proctoring system flags window switches automatically. More than 2 tab-switch events will submit and lock your test session.
                   </p>
                 </div>
               </div>
@@ -317,7 +317,7 @@ export default function RulesPage() {
                     If the Screen Freezes or Won&apos;t Click
                   </div>
                   <p className="text-blue-900 leading-relaxed">
-                    <strong>Do NOT press the CPU power button or unplug cables.</strong> Simply raise your hand quietly. An invigilator or IT assistant will refresh the secure terminal or provide an instant mouse swap.
+                    <strong>Do NOT press the CPU power button or unplug cables.</strong> Simply raise your hand quietly. An invigilator or IT assistant will refresh the secure workstation or provide an instant mouse swap.
                   </p>
                 </div>
 
@@ -326,7 +326,7 @@ export default function RulesPage() {
                     If You Need to Relocate Systems
                   </div>
                   <p className="text-indigo-900 leading-relaxed">
-                    If any terminal has a hardware fault, the invigilator can immediately transfer your session to a hot-standby machine. You will never lose answers or test minutes.
+                    If any workstation has a hardware fault, the invigilator can immediately transfer your session to a hot-standby machine. You will never lose answers or test minutes.
                   </p>
                 </div>
               </div>
@@ -490,10 +490,10 @@ export default function RulesPage() {
               Student Dashboard
             </Link>
             <Link
-              href="/student/mock"
+              href="/student"
               className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-4 text-[13.5px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
-              Try CBT Practice Mock &rarr;
+              Open CBT Examination &rarr;
             </Link>
           </div>
         </div>

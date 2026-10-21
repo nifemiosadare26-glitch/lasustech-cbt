@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
-import { LogIn } from "lucide-react";
+import { LogIn, ShieldCheck } from "lucide-react";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
@@ -24,16 +23,10 @@ export default function SessionEndedPage() {
       />
 
       <div className="relative z-10 w-full max-w-[460px]">
-        {/* Illustration on plain navy (no tile). File location: public/info7.png.
-            alt="" because the text below says it all. */}
-        <Image
-          src="/info7.png"
-          alt=""
-          width={288}
-          height={288}
-          priority
-          className="mx-auto mb-4 h-auto w-52 sm:w-64 md:w-72 drop-shadow-[0_0_28px_rgba(125,211,252,0.45)]"
-        />
+        {/* Institutional emblem */}
+        <div className="mx-auto mb-6 flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 shadow-[0_0_40px_rgba(56,189,248,0.25)] backdrop-blur-md">
+          <ShieldCheck className="h-12 w-12 sm:h-14 sm:w-14 text-sky-400 drop-shadow-[0_0_12px_rgba(56,189,248,0.5)]" />
+        </div>
 
         <p className="inline-flex items-center rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-sm font-medium text-sky-200 mb-4">
           Signed out

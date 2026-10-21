@@ -1,204 +1,232 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Download, Copy, AlertTriangle, Loader2, Info } from "lucide-react";
+import { CheckCircle2, Copy, AlertTriangle, Loader2, Info, ArrowRight, ShieldCheck, Home } from "lucide-react";
 import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useApi } from "@/lib/useApi";
 
 function ExamDoneContent() {
   const router = useRouter();
+  const params = useParams();
+  const sittingId = params?.id as string;
   const searchParams = useSearchParams();
-  
-  // Use search params for testing the different states
-  const paramState = searchParams?.get("state") as "confirmed" | "queued" | null;
-  const paramCause = searchParams?.get("cause") as "manual" | "auto" | "invigilator" | null;
 
-  const [submitState, setSubmitState] = useState<"confirmed" | "queued">(paramState || "confirmed");
-  const [submitCause, setSubmitCause] = useState<"manual" | "auto" | "invigilator">(paramCause || "manual");
-  
+  const refParam = searchParams?.get("ref");
+  const causeParam = searchParams?.get("cause") as "manual" | "auto" | "invigilator" | "cheat_logout" | null;
+  const rawParam = searchParams?.get("raw");
+  const maxParam = searchParams?.get("max");
+  const pctParam = searchParams?.get("pct");
+
   const [time, setTime] = useState<string>("");
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(60);
   const [copied, setCopied] = useState(false);
-  
-  // Mock data
-  const refCode = "AX7-K9M-2P";
-  const studentName = "Nifemi Osadare";
-  const matric = "CSC/22/101";
+
+  // Fetch live sitting & candidate profile
+  const { data } = useApi<{
+    sitting: {
+      courseCode: string;
+      courseTitle: string;
+      questionCount: number;
+    };
+    candidate: {
+      names: string;
+      matricNo: string;
+    };
+  }>(sittingId ? `/student/sittings/${sittingId}` : null);
+
+  const refCode = refParam || `LASU-${sittingId ? sittingId.slice(0, 4).toUpperCase() : "EXAM"}-${sittingId ? sittingId.slice(-4).toUpperCase() : "DONE"}`;
+  const studentName = data?.candidate.names || "Candidate";
+  const matric = data?.candidate.matricNo || "CSC/2022/305";
+  const courseCode = data?.sitting.courseCode || "CSC 301";
+  const courseTitle = data?.sitting.courseTitle || "CBT Examination";
 
   // Fullscreen exit & Time initialization
   useEffect(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(err => console.error("Could not exit fullscreen", err));
+    if (typeof document !== "undefined" && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
     }
-    
+
     // Replace history to prevent back navigation
-    window.history.replaceState(null, "", window.location.href);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.href);
+    }
 
     // Format time in Africa/Lagos
-    setTime(new Intl.DateTimeFormat('en-NG', {
-      timeZone: 'Africa/Lagos',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    }).format(new Date()));
+    setTime(
+      new Intl.DateTimeFormat("en-NG", {
+        timeZone: "Africa/Lagos",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }).format(new Date())
+    );
   }, []);
 
-  // Sign out countdown (only starts when confirmed)
+  // Sign out / return countdown
   useEffect(() => {
-    if (submitState === "confirmed") {
-      const int = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(int);
-            router.push("/login");
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(int);
-    }
-  }, [submitState, router]);
+    const int = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(int);
+          router.push("/student");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(int);
+  }, [router]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(refCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (typeof navigator !== "undefined") {
+      navigator.clipboard.writeText(refCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  const isQueued = submitState === "queued";
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      
-      {/* Dev toolbar to toggle states (for review purposes) */}
-      <div className="fixed top-4 left-4 bg-white border border-slate-200 p-2 flex gap-2 rounded-lg shadow-sm text-xs z-50">
-        <button onClick={() => setSubmitState('confirmed')} className={`px-2 py-1 rounded ${!isQueued ? 'bg-blue-100 text-blue-700' : 'bg-slate-100'}`}>Confirmed</button>
-        <button onClick={() => setSubmitState('queued')} className={`px-2 py-1 rounded ${isQueued ? 'bg-amber-100 text-amber-700' : 'bg-slate-100'}`}>Queued</button>
-        <div className="w-px bg-slate-200 mx-1" />
-        <button onClick={() => setSubmitCause('manual')} className={`px-2 py-1 rounded ${submitCause === 'manual' ? 'bg-slate-200' : 'bg-slate-100'}`}>Manual</button>
-        <button onClick={() => setSubmitCause('auto')} className={`px-2 py-1 rounded ${submitCause === 'auto' ? 'bg-slate-200' : 'bg-slate-100'}`}>Auto</button>
-        <button onClick={() => setSubmitCause('invigilator')} className={`px-2 py-1 rounded ${submitCause === 'invigilator' ? 'bg-slate-200' : 'bg-slate-100'}`}>Invigilator</button>
-      </div>
-
-      <div className="max-w-md w-full space-y-6">
-        
+    <div className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-4 sm:p-6 select-none">
+      <div className="max-w-lg w-full space-y-6">
         {/* Cause Banner */}
-        {submitCause === "auto" && (
-          <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl border border-blue-100 flex items-start gap-3 text-sm font-medium">
-            <Info size={18} className="shrink-0 mt-0.5" />
-            <p>Time ran out and your answers were submitted automatically.</p>
+        {causeParam === "auto" && (
+          <div className="bg-blue-50 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 px-4 py-3 rounded-2xl border border-blue-200 dark:border-blue-800 flex items-start gap-3 text-sm font-medium">
+            <Info size={18} className="shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+            <p>Allocated duration elapsed. Your recorded answers have been automatically saved and submitted.</p>
           </div>
         )}
-        {submitCause === "invigilator" && (
-          <div className="bg-amber-50 text-amber-900 px-4 py-3 rounded-xl border border-amber-200 flex items-start gap-3 text-sm font-medium">
-            <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-600" />
-            <p>Your exam was ended by the invigilator. Your saved answers were submitted.</p>
+        {causeParam === "invigilator" && (
+          <div className="bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 px-4 py-3 rounded-2xl border border-amber-200 dark:border-amber-800 flex items-start gap-3 text-sm font-medium">
+            <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <p>The hall invigilator concluded the test session. Your paper has been submitted.</p>
+          </div>
+        )}
+        {causeParam === "cheat_logout" && (
+          <div className="bg-rose-50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200 px-4 py-3 rounded-2xl border border-rose-200 dark:border-rose-800 flex items-start gap-3 text-sm font-medium">
+            <AlertTriangle size={18} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+            <p>Your session was automatically submitted due to multiple window/tab navigation infractions.</p>
           </div>
         )}
 
-        {/* Status Card */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center">
-          
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 transition-colors ${
-            isQueued ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"
-          }`}>
-            {isQueued ? (
-              <Loader2 size={40} className="stroke-[2.5] animate-spin" />
-            ) : (
-              <CheckCircle2 aria-hidden="true" size={40} className="stroke-[2.5]" />
-            )}
+        {/* Card */}
+        <div className="bg-white dark:bg-slate-900 p-6 sm:p-9 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
+          {/* Top Decorative accent */}
+          <div className="absolute top-0 left-0 right-0 h-2 bg-linear-to-r from-blue-600 via-indigo-600 to-emerald-500" />
+
+          {/* Icon */}
+          <div className="relative inline-flex items-center justify-center mx-auto mb-5">
+            <div className="w-20 h-20 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+              <CheckCircle2 size={44} className="stroke-[2.2]" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white rounded-full p-1 shadow-xs">
+              <ShieldCheck size={14} />
+            </div>
           </div>
-          
-          <h1 role="status" aria-live="polite" className="text-2xl font-bold text-slate-900 mb-2">
-            {isQueued ? "Submitting answers..." : "Exam Submitted"}
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+            Examination Submitted
           </h1>
-          
-          <p className="text-slate-600 mb-8 text-sm">
-            {isQueued 
-              ? "Your answers are securely saved on this device but the network is slow. Keep this tab open while we securely transmit them to the server." 
-              : "Your answers have been acknowledged by the server. You can now leave the hall."}
+
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm max-w-sm mx-auto leading-relaxed">
+            Your answers have been validated and securely recorded on the LASUSTECH CBT server.
           </p>
-          
-          {/* Summary Details */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm text-slate-700 text-left space-y-4 mb-8 shadow-inner">
-            
-            <div className="pb-3 border-b border-slate-200">
-              <p className="font-bold text-slate-900">{studentName}</p>
-              <p className="font-mono text-slate-500 text-xs mt-0.5">{matric}</p>
+
+          {/* Submission Details Box */}
+          <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 text-sm text-slate-700 dark:text-slate-300 text-left space-y-3.5 my-7">
+            <div className="pb-3 border-b border-slate-200 dark:border-slate-700">
+              <p className="font-bold text-slate-900 dark:text-slate-100 text-base">{studentName}</p>
+              <p className="font-mono text-slate-500 dark:text-slate-400 text-xs mt-0.5">Matric No: {matric}</p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5 text-xs sm:text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-slate-600 font-medium">Course</span>
-                <span className="font-bold text-slate-900">CSC 301</span>
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Course</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">{courseCode} — {courseTitle}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600 font-medium">Time {isQueued ? "queued" : "submitted"}</span>
-                <span className="font-bold text-slate-900">{time || "--:--"}</span>
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Submission Timestamp</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">{time || "--:--"}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600 font-medium">Questions answered</span>
-                <span className="font-bold text-slate-900">40 / 40</span>
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Status</span>
+                <span className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400 text-xs bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 size={12} /> Received & Locked
+                </span>
               </div>
-              
-              {!isQueued && (
-                <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-200">
-                  <span className="text-slate-600 font-medium">Reference code</span>
+
+              {rawParam && maxParam && (
+                <div className="flex justify-between items-center py-2 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
+                  <span className="text-blue-900 dark:text-blue-300 font-bold text-xs uppercase tracking-wider">
+                    Score / Total Allotted
+                  </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold tracking-widest text-slate-900 bg-slate-200 px-2 py-0.5 rounded text-xs select-all">
-                      {refCode}
+                    <span className="font-extrabold text-blue-950 dark:text-white text-sm tabular-nums">
+                      {rawParam} / {maxParam}
                     </span>
-                    <button 
-                      onClick={handleCopy}
-                      className="text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
-                      aria-label="Copy reference code"
-                    >
-                      {copied ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                    </button>
+                    {pctParam && (
+                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300 tabular-nums">
+                        ({Math.round(Number(pctParam))}%)
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
+
+              <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Reference Code</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold tracking-wider text-slate-900 dark:text-slate-100 bg-slate-200 dark:bg-slate-700 px-2.5 py-1 rounded-md text-xs select-all">
+                    {refCode}
+                  </span>
+                  <button
+                    onClick={handleCopy}
+                    className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors focus:outline-none cursor-pointer"
+                    aria-label="Copy reference code"
+                    title="Copy reference code"
+                  >
+                    {copied ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Action CTAs (No print slip) */}
           <div className="space-y-3">
-            <button 
-              disabled={isQueued}
-              onClick={() => router.push("/login")}
-              className="flex items-center justify-center w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            <Link
+              href="/student"
+              className="flex items-center justify-center gap-2 w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer"
             >
-              {isQueued ? "Waiting for server..." : `Sign out and leave (${countdown}s)`}
-            </button>
-            
-            {!isQueued && (
-              <Link 
-                href="/student"
-                className="flex items-center justify-center w-full h-12 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-              >
-                Return to Dashboard
-              </Link>
-            )}
-          </div>
-        </div>
+              <Home size={18} /> Return to Student Dashboard
+            </Link>
 
-        {/* Footer info */}
-        <div className="text-center px-4 space-y-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">What happens next?</h3>
-            <p className="text-sm text-slate-600 leading-relaxed">Results appear in My results after the exam officer releases them.</p>
+            <Link
+              href="/student/results"
+              className="flex items-center justify-center gap-2 w-full h-11 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              View Examination Results <ArrowRight size={14} />
+            </Link>
           </div>
-          
-          <p className="text-sm text-slate-500">
-            Need help? <Link href="/support" className="text-blue-600 hover:underline font-medium">Contact Exam Support</Link>
+
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-4 font-medium">
+            Redirecting to student dashboard in <strong className="text-slate-700 dark:text-slate-300 font-bold">{countdown}s</strong>
           </p>
         </div>
-        
+
+        {/* Registry Footer note */}
+        <div className="text-center px-4 space-y-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Official examination marks pass through administrative verification prior to publication.
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            LASUSTECH Directorate of Information & Communication Technology
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -206,7 +234,13 @@ function ExamDoneContent() {
 
 export default function ExamDonePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={32}/></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+          <Loader2 className="animate-spin text-blue-600" size={32} />
+        </div>
+      }
+    >
       <ExamDoneContent />
     </Suspense>
   );

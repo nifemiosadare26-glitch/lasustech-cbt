@@ -6,14 +6,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
+import { useAction } from "@/lib/useAction";
+import { apiDownload } from "@/lib/apiClient";
+import { useToast } from "@/components/ui/toast";
+import { fmtDateTime, toCsv, parseCsv, downloadText, ROLE_LABEL } from "@/lib/format";
 import {
   Search,
   Plus,
   Upload,
   Download,
-  MoreHorizontal,
   Clock,
-  CheckCircle2,
   X,
   UserCheck,
   KeyRound,
@@ -22,206 +25,163 @@ import {
   Edit2,
   ChevronLeft,
   ChevronRight,
-  Filter,
-  UserPlus
+  UserPlus,
+  AlertCircle,
+  Loader2,
+  Check,
 } from "lucide-react";
 
-interface UserItem {
+type RoleKey = "ADMIN" | "LECTURER" | "STUDENT";
+type UserStatus = "INVITED" | "ACTIVE" | "LOCKED" | "DEACTIVATED";
+
+interface ApiUser {
   id: string;
-  name: string;
-  staffId: string;
-  email: string;
-  roles: string[];
-  dept: string;
-  status: "Active" | "Deactivated";
-  lastLogin: string;
+  names: string;
+  matricNo: string | null;
+  staffId: string | null;
+  email: string | null;
+  phone: string | null;
+  status: UserStatus;
+  departmentId: string | null;
+  department: { id: string; name: string; code: string } | null;
+  roles: RoleKey[];
+  primaryRole: RoleKey | null;
+  lastLoginAt: string | null;
+  createdAt: string;
 }
 
-const initialMockUsers: UserItem[] = [
-  {
-    id: "U1",
-    name: "Dr. Adeyemi",
-    staffId: "STAFF/001",
-    email: "adeyemi@lasustech.edu.ng",
-    roles: ["Admin", "Lecturer"],
-    dept: "Computer Science",
-    status: "Active",
-    lastLogin: "Today, 09:12 AM"
-  },
-  {
-    id: "U2",
-    name: "Dr. Bello",
-    staffId: "STAFF/042",
-    email: "bello@lasustech.edu.ng",
-    roles: ["Lecturer"],
-    dept: "Computer Science",
-    status: "Active",
-    lastLogin: "Today, 08:30 AM"
-  },
-  {
-    id: "U3",
-    name: "Mr. Tunde",
-    staffId: "STAFF/112",
-    email: "tunde@lasustech.edu.ng",
-    roles: ["Admin"],
-    dept: "Registry",
-    status: "Active",
-    lastLogin: "Yesterday"
-  },
-  {
-    id: "U4",
-    name: "Nifemi Osadare",
-    staffId: "CSC/2022/305",
-    email: "n.osadare@student.lasustech.edu.ng",
-    roles: ["Student"],
-    dept: "Computer Science",
-    status: "Active",
-    lastLogin: "Today, 11:45 AM"
-  },
-  {
-    id: "U5",
-    name: "John Doe",
-    staffId: "CSC/2022/110",
-    email: "j.doe@student.lasustech.edu.ng",
-    roles: ["Student"],
-    dept: "Computer Science",
-    status: "Deactivated",
-    lastLogin: "Oct 01, 2026"
-  },
-  {
-    id: "U6",
-    name: "Prof. O. Adebayo",
-    staffId: "STAFF/015",
-    email: "adebayo@lasustech.edu.ng",
-    roles: ["Admin", "Lecturer"],
-    dept: "Science",
-    status: "Active",
-    lastLogin: "Today, 07:45 AM"
-  },
-  {
-    id: "U7",
-    name: "Zainab Kolawole",
-    staffId: "CSC/2022/130",
-    email: "z.kolawole@student.lasustech.edu.ng",
-    roles: ["Student"],
-    dept: "Computer Science",
-    status: "Active",
-    lastLogin: "Yesterday"
-  },
-  {
-    id: "U8",
-    name: "Engr. F. Alabi",
-    staffId: "STAFF/078",
-    email: "alabi@lasustech.edu.ng",
-    roles: ["Lecturer"],
-    dept: "Mechanical Engineering",
-    status: "Active",
-    lastLogin: "Oct 04, 2026"
-  },
-  {
-    id: "U9",
-    name: "Mrs. K. Ibrahim",
-    staffId: "STAFF/145",
-    email: "k.ibrahim@lasustech.edu.ng",
-    roles: ["Admin"],
-    dept: "Registry",
-    status: "Active",
-    lastLogin: "Today, 10:15 AM"
-  },
-  {
-    id: "U10",
-    name: "Chinedu Madu",
-    staffId: "CSC/2022/045",
-    email: "c.madu@student.lasustech.edu.ng",
-    roles: ["Student"],
-    dept: "Computer Science",
-    status: "Active",
-    lastLogin: "Oct 03, 2026"
-  }
+interface StructureDepartment {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+}
+interface StructureCollege {
+  id: string;
+  code: string;
+  name: string;
+  departments: StructureDepartment[];
+}
+
+const ROLE_OPTIONS: { key: RoleKey; label: string }[] = [
+  { key: "STUDENT", label: "Student" },
+  { key: "LECTURER", label: "Lecturer" },
+  { key: "ADMIN", label: "Administrator" },
 ];
 
+const STATUS_OPTIONS: { key: UserStatus; label: string }[] = [
+  { key: "ACTIVE", label: "Active" },
+  { key: "INVITED", label: "Invited" },
+  { key: "LOCKED", label: "Locked" },
+  { key: "DEACTIVATED", label: "Deactivated" },
+];
+
+const statusLabel = (s: UserStatus) =>
+  STATUS_OPTIONS.find((o) => o.key === s)?.label ?? s;
+
+const initialsOf = (names: string) =>
+  names
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+
+const identifierOf = (u: ApiUser) => u.matricNo ?? u.staffId ?? u.email ?? "—";
+
+const PAGE_SIZE = 10;
+
+type FormState = {
+  names: string;
+  roles: RoleKey[];
+  matricNo: string;
+  staffId: string;
+  email: string;
+  departmentId: string;
+  password: string;
+  status: UserStatus;
+};
+
+const EMPTY_FORM: FormState = {
+  names: "",
+  roles: ["STUDENT"],
+  matricNo: "",
+  staffId: "",
+  email: "",
+  departmentId: "",
+  password: "",
+  status: "ACTIVE",
+};
+
 export default function UsersAndRoles() {
-  const [users, setUsers] = useState<UserItem[]>(initialMockUsers);
+  const { toast } = useToast();
+  const action = useAction();
+
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
 
-  // Filters
+  // Filters (server-side).
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState("All roles");
-  const [statusFilter, setStatusFilter] = useState("All statuses");
-
-  // Pagination
+  const debouncedSearch = useDebounced(searchQuery, 350);
+  const [roleFilter, setRoleFilter] = useState<"" | RoleKey>("");
+  const [statusFilter, setStatusFilter] = useState<"" | UserStatus>("");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 5;
 
-  // Toast
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(currentPage),
+      pageSize: String(PAGE_SIZE),
+    });
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    if (roleFilter) params.set("role", roleFilter);
+    if (statusFilter) params.set("status", statusFilter);
+    return params.toString();
+  }, [currentPage, debouncedSearch, roleFilter, statusFilter]);
 
-  // Modals
+  const { data: users = [], meta, loading, error, reload } = useApi<ApiUser[]>(
+    `/admin/users?${query}`,
+  );
+
+  // Departments power the create/edit dropdowns.
+  const { data: colleges = [] } = useApi<StructureCollege[]>("/admin/structure");
+  const departments = useMemo(
+    () =>
+      colleges
+        .flatMap((c) => c.departments.map((d) => ({ ...d, college: c.name })))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [colleges],
+  );
+
+  // Reset to page 1 whenever a filter changes.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, roleFilter, statusFilter]);
+
+  const pageMeta: PageMeta = meta ?? {
+    page: currentPage,
+    pageSize: PAGE_SIZE,
+    total: users.length,
+    totalPages: 1,
+  };
+
+  // Modals.
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isChangeRoleOpen, setIsChangeRoleOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
-  const [activeUserToEdit, setActiveUserToEdit] = useState<UserItem | null>(null);
+  const [activeUserToEdit, setActiveUserToEdit] = useState<ApiUser | null>(null);
 
-  // Form states
-  const [newUserForm, setNewUserForm] = useState({
-    name: "",
-    staffId: "",
-    email: "",
-    role: "Student",
-    dept: "Computer Science",
-    status: "Active" as "Active" | "Deactivated"
-  });
-
-  const [bulkRoleSelected, setBulkRoleSelected] = useState("Lecturer");
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [bulkRoleSelected, setBulkRoleSelected] = useState<RoleKey>("LECTURER");
 
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
-  // Filtered users
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const matchesSearch =
-        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.staffId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.dept.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesRole =
-        roleFilter === "All roles" || u.roles.includes(roleFilter);
-
-      const matchesStatus =
-        statusFilter === "All statuses" || u.status === statusFilter;
-
-      return matchesSearch && matchesRole && matchesStatus;
-    });
-  }, [users, searchQuery, roleFilter, statusFilter]);
-
-  // Pagination slice
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredUsers.slice(start, start + pageSize);
-  }, [filteredUsers, currentPage, pageSize]);
-
-  // Adjust page if out of bounds
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalPages, currentPage]);
-
-  // Current page selection state
+  // Selection helpers.
   const isAllCurrentSelected =
-    paginatedUsers.length > 0 &&
-    paginatedUsers.every((u) => selectedUsers.has(u.id));
-
+    users.length > 0 && users.every((u) => selectedUsers.has(u.id));
   const isSomeCurrentSelected =
-    paginatedUsers.some((u) => selectedUsers.has(u.id)) && !isAllCurrentSelected;
+    users.some((u) => selectedUsers.has(u.id)) && !isAllCurrentSelected;
 
   useEffect(() => {
     if (selectAllCheckboxRef.current) {
@@ -229,17 +189,11 @@ export default function UsersAndRoles() {
     }
   }, [isSomeCurrentSelected]);
 
-  // Toggle select all on current view
   const toggleSelectAll = () => {
-    if (isAllCurrentSelected) {
-      const next = new Set(selectedUsers);
-      paginatedUsers.forEach((u) => next.delete(u.id));
-      setSelectedUsers(next);
-    } else {
-      const next = new Set(selectedUsers);
-      paginatedUsers.forEach((u) => next.add(u.id));
-      setSelectedUsers(next);
-    }
+    const next = new Set(selectedUsers);
+    if (isAllCurrentSelected) users.forEach((u) => next.delete(u.id));
+    else users.forEach((u) => next.add(u.id));
+    setSelectedUsers(next);
   };
 
   const toggleSelectUser = (id: string) => {
@@ -249,170 +203,255 @@ export default function UsersAndRoles() {
     setSelectedUsers(next);
   };
 
-  const handleClearSelection = () => {
-    setSelectedUsers(new Set());
+  // Export the current filter set from the server.
+  const handleExportCSV = async () => {
+    try {
+      await apiDownload(
+        `/admin/users/export?${query}`,
+        `LASUSTECH_Users_${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+      toast({ title: "Users exported", variant: "success" });
+    } catch {
+      toast({ title: "Could not export users", variant: "error" });
+    }
   };
 
-  // 1. Export CSV
-  const handleExportCSV = () => {
-    const headers = "Name,Staff ID,Email,Roles,Department,Status,Last Login\n";
-    const rows = (selectedUsers.size > 0
-      ? users.filter((u) => selectedUsers.has(u.id))
-      : users
-    )
-      .map(
-        (u) =>
-          `"${u.name}","${u.staffId}","${u.email}","${u.roles.join("; ")}","${u.dept}","${u.status}","${u.lastLogin}"`
-      )
-      .join("\n");
-
-    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `LASUSTECH_Users_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    showToast(
-      `Exported ${selectedUsers.size > 0 ? selectedUsers.size : users.length} users successfully!`
-    );
-  };
-
-  // 2. Import CSV
-  const handleImportSubmit = (e: React.FormEvent) => {
+  // Create user.
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsImportOpen(false);
-    showToast("Imported 12 new users from CSV successfully!");
-  };
-
-  // 3. Add User
-  const handleCreateUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUserForm.name.trim() || !newUserForm.staffId.trim()) return;
-
-    const newUser: UserItem = {
-      id: `U_${Date.now()}`,
-      name: newUserForm.name,
-      staffId: newUserForm.staffId,
-      email: newUserForm.email || `${newUserForm.staffId.toLowerCase().replace(/[^a-z0-9]/g, "")}@lasustech.edu.ng`,
-      roles: [newUserForm.role],
-      dept: newUserForm.dept,
-      status: newUserForm.status,
-      lastLogin: "Just now"
-    };
-
-    setUsers([newUser, ...users]);
-    setIsAddUserOpen(false);
-    setNewUserForm({
-      name: "",
-      staffId: "",
-      email: "",
-      role: "Student",
-      dept: "Computer Science",
-      status: "Active"
+    const isStudent = form.roles.includes("STUDENT");
+    await action.run<ApiUser, { temporaryPassword?: string }>("/admin/users", {
+      method: "POST",
+      body: JSON.stringify({
+        names: form.names,
+        roles: form.roles,
+        matricNo: isStudent ? form.matricNo : undefined,
+        staffId: isStudent ? undefined : form.staffId || undefined,
+        email: form.email || undefined,
+        departmentId: form.departmentId || undefined,
+        status: form.status === "DEACTIVATED" ? "ACTIVE" : form.status,
+        password: form.password || undefined,
+      }),
+      success: `${form.names} created`,
+      onSuccess: (_created, meta) => {
+        if (meta?.temporaryPassword) {
+          toast({
+            title: "Temporary password",
+            description: `${meta.temporaryPassword} — share this now, it is not shown again.`,
+            variant: "info",
+            duration: 0,
+          });
+        }
+        setIsAddUserOpen(false);
+        setForm(EMPTY_FORM);
+        void reload();
+      },
     });
-    showToast(`User "${newUser.name}" added to directory!`);
   };
 
-  // 4. Bulk Role Change
-  const handleSaveBulkRole = (e: React.FormEvent) => {
+  // Update user.
+  const handleSaveSingleUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (!selectedUsers.has(u.id)) return u;
-        return {
-          ...u,
-          roles: Array.from(new Set([bulkRoleSelected]))
-        };
-      })
-    );
-    setIsChangeRoleOpen(false);
-    showToast(`Updated role to "${bulkRoleSelected}" for ${selectedUsers.size} users.`);
-    setSelectedUsers(new Set());
+    if (!activeUserToEdit) return;
+    const isStudent = form.roles.includes("STUDENT");
+    await action.run<ApiUser>(`/admin/users/${activeUserToEdit.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        names: form.names,
+        roles: form.roles,
+        matricNo: isStudent ? form.matricNo || null : null,
+        staffId: isStudent ? null : form.staffId || null,
+        email: form.email || null,
+        departmentId: form.departmentId || null,
+        status: form.status,
+        password: form.password?.trim() ? form.password.trim() : undefined,
+      }),
+      success: `Saved changes for ${form.names}`,
+      onSuccess: () => {
+        setIsEditUserOpen(false);
+        setActiveUserToEdit(null);
+        void reload();
+      },
+    });
   };
 
-  // 5. Bulk Reset Password
-  const handleBulkResetPassword = () => {
-    showToast(`Password reset link dispatched to ${selectedUsers.size} user email addresses.`);
-    setSelectedUsers(new Set());
-  };
-
-  // 6. Bulk Deactivate / Activate Toggle
-  const handleBulkToggleStatus = () => {
-    const selectedList = users.filter((u) => selectedUsers.has(u.id));
-    const allActive = selectedList.every((u) => u.status === "Active");
-    const targetStatus = allActive ? "Deactivated" : "Active";
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        selectedUsers.has(u.id) ? { ...u, status: targetStatus } : u
-      )
-    );
-
-    showToast(
-      `Marked ${selectedUsers.size} users as ${targetStatus}.`
-    );
-    setSelectedUsers(new Set());
-  };
-
-  // 7. Bulk Delete
-  const handleBulkDelete = () => {
-    setUsers((prev) => prev.filter((u) => !selectedUsers.has(u.id)));
-    showToast(`Removed ${selectedUsers.size} users.`);
-    setSelectedUsers(new Set());
-  };
-
-  // 8. Edit Single User
-  const openEditUser = (user: UserItem) => {
+  const openEditUser = (user: ApiUser) => {
     setActiveUserToEdit(user);
-    setNewUserForm({
-      name: user.name,
-      staffId: user.staffId,
-      email: user.email,
-      role: user.roles[0] || "Student",
-      dept: user.dept,
-      status: user.status
+    setForm({
+      names: user.names,
+      roles: user.roles.length > 0 ? user.roles : ["STUDENT"],
+      matricNo: user.matricNo ?? "",
+      staffId: user.staffId ?? "",
+      email: user.email ?? "",
+      departmentId: user.departmentId ?? "",
+      password: "",
+      status: user.status,
     });
     setIsEditUserOpen(true);
   };
 
-  const handleSaveSingleUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeUserToEdit) return;
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === activeUserToEdit.id
-          ? {
-              ...u,
-              name: newUserForm.name,
-              staffId: newUserForm.staffId,
-              email: newUserForm.email,
-              roles: [newUserForm.role],
-              dept: newUserForm.dept,
-              status: newUserForm.status
-            }
-          : u
-      )
-    );
-
-    setIsEditUserOpen(false);
-    showToast(`Saved changes for ${newUserForm.name}.`);
+  const handleDeleteUser = async (user: ApiUser) => {
+    await action.run<null>(`/admin/users/${user.id}`, {
+      method: "DELETE",
+      success: `${user.names} deleted`,
+      onSuccess: () => {
+        setIsEditUserOpen(false);
+        setActiveUserToEdit(null);
+        setSelectedUsers((prev) => {
+          const next = new Set(prev);
+          next.delete(user.id);
+          return next;
+        });
+        void reload();
+      },
+    });
   };
+
+  // Bulk actions.
+  const runBulk = async (
+    body: Record<string, unknown>,
+    success: string,
+  ) => {
+    const ids = [...selectedUsers];
+    if (!ids.length) return;
+    await action.run<
+      { action: string; affected: number; skipped: { id: string; name?: string; reason: string }[] },
+      { credentials?: { id: string; names: string; identifier: string; temporaryPassword: string }[] }
+    >("/admin/users/bulk", {
+      method: "POST",
+      body: JSON.stringify({ ...body, ids }),
+      success,
+      onSuccess: (result, meta) => {
+        if (result.skipped.length) {
+          toast({
+            title: `${result.skipped.length} skipped`,
+            description: result.skipped
+              .slice(0, 3)
+              .map((s) => `${s.name ?? s.id}: ${s.reason}`)
+              .join(" · "),
+            variant: "error",
+          });
+        }
+        if (meta?.credentials?.length) {
+          downloadText(
+            `LASUSTECH_Temporary_Passwords_${new Date().toISOString().slice(0, 10)}.csv`,
+            toCsv([
+              ["Name", "Identifier", "Temporary password"],
+              ...meta.credentials.map((c) => [c.names, c.identifier, c.temporaryPassword]),
+            ]),
+          );
+        }
+        setIsChangeRoleOpen(false);
+        setSelectedUsers(new Set());
+        void reload();
+      },
+    });
+  };
+
+  const handleSaveBulkRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await runBulk({ action: "SET_ROLE", role: bulkRoleSelected }, `Role updated for ${selectedUsers.size} users`);
+  };
+
+  const handleBulkResetPassword = async () => {
+    await runBulk(
+      { action: "RESET_PASSWORD" },
+      `Password reset for ${selectedUsers.size} users — temporary passwords downloaded`,
+    );
+  };
+
+  const handleBulkToggleStatus = async () => {
+    const selected = users.filter((u) => selectedUsers.has(u.id));
+    const allActive = selected.length > 0 && selected.every((u) => u.status === "ACTIVE");
+    await runBulk(
+      { action: allActive ? "DEACTIVATE" : "ACTIVATE" },
+      `${allActive ? "Deactivated" : "Activated"} ${selectedUsers.size} users`,
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    await runBulk({ action: "DELETE" }, `Deleted ${selectedUsers.size} users`);
+  };
+
+  // CSV import (rows are parsed in the browser; the API validates them).
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImporting(true);
+    try {
+      const rows = parseCsv(await file.text());
+      if (rows.length < 2) throw new Error("The file has no data rows.");
+      const headers = rows[0].map((h) => h.trim().toLowerCase().replace(/[\s_]+/g, ""));
+      const index = (...names: string[]) => {
+        for (const n of names) {
+          const i = headers.indexOf(n);
+          if (i >= 0) return i;
+        }
+        return -1;
+      };
+      const iName = index("name", "names", "fullname");
+      const iRole = index("role", "roles");
+      const iMatric = index("matricno", "matric", "matricnumber");
+      const iStaff = index("staffid", "staff", "staffnumber");
+      const iEmail = index("email", "emailaddress");
+      const iDept = index("department", "dept");
+      const iPassword = index("password");
+      if (iName < 0 || iRole < 0) throw new Error("CSV needs at least Name and Role columns.");
+
+      const body = rows.slice(1).map((r) => ({
+        names: r[iName]?.trim(),
+        role: r[iRole]?.trim(),
+        matricNo: iMatric >= 0 ? r[iMatric]?.trim() : undefined,
+        staffId: iStaff >= 0 ? r[iStaff]?.trim() : undefined,
+        email: iEmail >= 0 ? r[iEmail]?.trim() : undefined,
+        department: iDept >= 0 ? r[iDept]?.trim() : undefined,
+        password: iPassword >= 0 ? r[iPassword]?.trim() : undefined,
+      }));
+
+      const result = await action.run<
+        { total: number; created: number; failed: { row: number; reason: string }[] },
+        { credentials?: { id: string; names: string; identifier: string; temporaryPassword: string }[] }
+      >("/admin/users/import", {
+        method: "POST",
+        body: JSON.stringify({ rows: body, dryRun: false }),
+        success: "Import finished",
+        onSuccess: (data, meta) => {
+          if (meta?.credentials?.length) {
+            downloadText(
+              `LASUSTECH_Imported_Credentials_${new Date().toISOString().slice(0, 10)}.csv`,
+              toCsv([
+                ["Name", "Identifier", "Temporary password"],
+                ...meta.credentials.map((c) => [c.names, c.identifier, c.temporaryPassword]),
+              ]),
+            );
+          }
+          toast({
+            title: `${data.created} of ${data.total} users created`,
+            description: data.failed.length
+              ? `${data.failed.length} row(s) failed — first: line ${data.failed[0].row}, ${data.failed[0].reason}`
+              : "All rows imported.",
+            variant: data.failed.length ? "error" : "success",
+          });
+          setIsImportOpen(false);
+          void reload();
+        },
+      });
+      return result;
+    } catch (err) {
+      toast({
+        title: err instanceof Error ? err.message : "Could not read that file",
+        variant: "error",
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const selectedCount = selectedUsers.size;
 
   return (
     <div className="space-y-6 pb-12 flex flex-col h-full relative">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />
-          <span className="text-[14px] font-medium">{toastMessage}</span>
-        </div>
-      )}
-
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -420,27 +459,13 @@ export default function UsersAndRoles() {
           <p className="text-[14px] text-gray-500">Manage people, roles, and access control.</p>
         </div>
         <div className="flex gap-2.5 shrink-0">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleExportCSV}
-            className="hover:border-blue-500 hover:text-blue-700"
-          >
+          <Button type="button" variant="secondary" onClick={() => void handleExportCSV()} className="hover:border-blue-500 hover:text-blue-700">
             <Download className="mr-2" size={16} /> Export
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setIsImportOpen(true)}
-            className="hover:border-blue-500 hover:text-blue-700"
-          >
+          <Button type="button" variant="secondary" onClick={() => setIsImportOpen(true)} className="hover:border-blue-500 hover:text-blue-700">
             <Upload className="mr-2" size={16} /> Import CSV
           </Button>
-          <Button
-            type="button"
-            onClick={() => setIsAddUserOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 shadow-xs"
-          >
+          <Button type="button" onClick={() => { setForm(EMPTY_FORM); setIsAddUserOpen(true); }} className="bg-blue-600 hover:bg-blue-700 shadow-xs">
             <Plus className="mr-2" size={16} /> Add user
           </Button>
         </div>
@@ -452,12 +477,9 @@ export default function UsersAndRoles() {
           <div className="relative flex-1 min-w-[240px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <Input
-              placeholder="Search name, matric or email..."
+              placeholder="Search name, matric, staff ID or email..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-9.5 text-[13px] bg-white"
             />
           </div>
@@ -465,96 +487,68 @@ export default function UsersAndRoles() {
           <div className="flex items-center gap-2">
             <select
               value={roleFilter}
-              onChange={(e) => {
-                setRoleFilter(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setRoleFilter(e.target.value as "" | RoleKey)}
               className="h-9.5 rounded-[6px] border border-gray-300 bg-white px-3 py-1.5 text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option>All roles</option>
-              <option>Admin</option>
-              <option>Lecturer</option>
-              <option>Student</option>
+              <option value="">All roles</option>
+              {ROLE_OPTIONS.map((r) => (
+                <option key={r.key} value={r.key}>{r.label}</option>
+              ))}
             </select>
 
             <select
               value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setStatusFilter(e.target.value as "" | UserStatus)}
               className="h-9.5 rounded-[6px] border border-gray-300 bg-white px-3 py-1.5 text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option>All statuses</option>
-              <option>Active</option>
-              <option>Deactivated</option>
+              <option value="">All statuses</option>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* REDESIGNED SELECTION ACTION BAR - Integrated, Elegant & Modern (No harsh dark overlay) */}
-        {selectedUsers.size > 0 && (
-          <div className="px-5 py-3 bg-blue-50/90 border-b border-blue-200 text-blue-950 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-150">
+        {error && (
+          <div role="alert" className="mx-4 mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-600" />
+            <div className="flex-1">
+              <p className="text-[14px] font-semibold text-gray-900">Couldn&apos;t load users</p>
+              <p className="mt-0.5 text-[13px] text-gray-600">{error.message ?? "The server did not respond."}</p>
+            </div>
+            <button type="button" onClick={() => void reload()} className="shrink-0 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Selection action bar */}
+        {selectedCount > 0 && (
+          <div className="px-5 py-3 bg-blue-50/90 border-b border-blue-200 text-blue-950 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-600 text-white font-semibold text-[12px] rounded-full shadow-2xs">
-                {selectedUsers.size} selected
+                {selectedCount} selected
               </span>
               <span className="text-[13px] text-blue-900 font-medium">
-                {selectedUsers.size === 1 ? "1 user chosen" : `${selectedUsers.size} users chosen`}
+                {selectedCount === 1 ? "1 user chosen" : `${selectedCount} users chosen`}
               </span>
-              <button
-                type="button"
-                onClick={handleClearSelection}
-                className="text-[13px] text-blue-700 hover:text-blue-950 underline cursor-pointer font-medium ml-1"
-              >
+              <button type="button" onClick={() => setSelectedUsers(new Set())} className="text-[13px] text-blue-700 hover:text-blue-950 underline cursor-pointer font-medium ml-1">
                 Deselect all
               </button>
             </div>
 
-            {/* Clickable Bulk Actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsChangeRoleOpen(true)}
-                className="bg-white hover:bg-blue-100 hover:border-blue-400 text-blue-900 h-8 text-[12px] font-medium"
-              >
-                <UserCheck size={14} className="mr-1.5 text-blue-600" />
-                Change role
+              <Button type="button" variant="secondary" size="sm" onClick={() => setIsChangeRoleOpen(true)} className="bg-white hover:bg-blue-100 hover:border-blue-400 text-blue-900 h-8 text-[12px] font-medium">
+                <UserCheck size={14} className="mr-1.5 text-blue-600" /> Change role
               </Button>
-
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={handleBulkResetPassword}
-                className="bg-white hover:bg-blue-100 hover:border-blue-400 text-blue-900 h-8 text-[12px] font-medium"
-              >
-                <KeyRound size={14} className="mr-1.5 text-blue-600" />
-                Reset password
+              <Button type="button" variant="secondary" size="sm" onClick={() => void handleBulkResetPassword()} disabled={action.pending} className="bg-white hover:bg-blue-100 hover:border-blue-400 text-blue-900 h-8 text-[12px] font-medium">
+                <KeyRound size={14} className="mr-1.5 text-blue-600" /> Reset password
               </Button>
-
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={handleBulkToggleStatus}
-                className="bg-white hover:bg-amber-50 hover:border-amber-300 text-gray-800 h-8 text-[12px] font-medium"
-              >
-                <ShieldAlert size={14} className="mr-1.5 text-amber-600" />
-                Toggle status
+              <Button type="button" variant="secondary" size="sm" onClick={() => void handleBulkToggleStatus()} disabled={action.pending} className="bg-white hover:bg-amber-50 hover:border-amber-300 text-gray-800 h-8 text-[12px] font-medium">
+                <ShieldAlert size={14} className="mr-1.5 text-amber-600" /> Toggle status
               </Button>
-
-              <Button
-                type="button"
-                variant="danger-outline"
-                size="sm"
-                onClick={handleBulkDelete}
-                className="bg-white hover:bg-red-50 h-8 text-[12px] font-medium"
-              >
-                <Trash2 size={14} className="mr-1.5" />
-                Delete
+              <Button type="button" variant="danger-outline" size="sm" onClick={() => void handleBulkDelete()} disabled={action.pending} className="bg-white hover:bg-red-50 h-8 text-[12px] font-medium">
+                <Trash2 size={14} className="mr-1.5" /> Delete
               </Button>
             </div>
           </div>
@@ -565,7 +559,6 @@ export default function UsersAndRoles() {
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 bg-white z-0 border-b border-gray-200 shadow-2xs">
               <tr>
-                {/* SELECT ALL COLUMN - Explicitly says "Select all" */}
                 <th className="px-6 py-3.5 w-36">
                   <label className="flex items-center gap-2 cursor-pointer select-none font-semibold text-[13px] text-gray-900 hover:text-blue-700 transition-colors">
                     <input
@@ -578,7 +571,7 @@ export default function UsersAndRoles() {
                     <span>Select all</span>
                   </label>
                 </th>
-                <th className="px-6 py-3.5 text-[13px] font-semibold text-gray-900">Name & ID</th>
+                <th className="px-6 py-3.5 text-[13px] font-semibold text-gray-900">Name &amp; ID</th>
                 <th className="px-6 py-3.5 text-[13px] font-semibold text-gray-900">Roles</th>
                 <th className="px-6 py-3.5 text-[13px] font-semibold text-gray-900">Department</th>
                 <th className="px-6 py-3.5 text-[13px] font-semibold text-gray-900">Status</th>
@@ -587,33 +580,28 @@ export default function UsersAndRoles() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginatedUsers.length === 0 ? (
+              {loading && users.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500 text-[14px]">
+                    <Loader2 size={18} className="inline animate-spin mr-2" /> Loading users…
+                  </td>
+                </tr>
+              ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-400 text-[14px]">
                     No users found matching your filters.
                   </td>
                 </tr>
               ) : (
-                paginatedUsers.map((u) => {
+                users.map((u) => {
                   const isSelected = selectedUsers.has(u.id);
-                  const nameParts = u.name.split(" ");
-                  const initials = `${nameParts[0]?.[0] || ""}${nameParts[1]?.[0] || ""}`;
-
                   return (
                     <tr
                       key={u.id}
                       onClick={() => openEditUser(u)}
-                      className={`transition-colors cursor-pointer ${
-                        isSelected
-                          ? "bg-blue-50/60 hover:bg-blue-100/50"
-                          : "hover:bg-gray-50/80"
-                      }`}
+                      className={`transition-colors cursor-pointer ${isSelected ? "bg-blue-50/60 hover:bg-blue-100/50" : "hover:bg-gray-50/80"}`}
                     >
-                      {/* Checkbox cell */}
-                      <td
-                        className="px-6 py-4"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -622,81 +610,55 @@ export default function UsersAndRoles() {
                         />
                       </td>
 
-                      {/* Name & ID */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 ${
-                              isSelected
-                                ? "bg-blue-600 text-white"
-                                : "bg-blue-100 text-blue-900"
-                            }`}
-                          >
-                            {initials || "U"}
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 ${isSelected ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-900"}`}>
+                            {initialsOf(u.names) || "U"}
                           </div>
                           <div>
-                            <div
-                              className={`font-semibold text-[14px] ${
-                                u.status === "Deactivated"
-                                  ? "text-gray-400 line-through"
-                                  : "text-gray-900"
-                              }`}
-                            >
-                              {u.name}
+                            <div className={`font-semibold text-[14px] ${u.status === "DEACTIVATED" ? "text-gray-400 line-through" : "text-gray-900"}`}>
+                              {u.names}
                             </div>
                             <div className="flex items-center gap-2 font-mono text-[12px] text-gray-500">
-                              <span>{u.staffId}</span>
-                              <span className="text-gray-300">•</span>
-                              <span className="text-gray-500 lowercase">{u.email}</span>
+                              <span>{identifierOf(u)}</span>
+                              {u.email && (
+                                <>
+                                  <span className="text-gray-300">•</span>
+                                  <span className="text-gray-500 lowercase">{u.email}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Roles */}
                       <td className="px-6 py-4">
                         <div className="flex gap-1.5 flex-wrap max-w-[200px]">
                           {u.roles.map((role) => (
-                            <span
-                              key={role}
-                              className="inline-flex px-2 py-0.5 rounded bg-blue-100 text-blue-900 text-[11px] font-semibold tracking-wide"
-                            >
-                              {role}
+                            <span key={role} className="inline-flex px-2 py-0.5 rounded bg-blue-100 text-blue-900 text-[11px] font-semibold tracking-wide">
+                              {ROLE_LABEL[role] ?? role}
                             </span>
                           ))}
                         </div>
                       </td>
 
-                      {/* Department */}
-                      <td className="px-6 py-4 text-[14px] text-gray-700">{u.dept}</td>
+                      <td className="px-6 py-4 text-[14px] text-gray-700">{u.department?.name ?? "—"}</td>
 
-                      {/* Status */}
                       <td className="px-6 py-4">
-                        <Badge variant={u.status === "Active" ? "success" : "default"}>
-                          {u.status}
+                        <Badge variant={u.status === "ACTIVE" ? "success" : "default"}>
+                          {statusLabel(u.status)}
                         </Badge>
                       </td>
 
-                      {/* Last login */}
                       <td className="px-6 py-4 text-[13px] text-gray-500">
                         <div className="flex items-center gap-1.5">
                           <Clock size={14} className="text-gray-400 shrink-0" />
-                          <span>{u.lastLogin}</span>
+                          <span>{u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : "Never"}</span>
                         </div>
                       </td>
 
-                      {/* Edit Button */}
-                      <td
-                        className="px-6 py-4 text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          type="button"
-                          variant="tertiary"
-                          size="sm"
-                          onClick={() => openEditUser(u)}
-                          className="h-8 px-2 text-gray-400 hover:text-blue-700"
-                        >
+                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <Button type="button" variant="tertiary" size="sm" onClick={() => openEditUser(u)} className="h-8 px-2 text-gray-400 hover:text-blue-700">
                           <Edit2 size={15} />
                         </Button>
                       </td>
@@ -708,42 +670,28 @@ export default function UsersAndRoles() {
           </table>
         </div>
 
-        {/* Pagination footer with CLICKABLE Previous & Next */}
+        {/* Pagination footer */}
         <div className="p-4 border-t border-gray-100 flex items-center justify-between text-[13px] text-gray-500 bg-white shrink-0">
           <span>
             Showing{" "}
             <strong className="text-gray-900">
-              {filteredUsers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+              {pageMeta.total === 0 ? 0 : (pageMeta.page - 1) * pageMeta.pageSize + 1}
             </strong>{" "}
             to{" "}
             <strong className="text-gray-900">
-              {Math.min(currentPage * pageSize, filteredUsers.length)}
+              {Math.min(pageMeta.page * pageMeta.pageSize, pageMeta.total)}
             </strong>{" "}
-            of <strong className="text-gray-900">{filteredUsers.length}</strong> users
+            of <strong className="text-gray-900">{pageMeta.total}</strong> users
           </span>
 
           <div className="flex items-center gap-2">
             <span className="text-[12px] text-gray-500 mr-2">
-              Page {currentPage} of {totalPages}
+              Page {pageMeta.page} of {Math.max(1, pageMeta.totalPages)}
             </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={currentPage <= 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="h-8 px-3"
-            >
+            <Button type="button" variant="secondary" size="sm" disabled={currentPage <= 1 || loading} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} className="h-8 px-3">
               <ChevronLeft size={14} className="mr-1" /> Previous
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="h-8 px-3"
-            >
+            <Button type="button" variant="secondary" size="sm" disabled={currentPage >= pageMeta.totalPages || loading} onClick={() => setCurrentPage((p) => Math.min(pageMeta.totalPages, p + 1))} className="h-8 px-3">
               Next <ChevronRight size={14} className="ml-1" />
             </Button>
           </div>
@@ -752,120 +700,114 @@ export default function UsersAndRoles() {
 
       {/* MODAL 1: ADD USER */}
       {isAddUserOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-lg w-full overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <UserPlus size={18} />
-                </div>
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-600"><UserPlus size={18} /></div>
                 <div>
                   <h3 className="text-[17px] font-semibold text-gray-900">Add user</h3>
                   <p className="text-[12px] text-gray-500">Create login credentials and roles</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAddUserOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
-              >
-                <X size={18} />
-              </button>
+              <button type="button" onClick={() => setIsAddUserOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-5 space-y-4">
+            <form onSubmit={handleCreateUser} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  required
-                  placeholder="e.g. Dr. Babatunde Lawal"
-                  value={newUserForm.name}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Staff / Matric ID <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    required
-                    placeholder="e.g. STAFF/089"
-                    value={newUserForm.staffId}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, staffId: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Role</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newUserForm.role}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                  >
-                    <option value="Student">Student</option>
-                    <option value="Lecturer">Lecturer</option>
-                    <option value="Admin">Administrator</option>
-                  </select>
-                </div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Full Name <span className="text-red-500">*</span></label>
+                <Input required value={form.names} onChange={(e) => setForm({ ...form, names: e.target.value })} />
+                {action.fieldErrors.names && <p className="mt-1 text-[12px] text-red-600">{action.fieldErrors.names}</p>}
               </div>
 
               <div>
-                <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Email Address
+                <label className="text-[13px] font-medium text-gray-700 block mb-1.5">
+                  Assigned Role(s) <span className="text-red-500">*</span>
+                  <span className="text-[11px] text-gray-500 font-normal ml-1.5">
+                    (Staff can hold multiple roles, e.g. Lecturer + Administrator)
+                  </span>
                 </label>
-                <Input
-                  type="email"
-                  placeholder="b.lawal@lasustech.edu.ng"
-                  value={newUserForm.email}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                />
+                <div className="flex flex-wrap gap-2">
+                  {ROLE_OPTIONS.map((r) => {
+                    const isSelected = form.roles.includes(r.key);
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => {
+                          if (r.key === "STUDENT") {
+                            setForm({ ...form, roles: ["STUDENT"] });
+                          } else {
+                            const staffRoles = form.roles.filter((k) => k !== "STUDENT");
+                            const next = isSelected
+                              ? staffRoles.filter((k) => k !== r.key)
+                              : [...staffRoles, r.key];
+                            setForm({ ...form, roles: next.length > 0 ? next : ["LECTURER"] });
+                          }
+                        }}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+                        }`}
+                      >
+                        {isSelected && <Check size={13} className="stroke-[3]" />}
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Status</label>
+                <select className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as UserStatus })}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INVITED">Invited</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                {form.roles.includes("STUDENT") ? (
+                  <div>
+                    <label className="text-[13px] font-medium text-gray-700 block mb-1">Matric No <span className="text-red-500">*</span></label>
+                    <Input required value={form.matricNo} onChange={(e) => setForm({ ...form, matricNo: e.target.value })} placeholder="e.g. CSC/2022/305" />
+                    {action.fieldErrors.matricNo && <p className="mt-1 text-[12px] text-red-600">{action.fieldErrors.matricNo}</p>}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[13px] font-medium text-gray-700 block mb-1">Staff ID</label>
+                    <Input value={form.staffId} onChange={(e) => setForm({ ...form, staffId: e.target.value })} placeholder="e.g. STAFF/089" />
+                    {action.fieldErrors.staffId && <p className="mt-1 text-[12px] text-red-600">{action.fieldErrors.staffId}</p>}
+                  </div>
+                )}
                 <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newUserForm.dept}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, dept: e.target.value })}
-                  >
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Software Engineering">Software Engineering</option>
-                    <option value="Registry">Registry</option>
-                    <option value="Science">Science</option>
-                    <option value="Mechanical Engineering">Mechanical Engineering</option>
-                  </select>
+                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Email</label>
+                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@lasustech.edu.ng" />
+                  {action.fieldErrors.email && <p className="mt-1 text-[12px] text-red-600">{action.fieldErrors.email}</p>}
                 </div>
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Status</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newUserForm.status}
-                    onChange={(e) =>
-                      setNewUserForm({
-                        ...newUserForm,
-                        status: e.target.value as "Active" | "Deactivated"
-                      })
-                    }
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Deactivated">Deactivated</option>
-                  </select>
-                </div>
+              </div>
+
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
+                <select className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                  <option value="">No department</option>
+                  {departments.map((d) => <option key={d.id} value={d.id} disabled={!d.active}>{d.name} ({d.code}){d.active ? "" : " — archived"}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Password</label>
+                <Input type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to generate one" />
+                <p className="mt-1 text-[12px] text-gray-500">Students get a password derived from their name and matric number. Staff get a generated password shown once.</p>
+                {action.fieldErrors.password && <p className="mt-1 text-[12px] text-red-600">{action.fieldErrors.password}</p>}
               </div>
 
               <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsAddUserOpen(false)}
-                >
-                  Cancel
+                <Button type="button" variant="secondary" onClick={() => setIsAddUserOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={action.pending}>
+                  {action.pending && <Loader2 size={14} className="mr-2 animate-spin" />} Create user
                 </Button>
-                <Button type="submit">Create user</Button>
               </div>
             </form>
           </div>
@@ -874,52 +816,33 @@ export default function UsersAndRoles() {
 
       {/* MODAL 2: BULK CHANGE ROLE */}
       {isChangeRoleOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-sm w-full overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <UserCheck size={18} />
-                </div>
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-600"><UserCheck size={18} /></div>
                 <div>
                   <h3 className="text-[17px] font-semibold text-gray-900">Change role</h3>
-                  <p className="text-[12px] text-gray-500">Apply role to {selectedUsers.size} selected users</p>
+                  <p className="text-[12px] text-gray-500">Apply role to {selectedCount} selected users</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsChangeRoleOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
-              >
-                <X size={18} />
-              </button>
+              <button type="button" onClick={() => setIsChangeRoleOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleSaveBulkRole} className="p-5 space-y-4">
               <div>
-                <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Select new role
-                </label>
-                <select
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={bulkRoleSelected}
-                  onChange={(e) => setBulkRoleSelected(e.target.value)}
-                >
-                  <option value="Admin">Administrator</option>
-                  <option value="Lecturer">Lecturer</option>
-                  <option value="Student">Student</option>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Select new role</label>
+                <select className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" value={bulkRoleSelected} onChange={(e) => setBulkRoleSelected(e.target.value as RoleKey)}>
+                  {ROLE_OPTIONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
                 </select>
+                <p className="mt-2 text-[12px] text-gray-500">This replaces the user&apos;s existing roles. Users without the required identifier (matric for students, staff ID/email for staff) are skipped.</p>
               </div>
 
               <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsChangeRoleOpen(false)}
-                >
-                  Cancel
+                <Button type="button" variant="secondary" onClick={() => setIsChangeRoleOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={action.pending}>
+                  {action.pending && <Loader2 size={14} className="mr-2 animate-spin" />} Apply role
                 </Button>
-                <Button type="submit">Apply role</Button>
               </div>
             </form>
           </div>
@@ -928,179 +851,164 @@ export default function UsersAndRoles() {
 
       {/* MODAL 3: IMPORT CSV */}
       {isImportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <Upload size={18} />
-                </div>
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-600"><Upload size={18} /></div>
                 <div>
                   <h3 className="text-[17px] font-semibold text-gray-900">Import CSV</h3>
-                  <p className="text-[12px] text-gray-500">Bulk create users from spreadsheet</p>
+                  <p className="text-[12px] text-gray-500">Bulk create users from a spreadsheet</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsImportOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
-              >
-                <X size={18} />
-              </button>
+              <button type="button" onClick={() => setIsImportOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
             </div>
 
-            <form onSubmit={handleImportSubmit} className="p-5 space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors bg-gray-50/50 cursor-pointer">
-                <Upload size={28} className="mx-auto text-blue-600 mb-2" />
-                <p className="text-[14px] font-medium text-gray-900">
-                  Click or drag CSV file here
-                </p>
-                <p className="text-[12px] text-gray-500 mt-1">
-                  Supported format: .csv with Name, Staff ID, Role, Department
-                </p>
-              </div>
+            <div className="p-5 space-y-4">
+              <button
+                type="button"
+                onClick={() => importInputRef.current?.click()}
+                disabled={importing || action.pending}
+                className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors bg-gray-50/50 cursor-pointer disabled:opacity-60"
+              >
+                {importing ? <Loader2 size={28} className="mx-auto text-blue-600 mb-2 animate-spin" /> : <Upload size={28} className="mx-auto text-blue-600 mb-2" />}
+                <p className="text-[14px] font-medium text-gray-900">Click to choose a CSV file</p>
+                <p className="text-[12px] text-gray-500 mt-1">Columns: Name, Role, Matric No, Staff ID, Email, Department, Password</p>
+              </button>
+              <p className="text-[12px] text-gray-500">
+                Name and Role are required. Students need a Matric No; staff need a Staff ID or Email.
+                Download the current directory with Export to see the expected columns.
+              </p>
+              <input ref={importInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => void handleImportFile(e)} />
 
               <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsImportOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">Upload & Import</Button>
+                <Button type="button" variant="secondary" onClick={() => setIsImportOpen(false)}>Close</Button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* MODAL 4: EDIT USER / VIEW USER DETAILS */}
+      {/* MODAL 4: EDIT USER */}
       {isEditUserOpen && activeUserToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-lg w-full overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <Edit2 size={18} />
-                </div>
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-600"><Edit2 size={18} /></div>
                 <div>
                   <h3 className="text-[17px] font-semibold text-gray-900">Edit user</h3>
-                  <p className="text-[12px] text-gray-500">Update account details for {activeUserToEdit.name}</p>
+                  <p className="text-[12px] text-gray-500">Update account details for {activeUserToEdit.names}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsEditUserOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
-              >
-                <X size={18} />
-              </button>
+              <button type="button" onClick={() => setIsEditUserOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
             </div>
 
-            <form onSubmit={handleSaveSingleUser} className="p-5 space-y-4">
+            <form onSubmit={handleSaveSingleUser} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  required
-                  value={newUserForm.name}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                    Staff / Matric ID <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    required
-                    value={newUserForm.staffId}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, staffId: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Role</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newUserForm.role}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                  >
-                    <option value="Student">Student</option>
-                    <option value="Lecturer">Lecturer</option>
-                    <option value="Admin">Administrator</option>
-                  </select>
-                </div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Full Name <span className="text-red-500">*</span></label>
+                <Input required value={form.names} onChange={(e) => setForm({ ...form, names: e.target.value })} />
+                {action.fieldErrors.names && <p className="mt-1 text-[12px] text-red-600">{action.fieldErrors.names}</p>}
               </div>
 
               <div>
-                <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                  Email Address
+                <label className="text-[13px] font-medium text-gray-700 block mb-1.5">
+                  Assigned Role(s) <span className="text-red-500">*</span>
+                  <span className="text-[11px] text-gray-500 font-normal ml-1.5">
+                    (Staff can hold multiple roles, e.g. Lecturer + Administrator)
+                  </span>
                 </label>
-                <Input
-                  type="email"
-                  value={newUserForm.email}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                />
+                <div className="flex flex-wrap gap-2">
+                  {ROLE_OPTIONS.map((r) => {
+                    const isSelected = form.roles.includes(r.key);
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => {
+                          if (r.key === "STUDENT") {
+                            setForm({ ...form, roles: ["STUDENT"] });
+                          } else {
+                            const staffRoles = form.roles.filter((k) => k !== "STUDENT");
+                            const next = isSelected
+                              ? staffRoles.filter((k) => k !== r.key)
+                              : [...staffRoles, r.key];
+                            setForm({ ...form, roles: next.length > 0 ? next : ["LECTURER"] });
+                          }
+                        }}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+                        }`}
+                      >
+                        {isSelected && <Check size={13} className="stroke-[3]" />}
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Status</label>
+                <select className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as UserStatus })}>
+                  {STATUS_OPTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                {form.roles.includes("STUDENT") ? (
+                  <div>
+                    <label className="text-[13px] font-medium text-gray-700 block mb-1">Matric No <span className="text-red-500">*</span></label>
+                    <Input required value={form.matricNo} onChange={(e) => setForm({ ...form, matricNo: e.target.value })} />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[13px] font-medium text-gray-700 block mb-1">Staff ID</label>
+                    <Input value={form.staffId} onChange={(e) => setForm({ ...form, staffId: e.target.value })} />
+                  </div>
+                )}
                 <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newUserForm.dept}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, dept: e.target.value })}
-                  >
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Software Engineering">Software Engineering</option>
-                    <option value="Registry">Registry</option>
-                    <option value="Science">Science</option>
-                    <option value="Mechanical Engineering">Mechanical Engineering</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Status</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={newUserForm.status}
-                    onChange={(e) =>
-                      setNewUserForm({
-                        ...newUserForm,
-                        status: e.target.value as "Active" | "Deactivated"
-                      })
-                    }
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Deactivated">Deactivated</option>
-                  </select>
+                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Email</label>
+                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
               </div>
+
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
+                <select className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                  <option value="">No department</option>
+                  {departments.map((d) => <option key={d.id} value={d.id} disabled={!d.active}>{d.name} ({d.code}){d.active ? "" : " — archived"}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[13px] font-medium text-gray-700 block mb-1">
+                  Change Password
+                  <span className="text-[11px] text-gray-400 font-normal ml-1.5">(leave blank to keep current password)</span>
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Enter new password (min. 6 characters)"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
+              </div>
+
+              <p className="text-[12px] text-gray-500">
+                Updating roles or setting a new password updates user credentials and revokes their active sessions immediately.
+              </p>
 
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                <Button
-                  type="button"
-                  variant="danger-outline"
-                  onClick={() => {
-                    setUsers((prev) => prev.filter((u) => u.id !== activeUserToEdit.id));
-                    setIsEditUserOpen(false);
-                    showToast(`User ${activeUserToEdit.name} deleted.`);
-                  }}
-                  className="text-[13px]"
-                >
+                <Button type="button" variant="danger-outline" onClick={() => void handleDeleteUser(activeUserToEdit)} disabled={action.pending} className="text-[13px]">
                   <Trash2 size={14} className="mr-1" /> Delete
                 </Button>
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsEditUserOpen(false)}
-                  >
-                    Cancel
+                  <Button type="button" variant="secondary" onClick={() => setIsEditUserOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={action.pending}>
+                    {action.pending && <Loader2 size={14} className="mr-2 animate-spin" />} Save changes
                   </Button>
-                  <Button type="submit">Save changes</Button>
                 </div>
               </div>
             </form>

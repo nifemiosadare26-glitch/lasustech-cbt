@@ -7,13 +7,23 @@
   --color-blue-700: #1747A6;
   --color-blue-900: #0B2A5B;
 
-  /* Gray */
+  /* Gray.
+     400/600/800 are not used by the original light design but app/globals.css
+     points Tailwind's `gray-400`/`600`/`800` at them, and utilities such as
+     `text-gray-400` appear throughout the shell. They must be defined *here*
+     (unlayered) rather than only mapped in `@theme`, because a bare
+     `--color-gray-400: var(--color-gray-400)` inside `@layer theme` is a
+     self-reference cycle: invalid at computed-value time, so the property
+     falls back to `unset` and the icon renders uncoloured. */
   --color-gray-50: #F7F8FA;
   --color-gray-100: #EEF1F5;
   --color-gray-200: #E1E5EB;
   --color-gray-300: #C9CFD8;
+  --color-gray-400: #9CA3AF;
   --color-gray-500: #6B7587;
+  --color-gray-600: #4B5563;
   --color-gray-700: #3D4757;
+  --color-gray-800: #1F2937;
   --color-gray-900: #1B2330;
 
   /* Status: Success */
@@ -38,4 +48,227 @@
 
   /* Box Shadow */
   --shadow-float: 0 8px 24px rgba(11,42,91,0.14);
+}
+
+/* ============================================================================
+   THEME SCOPES
+   ----------------------------------------------------------------------------
+   This file is imported *unlayered* (app/globals.css:1) while Tailwind 4 emits
+   its defaults into `@layer theme`. Unlayered CSS beats layered CSS, so every
+   `bg-gray-50` / `text-gray-900` / `border-blue-200` in the app compiles to
+   `var(--color-*)` and resolves *here*. Redefining a token under `.dark` is
+   therefore enough to restyle the whole subtree — no component edits needed.
+
+   `.dark` is applied to a wrapper element by components/role-theme.tsx. Which
+   wrapper is a *scope*, not a role: admin and student share the `site` scope, so
+   the admin's choice drives the student portal too, while the lecturer renders
+   under its own private class on its own subtree. Either way the class stays off
+   `<html>`, so nothing leaks onto the public pages.
+   ============================================================================ */
+
+/* Escape hatch for a light island *inside* a dark scope. A wrapper can only
+   override a token, never un-set one, so this class is how a subtree gets the
+   light palette back. One page renders it: app/(admin)/dashboard/page.tsx. That
+   page is built from literal hex (`text-[#1B2330]`, `bg-[#F7F8FA]`, the #0B2A5B
+   rail) plus nine `bg-white` cards, and uses no `text-slate-*`/`text-gray-*` at
+   all — so the only thing the theme reached was `.dark .bg-white`, and restoring
+   the tokens here is the whole fix rather than the partial one described below.
+
+   It is a *partial* escape, and worth knowing before relying on it: it restores
+   every token — `--theme-white`, the gray and blue ramps, the status tints —
+   which is all that `bg-white`, `bg-gray-50`, `border-gray-200` and the tint
+   fills read, so surfaces do come back correctly. It cannot reach the
+   per-utility ink rules in app/globals.css (`.dark .text-slate-900` and its
+   siblings), because those match on the ancestor `.dark` element rather than on
+   a token. A light island that also needs dark ink would want those rules paired
+   with `.dark .light .<utility>` overrides. */
+.light {
+  color-scheme: light;
+
+  --theme-white: #ffffff;
+
+  --color-blue-50: #F0F5FD;
+  --color-blue-100: #DCE8FB;
+  --color-blue-200: #BFDBFE;
+  --color-blue-300: #93C5FD;
+  --color-blue-500: #3B7BEA;
+  --color-blue-600: #1D5FD1;
+  --color-blue-700: #1747A6;
+  --color-blue-800: #1E40AF;
+  --color-blue-900: #0B2A5B;
+  --color-blue-950: #172554;
+
+  --color-gray-50: #F7F8FA;
+  --color-gray-100: #EEF1F5;
+  --color-gray-200: #E1E5EB;
+  --color-gray-300: #C9CFD8;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #6B7587;
+  --color-gray-600: #4B5563;
+  --color-gray-700: #3D4757;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #1B2330;
+
+  /* Tailwind's stock slate values, so a light island inside a dark scope gets
+     the same slate ramp the light theme has by default. */
+  --color-slate-50: #F8FAFC;
+  --color-slate-100: #F1F5F9;
+  --color-slate-200: #E2E8F0;
+  --color-slate-300: #CBD5E1;
+  --color-slate-400: #94A3B8;
+  --color-slate-500: #64748B;
+  --color-slate-900: #0F172A;
+
+  --color-indigo-100: #E0E7FF;
+  --color-indigo-800: #3730A3;
+  --color-emerald-400: #34D399;
+
+  --color-success: #1E8A5A;
+  --color-success-tint: #D6F0E3;
+  --color-success-ink: #14603E;
+
+  --color-warning: #B7791F;
+  --color-warning-tint: #FBEBC8;
+  --color-warning-ink: #6B4A0B;
+
+  --color-danger: #C93B3B;
+  --color-danger-tint: #F8D9D9;
+  --color-danger-ink: #8A2323;
+
+  --shadow-float: 0 8px 24px rgba(11,42,91,0.14);
+}
+
+/* ----------------------------------------------------------------------------
+   Dark palette.
+
+   Deliberately a *blue-tinted navy*, not neutral grey: the page sits at
+   #0B1220 and card surfaces at #141C2E, so the hue stays in the product's blue
+   family instead of washing out to grey.
+
+   Contrast, measured against the page (#0B1220) unless noted — WCAG 2.2:
+     gray-900 headings  17.13:1   (AAA needs 7:1 for normal text)
+     gray-700 body      12.06:1   AAA
+     gray-500 muted      8.74:1   AAA   (7.94:1 on a card)
+     gray-600 secondary  9.36:1   AAA   (on a card)
+     gray-400 icons      5.90:1   (non-text — AA's SC 1.4.11 bar is 3:1)
+     white on blue-600   5.17:1   AA, not AAA — the same ceiling as light
+                                   mode's 5.82:1; reaching 7:1 would darken
+                                   the button until it stopped reading as
+                                   primary.
+     success/warning/danger ink on their tints: 10.92 / 12.39 / 9.02 — all AAA.
+   ---------------------------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+
+  /* Card / panel surface. Read by exactly one rule — `.dark .bg-white` in
+     app/globals.css. `--color-white` itself is pinned literal there, because the
+     same name also backs text and translucent overlays on the permanently dark
+     blue rail, which must stay white in both themes. */
+  --theme-white: #141C2E;
+
+  /* Blue ramp. blue-100 and blue-200 stay *light* on purpose: they are used as
+     sidebar text on the permanently dark blue-900 rail. Their other role —
+     the active-tab pill and the notification card border — is corrected by
+     paired rules in app/globals.css. */
+  --color-blue-50: #16233C;
+  --color-blue-100: #CFE0FF;
+  --color-blue-200: #A9C4F0;
+  --color-blue-300: #7EA6E8;
+  --color-blue-500: #3B82F6;
+  --color-blue-600: #2563EB;
+  --color-blue-700: #1D4ED8;
+  --color-blue-800: #1B2E52;
+  --color-blue-900: #101E3A;
+  --color-blue-950: #0B1526;
+
+  /* Gray ramp. 50 is the page, 100 a subtle fill, 200/300 borders, 400 icons,
+     500+ text (darkening upward in role, lightening in value). */
+  --color-gray-50: #0B1220;
+  --color-gray-100: #1A2436;
+  --color-gray-200: #263349;
+  --color-gray-300: #38465F;
+  --color-gray-400: #8A99B3;
+  --color-gray-500: #A5B2C8;
+  --color-gray-600: #B6C1D4;
+  --color-gray-700: #C7D0E0;
+  --color-gray-800: #DDE4EE;
+  --color-gray-900: #F2F5FA;
+
+  /* slate is Tailwind's own ramp rather than one of the design tokens, but the
+     themed pages adopted it as their card/table ramp: `bg-slate-50/70` table
+     headers, `border-slate-200` card edges, `bg-slate-100` filter pills. So
+     50–300 have to flip with the theme or they render as glaring near-white
+     fills and hairlines on a dark card. 600–800 are deliberately left at
+     Tailwind's values: they only ever appear as borders and hovers on panels
+     that are *already* dark (`border-slate-800` on the `bg-slate-900`
+     invigilation console), so they are already correct. */
+  --color-slate-50: #1A2436;
+  --color-slate-100: #263349;
+  --color-slate-200: #2A3A52;
+  --color-slate-300: #38465F;
+  --color-slate-400: #8FA0B8;
+  --color-slate-500: #A9B8CC;
+  --color-slate-900: #0A1020;
+
+  --color-indigo-100: #232A4D;
+  --color-indigo-800: #C7D2FE;
+  --color-emerald-400: #4ADE80;
+
+  /* Status families (red/rose/amber/orange/green/emerald/purple). These are
+     Tailwind's stock palette rather than design tokens, but the themed pages
+     adopted them for status pills, alert banners and severity accents, so the
+     whole 50/100/200 band has to flip with the theme — otherwise every tint
+     renders as a glaring near-white fill and every hairline as a bright pastel
+     line on a dark card.
+
+     Only the fill/border shades are remapped here. Their matching *ink* shades
+     (500–900) are lifted by class-name rules in app/globals.css, because a shade
+     that backs both a surface and text in one family cannot be remapped without
+     breaking one of the two roles. Everything a variant touches is covered:
+     `hover:bg-amber-50`, `hover:bg-red-100`, `bg-amber-50/30` and friends all
+     compile to a `var(--color-*)` read, so they follow these values with no
+     class rules of their own.
+
+     `--color-red-100` and `--color-amber-200` are deliberately absent: each is
+     *also* text on a permanently dark surface (`text-red-100` on the exam
+     header's live pill, `text-amber-200` on the invigilation console), so their
+     fill role is corrected per-utility in app/globals.css instead. */
+  --color-red-50: #2A1416;
+  --color-red-200: #4E2226;
+
+  --color-rose-50: #2C1420;
+  --color-rose-100: #3A1B2A;
+  --color-rose-200: #522438;
+
+  --color-amber-50: #2A2210;
+  --color-amber-100: #382D14;
+  --color-orange-100: #3A2413;
+
+  --color-green-50: #12291B;
+  --color-green-100: #16361F;
+  --color-green-200: #1F4A2E;
+
+  --color-emerald-50: #0F2A1E;
+  --color-emerald-100: #153826;
+  --color-emerald-200: #1E4A32;
+
+  --color-purple-50: #241A38;
+  --color-purple-200: #3A2A57;
+
+  /* Status. The tint flips dark and the ink flips light so the pair keeps its
+     meaning and its contrast. */
+  --color-success: #4ADE80;
+  --color-success-tint: #0F2A1E;
+  --color-success-ink: #86EFAC;
+
+  --color-warning: #FBBF24;
+  --color-warning-tint: #2E230A;
+  --color-warning-ink: #FDE68A;
+
+  --color-danger: #F87171;
+  --color-danger-tint: #2E1414;
+  --color-danger-ink: #FCA5A5;
+
+  /* A navy-tinted shadow; the light one reads as a blue haze on a dark page. */
+  --shadow-float: 0 8px 24px rgba(0,0,0,0.5);
 }

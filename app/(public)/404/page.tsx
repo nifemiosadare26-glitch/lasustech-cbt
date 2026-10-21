@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileQuestion } from "lucide-react";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
@@ -36,20 +35,10 @@ export default function NotFoundPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-[460px]">
-        {/* Illustration on the plain navy background (no tile).
-            The soft sky-blue drop-shadow outlines the dark artwork so it stays visible.
-            File location: public/info1.png. alt="" because the text below says it all. */}
-        <Image
-          src="/info1.png"
-          alt=""
-          width={288}
-          height={288}
-          priority
-          className="mx-auto mb-4 h-auto w-52 sm:w-64 md:w-72 drop-shadow-[0_0_28px_rgba(125,211,252,0.45)]"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
+        {/* Institutional emblem */}
+        <div className="mx-auto mb-6 flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 shadow-[0_0_40px_rgba(56,189,248,0.25)] backdrop-blur-md">
+          <FileQuestion className="h-12 w-12 sm:h-14 sm:w-14 text-sky-400 drop-shadow-[0_0_12px_rgba(56,189,248,0.5)]" />
+        </div>
 
         
 

@@ -4,12 +4,11 @@ import * as React from "react";
 import { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
-
-type Role = "admin" | "lecturer" | "officer" | "invigilator" | "student";
+import type { UiRole } from "@/lib/roles";
 
 interface AppShellProps {
   children: React.ReactNode;
-  role: Role;
+  role: UiRole;
   title?: string;
   hideSidebar?: boolean;
 }

@@ -1,605 +1,541 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Upload,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-  Download,
-  ChevronLeft,
-  PartyPopper,
+  Upload, FileText, CheckCircle2, AlertCircle, Download, Loader2, PartyPopper, Image as ImageIcon, Sparkles,
 } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/lib/useApi";
+import { ErrorBanner, errMessage, selectCls } from "@/components/admin/ui";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-type Step = "upload" | "review" | "importing" | "success";
-
-interface ParsedQuestion {
-  line: number;
-  question: string;
-  options: number;
-  answer: string;
-  status: "ok" | "warning";
-  warning?: string;
+interface Course {
+  id: string;
+  code: string;
+  title: string;
 }
 
-// ---------------------------------------------------------------------------
-// Realistic sample preview rows (shown in review step)
-// ---------------------------------------------------------------------------
-const PREVIEW_ROWS: ParsedQuestion[] = [
-  {
-    line: 1,
-    question: "Which data structure uses First-In, First-Out (FIFO) ordering?",
-    options: 4,
-    answer: "B",
-    status: "ok",
-  },
-  {
-    line: 7,
-    question:
-      "What is the time complexity of binary search on a sorted array of n elements?",
-    options: 4,
-    answer: "C",
-    status: "ok",
-  },
-  {
-    line: 13,
-    question:
-      "In a relational database, a foreign key is used to establish a link between two tables. True or False?",
-    options: 2,
-    answer: "A",
-    status: "ok",
-  },
-  {
-    line: 19,
-    question:
-      "Which OSI layer is responsible for end-to-end error recovery and flow control?",
-    options: 4,
-    answer: "D",
-    status: "ok",
-  },
-  {
-    line: 25,
-    question: "What does CPU stand for?",
-    options: 2,
-    answer: "?",
-    status: "warning",
-    warning: "Only 2 options found — expected 4",
-  },
-  {
-    line: 31,
-    question:
-      "Which sorting algorithm has an average time complexity of O(n log n)?",
-    options: 4,
-    answer: "B",
-    status: "ok",
-  },
-  {
-    line: 37,
-    question:
-      "In object-oriented programming, encapsulation refers to bundling data and methods within a class.",
-    options: 4,
-    answer: "A",
-    status: "ok",
-  },
-  {
-    line: 43,
-    question: "Which protocol is used to assign IP addresses dynamically?",
-    options: 4,
-    answer: "C",
-    status: "ok",
-  },
-  {
-    line: 49,
-    question: "What is the output of 2 ** 10 in Python?",
-    options: 4,
-    answer: "D",
-    status: "ok",
-  },
-  {
-    line: 55,
-    question: "A linked list allows O(1) random access to elements.",
-    options: 0,
-    answer: "?",
-    status: "warning",
-    warning: "No options detected — ANSWER line missing",
-  },
-];
+interface Subject {
+  id: string;
+  name: string;
+  level: string | null;
+  institution: string | null;
+}
 
-const GOOD_COUNT = PREVIEW_ROWS.filter((r) => r.status === "ok").length;
-const WARN_COUNT = PREVIEW_ROWS.filter((r) => r.status === "warning").length;
+interface Topic {
+  id: string;
+  name: string;
+}
 
-// ---------------------------------------------------------------------------
-// CSV template content to download
-// ---------------------------------------------------------------------------
-const CSV_TEMPLATE = `Question,Option A,Option B,Option C,Option D,Answer,Marks
-Which data structure uses First-In First-Out (FIFO) ordering?,Stack,Queue,Tree,Graph,B,1
-What is the time complexity of binary search on a sorted array?,O(n),O(n^2),O(log n),O(1),C,1
-Which OSI layer is responsible for end-to-end error recovery?,Network,Data Link,Session,Transport,D,1
-Which sorting algorithm has an average time complexity of O(n log n)?,Bubble Sort,Merge Sort,Insertion Sort,Selection Sort,B,1
-`;
+interface ImportCounts {
+  imported?: number;
+  approved?: number;
+  sourceAnswered?: number;
+  aiAnswered?: number;
+  aiGenerated?: number;
+  unanswered?: number;
+  skipped?: number;
+  imagesImported?: number;
+  imagesSkipped?: number;
+  provider?: string;
+  model?: string;
+}
 
-// ---------------------------------------------------------------------------
-// Course options
-// ---------------------------------------------------------------------------
-const COURSES = [
-  { value: "", label: "— Select a course —" },
-  { value: "CSC301", label: "CSC 301 – Data Structures & Algorithms" },
-  { value: "CSC305", label: "CSC 305 – Operating Systems" },
-  { value: "CSC307", label: "CSC 307 – Computer Networks" },
-  { value: "CSC311", label: "CSC 311 – Database Management Systems" },
-];
+interface ImportJob {
+  id: string;
+  status: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
+  fileName: string;
+  counts: ImportCounts | null;
+  errors: { message?: string } | null;
+}
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+const ACCEPT =
+  ".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.rtf,.jpg,.jpeg,.png,.webp";
+const MAX_BYTES = 50 * 1024 * 1024;
+
+const TEMPLATE = `What is the time complexity of searching in a balanced binary search tree?
+A. O(1)
+B. O(n)
+C. O(log n)
+D. O(n log n)
+ANSWER: C
+
+Which data structure operates on a Last In First Out (LIFO) principle?
+A. Queue
+B. Stack
+C. Linked List
+D. Tree
+ANSWER: B`;
+
 export default function BulkImport() {
-  const [step, setStep] = useState<Step>("upload");
-  const [course, setCourse] = useState<string>("");
-  const [fileName, setFileName] = useState<string>("");
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [scope, setScope] = React.useState("");
+  const [topicId, setTopicId] = React.useState("");
+  const [file, setFile] = React.useState<File | null>(null);
+  const [dragOver, setDragOver] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [job, setJob] = React.useState<ImportJob | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  // ── file handling ──────────────────────────────────────────────────────────
+  const courses = useApi<Course[]>("/lecturer/courses");
+  const subjects = useApi<Subject[]>("/lecturer/subjects");
 
-  const handleFile = useCallback((file: File | null) => {
-    if (!file) return;
-    setFileName(file.name);
-    setStep("review");
-  }, []);
+  const scopeType = scope.startsWith("course:")
+    ? "course"
+    : scope.startsWith("subject:")
+      ? "subject"
+      : null;
+  const scopeId = scope.split(":")[1] ?? "";
+  const topics = useApi<Topic[]>(
+    scopeId && scopeType ? `/lecturer/topics?${scopeType}Id=${scopeId}` : null,
+  );
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    handleFile(file);
-    // reset so same file can be re-selected
-    e.target.value = "";
+  const targetLabel = scopeType
+    ? scopeType === "course"
+      ? (() => {
+          const course = courses.data?.find((c) => c.id === scopeId);
+          return course ? `${course.code} — ${course.title}` : "course";
+        })()
+      : (() => {
+          const subject = subjects.data?.find((s) => s.id === scopeId);
+          return subject ? subject.name : "subject";
+        })()
+    : "your question bank";
+
+  const pickFile = (next: File | null) => {
+    setError(null);
+    if (!next) return;
+    const extension = `.${next.name.toLowerCase().split(".").pop() ?? ""}`;
+    if (!ACCEPT.split(",").includes(extension)) {
+      setError(`Unsupported file type. Use one of: ${ACCEPT}.`);
+      return;
+    }
+    if (next.size > MAX_BYTES) {
+      setError("That file is larger than 50 MB.");
+      return;
+    }
+    setFile(next);
+    setJob(null);
   };
 
-  const openFilePicker = () => {
-    fileInputRef.current?.click();
-  };
-
-  // ── drag-and-drop handlers ─────────────────────────────────────────────────
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0] ?? null;
-    if (file) handleFile(file);
-  };
-
-  // ── import with progress bar ───────────────────────────────────────────────
-
-  const handleImport = () => {
-    setStep("importing");
-    setProgress(0);
-
-    const DURATION = 2000; // ms
-    const INTERVAL = 50; // ms
-    const STEPS = DURATION / INTERVAL;
-    let tick = 0;
-
-    const timer = setInterval(() => {
-      tick++;
-      const next = Math.min(Math.round((tick / STEPS) * 100), 100);
-      setProgress(next);
-      if (next >= 100) {
-        clearInterval(timer);
-        // small delay so user sees 100% before success
-        setTimeout(() => setStep("success"), 300);
-      }
-    }, INTERVAL);
-  };
-
-  // ── download template ──────────────────────────────────────────────────────
-
-  const handleDownloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: "text/csv" });
+  const downloadTemplate = () => {
+    const blob = new Blob([TEMPLATE], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "questions_template.csv";
-    a.click();
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "questions_template.txt";
+    anchor.click();
     URL.revokeObjectURL(url);
   };
 
-  // ── reset ──────────────────────────────────────────────────────────────────
+  const startImport = async () => {
+    setError(null);
+    if (!scopeId || !scopeType) {
+      setError("Choose a course or subject first.");
+      return;
+    }
+    if (!file) {
+      setError("Choose a document or photo to import.");
+      return;
+    }
 
-  const handleReset = () => {
-    setStep("upload");
-    setFileName("");
-    setProgress(0);
-    setCourse("");
+    setSubmitting(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append(scopeType === "course" ? "courseId" : "subjectId", scopeId);
+      if (topicId) form.append("topicId", topicId);
+
+      const res = await apiClient<{ data: { jobId: string } }>("/lecturer/questions/import", {
+        method: "POST",
+        body: form,
+      });
+      setJob({
+        id: res.data.jobId,
+        status: "QUEUED",
+        fileName: file.name,
+        counts: null,
+        errors: null,
+      });
+    } catch (e) {
+      setError(errMessage(e));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // ── derived display label ──────────────────────────────────────────────────
+  // Poll the job every 2 s until the worker finishes.
+  const jobId = job?.id;
+  const jobStatus = job?.status;
+  React.useEffect(() => {
+    if (!jobId || (jobStatus !== "QUEUED" && jobStatus !== "PROCESSING")) return;
+    let active = true;
+    const timer = setInterval(async () => {
+      try {
+        const res = await apiClient<{ data: ImportJob }>(`/lecturer/questions/import/${jobId}`);
+        if (active) setJob(res.data);
+      } catch {
+        // Transient polling failure — keep the last known state and retry.
+      }
+    }, 2000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [jobId, jobStatus]);
 
-  const displayName = fileName || "sample_questions.csv";
+  const reset = () => {
+    setFile(null);
+    setJob(null);
+    setError(null);
+    setTopicId("");
+  };
 
-  // =========================================================================
-  // RENDER
-  // =========================================================================
+  const counts = job?.counts;
+
   return (
     <div className="space-y-6 pb-12 flex flex-col h-full max-w-5xl mx-auto">
-      {/* Page Header */}
       <div>
-        <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">
-          Bulk Import Questions
-        </h2>
+        <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Bulk import questions</h2>
         <p className="text-[14px] text-gray-500 mt-1">
-          Upload questions via standard CSV spreadsheet format.
+          PDF, Word, Excel, CSV, text or a photo of the paper. AI extracts questions, answers ones without a key, and
+          maps figures into the question bank.
         </p>
       </div>
 
-      {/* ================================================================== */}
-      {/* STEP: UPLOAD                                                        */}
-      {/* ================================================================== */}
-      {step === "upload" && (
+      {(courses.error || subjects.error) && (
+        <ErrorBanner
+          error={(courses.error ?? subjects.error)!}
+          onRetry={() => {
+            void courses.reload();
+            void subjects.reload();
+          }}
+        />
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+        >
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {!job && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Left — upload zone */}
           <div className="md:col-span-2 space-y-4">
-            {/* Course selector */}
             <div>
-              <label
-                htmlFor="course-select"
-                className="block text-[13px] font-medium text-gray-700 mb-1.5"
-              >
-                Import into course{" "}
-                <span className="text-red-500 ml-0.5">*</span>
+              <label htmlFor="import-scope" className="block text-[13px] font-medium text-gray-700 mb-1.5">
+                Import into <span className="text-red-500">*</span>
               </label>
               <select
-                id="course-select"
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                id="import-scope"
+                className={selectCls}
+                value={scope}
+                onChange={(e) => {
+                  setScope(e.target.value);
+                  setTopicId("");
+                }}
               >
-                {COURSES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
+                <option value="">Select a course or subject...</option>
+                {!!courses.data?.length && (
+                  <optgroup label="University courses">
+                    {courses.data.map((course) => (
+                      <option key={course.id} value={`course:${course.id}`}>
+                        {course.code} — {course.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {!!subjects.data?.length && (
+                  <optgroup label="My subjects (school / external)">
+                    {subjects.data.map((subject) => (
+                      <option key={subject.id} value={`subject:${subject.id}`}>
+                        {subject.name}
+                        {subject.level ? ` (${subject.level})` : ""}
+                        {subject.institution ? ` · ${subject.institution}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+              {!subjects.data?.length && (
+                <p className="text-[12px] text-gray-500 mt-1">
+                  Teaching outside the university? Create a subject from the exam builder to import into it.
+                </p>
+              )}
             </div>
 
-            {/* Hidden file input */}
+            {scopeType && (
+              <div>
+                <label htmlFor="import-topic" className="block text-[13px] font-medium text-gray-700 mb-1.5">
+                  Topic (optional)
+                </label>
+                <select
+                  id="import-topic"
+                  className={selectCls}
+                  value={topicId}
+                  onChange={(e) => setTopicId(e.target.value)}
+                >
+                  <option value="">Imported Questions</option>
+                  {(topics.data ?? []).map((topic) => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <input
-              ref={fileInputRef}
+              ref={inputRef}
               type="file"
-              accept=".txt,.csv"
+              accept={ACCEPT}
               className="hidden"
-              onChange={handleInputChange}
+              onChange={(e) => {
+                pickFile(e.target.files?.[0] ?? null);
+                e.target.value = "";
+              }}
             />
 
-            {/* Drop zone */}
             <div
               role="button"
               tabIndex={0}
               aria-label="Upload file drop zone"
-              onClick={openFilePicker}
-              onKeyDown={(e) => e.key === "Enter" && openFilePicker()}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={[
-                "flex flex-col items-center justify-center text-center",
-                "rounded-xl border-2 border-dashed p-12 transition-all duration-200 cursor-pointer",
-                isDragOver
+              onClick={() => inputRef.current?.click()}
+              onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                pickFile(e.dataTransfer.files?.[0] ?? null);
+              }}
+              className={`flex flex-col items-center justify-center text-center rounded-xl border-2 border-dashed p-12 transition-all cursor-pointer ${
+                dragOver
                   ? "border-blue-500 bg-blue-50"
-                  : "border-gray-300 bg-gray-50/50 hover:border-blue-300 hover:bg-gray-50",
-              ].join(" ")}
+                  : "border-gray-300 bg-gray-50/50 hover:border-blue-300 hover:bg-gray-50"
+              }`}
             >
-              <div
-                className={[
-                  "w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-sm transition-colors",
-                  isDragOver
-                    ? "bg-blue-100 border border-blue-300"
-                    : "bg-white border border-gray-200",
-                ].join(" ")}
-              >
-                <Upload
-                  size={24}
-                  className={isDragOver ? "text-blue-600" : "text-blue-500"}
-                />
+              <div className="w-16 h-16 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-4 shadow-sm">
+                {file ? <FileText size={24} className="text-blue-600" /> : <Upload size={24} className="text-blue-500" />}
               </div>
-
-              {isDragOver ? (
-                <h3 className="text-[16px] font-semibold text-blue-700 mb-1">
-                  Drop your file here
-                </h3>
-              ) : (
-                <h3 className="text-[16px] font-semibold text-gray-900 mb-1">
-                  Click to upload or drag and drop
-                </h3>
-              )}
-
-              <p className="text-[13px] text-gray-500 max-w-xs mb-6">
-                Supports standard <strong>.csv</strong> files. Maximum file size 5 MB.
+              <h3 className="text-[16px] font-semibold text-gray-900 mb-1">
+                {file ? file.name : "Click to upload or drag and drop"}
+              </h3>
+              <p className="text-[13px] text-gray-500 max-w-sm">
+                {file
+                  ? `${(file.size / 1024 / 1024).toFixed(1)} MB · ready to import`
+                  : "PDF, DOCX, DOC, XLSX, XLS, CSV, TXT, MD, RTF — or a JPG/PNG photo of the paper. Up to 50 MB."}
               </p>
+            </div>
 
-              <Button
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openFilePicker();
-                }}
-              >
-                Browse files
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => void startImport()} isLoading={submitting} disabled={!file || !scope}>
+                Import questions
               </Button>
+              {file && (
+                <Button variant="secondary" onClick={reset}>
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Right — format guide */}
           <div className="space-y-6">
             <Card>
               <div className="p-5 space-y-4">
-                <h3 className="text-[14px] font-semibold text-gray-900">
-                  CSV Format Guide
-                </h3>
-                <p className="text-[13px] text-gray-600 leading-relaxed">
-                  Provide column headers:{" "}
-                  <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px] font-mono">
-                    Question, Option A, Option B, Option C, Option D, Answer, Marks
-                  </code>
-                </p>
-                <pre className="bg-gray-900 text-gray-100 rounded-lg p-3 font-mono text-[11px] leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                  {`Question,Option A,Option B,Option C,Option D,Answer,Marks\nWhat is the capital of Nigeria?,Lagos,Abuja,Kano,Ibadan,B,1`}
-                </pre>
-                <Button
-                  variant="secondary"
-                  className="w-full gap-2"
-                  onClick={handleDownloadTemplate}
-                >
-                  <Download size={15} />
-                  Download CSV Template
+                <h3 className="text-[14px] font-semibold text-gray-900">How it works</h3>
+                <ul className="text-[13px] text-gray-600 space-y-2 list-disc list-inside">
+                  <li>Spreadsheets must have a question, options and an answer column.</li>
+                  <li>PDFs and Word files are read by AI; figures in DOCX are stored as question photos.</li>
+                  <li>
+                    Questions without an answer key are solved by AI and marked{" "}
+                    <span className="font-medium">AI suggested</span> so you can review them.
+                  </li>
+                  <li>A photo or screenshot of a paper is read by a vision model.</li>
+                </ul>
+                <Button variant="secondary" className="w-full gap-2" onClick={downloadTemplate}>
+                  <Download size={15} /> Download text template
                 </Button>
               </div>
             </Card>
 
-            <Card>
-              <div className="p-5 space-y-2">
-                <h3 className="text-[14px] font-semibold text-gray-900">
-                  Tips
-                </h3>
-                <ul className="text-[13px] text-gray-600 space-y-1.5 list-disc list-inside">
-                  <li>Include all option columns (A, B, C, D)</li>
-                  <li>Set Answer as the letter corresponding to the correct option</li>
-                  <li>Set Marks for each question (default: 1)</li>
-                  <li>Save spreadsheet as CSV (Comma delimited UTF-8)</li>
-                </ul>
-              </div>
-            </Card>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3">
+              <Sparkles className="text-blue-600 shrink-0 mt-0.5" size={18} />
+              <p className="text-[12px] text-blue-900 leading-relaxed">
+                AI answers are advisory. Check <strong>AI suggested</strong> questions in the question bank before they
+                are used in a live exam.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ================================================================== */}
-      {/* STEP: REVIEW                                                        */}
-      {/* ================================================================== */}
-      {step === "review" && (
-        <Card className="flex flex-col overflow-hidden" noPadding>
-          {/* Header bar */}
-          <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3 bg-gray-50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                <FileText size={20} />
-              </div>
-              <div>
-                <h3 className="text-[15px] font-semibold text-gray-900 leading-tight">
-                  {displayName}
-                </h3>
-                <p className="text-[12px] text-gray-500 mt-0.5">
-                  {GOOD_COUNT + WARN_COUNT} questions parsed &bull;{" "}
-                  <span className="text-amber-600 font-medium">
-                    {WARN_COUNT} warning{WARN_COUNT !== 1 ? "s" : ""}
-                  </span>
-                  {course && (
-                    <>
-                      {" "}
-                      &bull; importing into{" "}
-                      <span className="text-blue-600 font-medium">
-                        {COURSES.find((c) => c.value === course)?.label ??
-                          course}
-                      </span>
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setStep("upload")}>
-                <ChevronLeft size={15} className="mr-1" />
-                Back
-              </Button>
-              <Button onClick={handleImport}>
-                Import {GOOD_COUNT} questions
-              </Button>
-            </div>
-          </div>
-
-          {/* Warning banner */}
-          {WARN_COUNT > 0 && (
-            <div className="flex items-start gap-2 bg-amber-50 border-b border-amber-100 px-5 py-3">
-              <AlertCircle
-                size={16}
-                className="text-amber-500 shrink-0 mt-0.5"
-              />
-              <p className="text-[13px] text-amber-800">
-                <strong>{WARN_COUNT} question{WARN_COUNT !== 1 ? "s" : ""}</strong>{" "}
-                had parsing issues and will be skipped. Review highlighted rows
-                below.
-              </p>
-            </div>
-          )}
-
-          {/* Table */}
-          <div className="flex-1 overflow-y-auto" style={{ maxHeight: 480 }}>
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                <tr>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-10">
-                    #
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Question Preview
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Options
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Answer
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {PREVIEW_ROWS.map((row, idx) =>
-                  row.status === "ok" ? (
-                    <tr key={row.line} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-[12px] text-gray-400">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3">
-                        <CheckCircle2 size={17} className="text-green-500" />
-                      </td>
-                      <td className="px-4 py-3 text-[13px] text-gray-900 max-w-sm">
-                        <p className="truncate">{row.question}</p>
-                      </td>
-                      <td className="px-4 py-3 text-[13px] text-gray-500">
-                        {row.options} options
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant="blue-tint">{row.answer}</Badge>
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr key={row.line} className="bg-amber-50 hover:bg-amber-100/60">
-                      <td className="px-4 py-3 text-[12px] text-gray-400">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3">
-                        <AlertCircle size={17} className="text-amber-500" />
-                      </td>
-                      <td className="px-4 py-3 text-[13px] text-gray-900 max-w-sm">
-                        <p className="truncate">{row.question}</p>
-                        <p className="text-[12px] text-amber-600 mt-0.5 font-medium">
-                          {row.warning}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-[13px] text-amber-600 font-medium">
-                        {row.options > 0 ? `${row.options} found` : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant="warning">?</Badge>
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {/* ================================================================== */}
-      {/* STEP: IMPORTING (progress bar)                                      */}
-      {/* ================================================================== */}
-      {step === "importing" && (
+      {job && (
         <Card>
-          <div className="p-10 flex flex-col items-center justify-center text-center space-y-6">
-            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
-              <Upload size={26} className="text-blue-600 animate-bounce" />
-            </div>
-            <div>
-              <h3 className="text-[17px] font-semibold text-gray-900">
-                Importing questions…
-              </h3>
-              <p className="text-[13px] text-gray-500 mt-1">
-                Please wait while we process{" "}
-                <strong>{GOOD_COUNT} questions</strong> from{" "}
-                <strong>{displayName}</strong>.
-              </p>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full max-w-md space-y-2">
-              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-75"
-                  style={{ width: `${progress}%` }}
-                />
+          <div className="p-6 space-y-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-gray-900">{job.fileName}</h3>
+                  <p className="text-[12px] text-gray-500">
+                    Importing into {targetLabel}
+                    {topicId ? ` · topic selected` : ""}
+                  </p>
+                </div>
               </div>
-              <p className="text-[13px] text-gray-500 text-right">
-                {progress}%
-              </p>
+              <Badge
+                variant={
+                  job.status === "COMPLETED"
+                    ? "success"
+                    : job.status === "FAILED"
+                      ? "danger"
+                      : "blue-tint"
+                }
+              >
+                {job.status.toLowerCase()}
+              </Badge>
             </div>
-          </div>
-        </Card>
-      )}
 
-      {/* ================================================================== */}
-      {/* STEP: SUCCESS                                                       */}
-      {/* ================================================================== */}
-      {step === "success" && (
-        <Card>
-          <div className="p-12 flex flex-col items-center justify-center text-center space-y-5">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-              <PartyPopper size={30} className="text-green-600" />
-            </div>
-            <div>
-              <h3 className="text-[20px] font-semibold text-gray-900">
-                Import successful!
-              </h3>
-              <p className="text-[14px] text-gray-500 mt-1 max-w-sm">
-                <strong>{GOOD_COUNT} questions</strong> were added to{" "}
-                <strong>
-                  {course
-                    ? (COURSES.find((c) => c.value === course)?.label ?? course)
-                    : "your question bank"}
-                </strong>
-                .{" "}
-                {WARN_COUNT > 0 && (
-                  <>
-                    <span className="text-amber-600">
-                      {WARN_COUNT} question{WARN_COUNT !== 1 ? "s" : ""} were
-                      skipped
-                    </span>{" "}
-                    due to parsing errors.
-                  </>
+            {(job.status === "QUEUED" || job.status === "PROCESSING") && (
+              <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <Loader2 size={18} className="animate-spin text-blue-600" />
+                <div>
+                  <p className="text-[13px] font-medium text-blue-900">
+                    {job.status === "QUEUED" ? "Waiting for the worker..." : "Reading the document and asking AI..."}
+                  </p>
+                  <p className="text-[12px] text-blue-700">
+                    This can take a minute for long PDFs. The page updates automatically.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {job.status === "FAILED" && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">The import failed.</p>
+                  <p>{job.errors?.message ?? "The worker could not read this document."}</p>
+                  <p className="mt-1 text-[12px] text-red-700">
+                    Check that Redis and the worker are running, then try again with a cleaner PDF or DOCX.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {job.status === "COMPLETED" && (
+              <>
+                <div className="flex items-center gap-2 text-[14px] font-medium text-emerald-700">
+                  <PartyPopper size={18} /> Import complete
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Stat value={counts?.imported ?? 0} label="Questions added" tone="success" />
+                  <Stat value={counts?.approved ?? 0} label="Ready to use" />
+                  <Stat value={counts?.aiAnswered ?? 0} label="Answered by AI" tone="blue" />
+                  <Stat value={counts?.unanswered ?? 0} label="Still need a key" tone={(counts?.unanswered ?? 0) > 0 ? "warn" : undefined} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Stat value={counts?.sourceAnswered ?? 0} label="Keys from source" />
+                  <Stat value={counts?.aiGenerated ?? 0} label="AI-generated" />
+                  <Stat value={counts?.skipped ?? 0} label="Skipped" tone={(counts?.skipped ?? 0) > 0 ? "warn" : undefined} />
+                  <Stat
+                    value={counts?.imagesImported ?? 0}
+                    label="Photos saved"
+                    icon={<ImageIcon size={13} />}
+                  />
+                </div>
+
+                {!!counts?.imagesSkipped && (
+                  <p className="text-[12px] text-amber-700">
+                    {counts.imagesSkipped} figure(s) could not be extracted. Add them with the photo upload in the
+                    question editor.
+                  </p>
                 )}
-              </p>
-            </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button variant="secondary" onClick={handleReset}>
-                Import another file
+                {(counts?.provider || counts?.model) && (
+                  <p className="text-[12px] text-gray-500">
+                    AI provider: {counts.provider ?? "unknown"}
+                    {counts.model ? ` · ${counts.model}` : ""}
+                  </p>
+                )}
+
+                {!!counts?.unanswered && (
+                  <p className="text-[12px] text-gray-600">
+                    {counts.unanswered} question(s) have no key yet and stay as drafts. Open them in the question bank
+                    to choose the correct option.
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={reset}>Import another file</Button>
+                  <Button variant="secondary" onClick={() => window.location.assign("/lecturer/questions")}>
+                    View question bank
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {job.status !== "COMPLETED" && (
+              <Button variant="secondary" onClick={reset}>
+                Start over
               </Button>
-              <Button onClick={handleReset}>View question bank</Button>
-            </div>
+            )}
           </div>
         </Card>
       )}
+
+      <div className="flex items-start gap-2 text-[12px] text-gray-500">
+        <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+        <span>
+          Imports run in a background worker. Questions are saved to the selected course or subject and can be used in
+          an exam immediately.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  value,
+  label,
+  tone,
+  icon,
+}: {
+  value: number;
+  label: string;
+  tone?: "success" | "blue" | "warn";
+  icon?: React.ReactNode;
+}) {
+  const color =
+    tone === "success"
+      ? "text-emerald-700"
+      : tone === "blue"
+        ? "text-blue-700"
+        : tone === "warn"
+          ? "text-amber-700"
+          : "text-gray-900";
+  return (
+    <div className="rounded-lg border border-gray-200 p-3">
+      <div className={`text-[20px] font-bold ${color} flex items-center gap-1.5`}>
+        {icon}
+        {value}
+      </div>
+      <div className="text-[11px] text-gray-500 uppercase font-semibold tracking-wider">{label}</div>
     </div>
   );
 }

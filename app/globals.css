@@ -1,13 +1,56 @@
 @import "../styles/tokens.css";
 @import "tailwindcss";
 
-@theme {
-  /* ... your other color variables ... */
+/* Scope Tailwind's `dark:` variant to our own theme wrapper rather than the OS
+   setting. components/role-theme.tsx puts `.dark` on a theme-scope element, so
+   `dark:` utilities follow that element instead of `prefers-color-scheme`.
+   Used only where an element must react to the theme without a colour changing —
+   components/ui/theme-toggle.tsx swaps its icon by CSS. Everywhere else restyles
+   through the `.dark` token block in styles/tokens.css, with no component edits. */
+@custom-variant dark (&:where(.dark, .dark *));
 
-  /* 1. Tell Tailwind to use YOUR variable for 'white' instead of its hardcoded #fff */
-  --color-white: var(--theme-white);
+@theme {
+  /* Map Tailwind's names onto the tokens in styles/tokens.css.
+
+     Declaring a name here is what makes Tailwind emit the utility at all:
+     without a `--color-*` entry, `bg-success` / `text-danger-ink` are dropped
+     at build time and the element renders with no colour, no border and no
+     background. That was the state of every status colour in this app. */
+  /* Literal white, deliberately *not* `var(--theme-white)`.
+     `white` is one name serving two roles: text and translucent affordance
+     (rail labels, `hover:text-white`, `text-white/65`, `bg-white/10`,
+     `ring-white/20`) on the permanently dark blue rail — and the card surface
+     (`bg-white`). Only the second should follow the theme, and a token remap
+     cannot tell them apart. Worse, the `/NN` forms compile to
+     `color-mix(in oklab, var(--color-white) 65%, transparent)`, which reads this
+     value directly and ignores any class-name rescue rule, so no `.dark .text-white`
+     patch can reach them. Pinning the token keeps every `text-white*` and
+     `bg-white/NN` form literally white in both themes; the single surface utility
+     is flipped explicitly in the `.dark` block below. */
+  --color-white: #ffffff;
+
   --color-gray-50: var(--color-gray-50);
-  /* ... rest of your theme variables ... */
+  --color-gray-100: var(--color-gray-100);
+  --color-gray-200: var(--color-gray-200);
+  --color-gray-300: var(--color-gray-300);
+  --color-gray-400: var(--color-gray-400);
+  --color-gray-500: var(--color-gray-500);
+  --color-gray-600: var(--color-gray-600);
+  --color-gray-700: var(--color-gray-700);
+  --color-gray-800: var(--color-gray-800);
+  --color-gray-900: var(--color-gray-900);
+
+  --color-success: var(--color-success);
+  --color-success-tint: var(--color-success-tint);
+  --color-success-ink: var(--color-success-ink);
+
+  --color-warning: var(--color-warning);
+  --color-warning-tint: var(--color-warning-tint);
+  --color-warning-ink: var(--color-warning-ink);
+
+  --color-danger: var(--color-danger);
+  --color-danger-tint: var(--color-danger-tint);
+  --color-danger-ink: var(--color-danger-ink);
 }
 
 /* 2. Define the default (light) state in :root */
@@ -34,6 +77,164 @@ body {
   color-scheme: light !important;
 }
 
+/* ── Dark theme: the tokens that serve two roles ─────────────────────────────
+   Everything else is handled by the `.dark` block in styles/tokens.css. These
+   rules cover the few names that back both a *surface* and *text* inside one
+   palette, where remapping the token would fix one use and break the other.
+
+   Unlayered, so they intentionally beat Tailwind's utilities. */
+
+/* `white` is pinned literal up in `@theme`, so every `text-white`,
+   `hover:text-white`, `text-white/65` and `bg-white/10` is already correct in
+   both themes. The one form that *must* follow the theme is the card surface. */
+.dark .bg-white { background-color: var(--theme-white); }
+
+/* `hover:bg-white` and `focus:bg-white` are separate class names, so the rule
+   above does not reach them — and each compiles to a literal white, since
+   `--color-white` is pinned. They sit on surfaces that are already themed (the
+   exam stepper's upcoming tab, the appeals card, the question editor's option
+   fields, the live console's search box), where the literal would flash a light
+   panel under dark text. Point them at the same surface token. */
+.dark .hover\:bg-white:hover { background-color: var(--theme-white); }
+.dark .focus\:bg-white:focus { background-color: var(--theme-white); }
+
+/* slate is used the opposite way round from `white`: `bg-slate-900` is a
+   deliberate dark surface (the live-invigilation console, dark hero tiles) while
+   `text-slate-900` is body and heading copy sitting on themed cards, where the
+   remapped token would paint near-black on near-black. The token keeps the
+   surface role, so the text role is lifted here. Plain rules are enough — no
+   `text-slate-NN/opacity` form exists anywhere in the codebase. Values follow the
+   gray ramp, which is this app's text ramp. */
+.dark .text-slate-900 { color: #F2F5FA; }
+.dark .text-slate-800 { color: #DDE4EE; }
+.dark .text-slate-700,
+.dark .text-slate-600 { color: #C7D0E0; }
+.dark .hover\:text-slate-900:hover { color: #F2F5FA; }
+
+/* blue-900/950 are large dark-navy surfaces (the lecturer's save bar) *and*
+   small dark-on-light text (tab labels, notification headings). Surfaces read
+   the token; text is lifted back up here. */
+.dark .text-blue-900,
+.dark .text-blue-950 { color: #E4EEFF; }
+.dark .text-blue-800,
+.dark .text-blue-700 { color: #BFD7F7; }
+.dark .hover\:text-blue-900:hover,
+.dark .hover\:text-blue-950:hover { color: #E4EEFF; }
+
+/* blue-600 is a button fill (stays) and an icon/link colour (must lift).
+   7.86:1 on a card, 8.66:1 on the page — both AAA. */
+.dark .text-blue-600 { color: #7FB2FF; }
+
+/* blue-100 is sidebar text (stays light) and the active-tab pill (goes dark). */
+.dark .bg-blue-100 { background-color: #17253F; }
+.dark .border-blue-100 { border-color: #22314F; }
+
+/* The hover form of that pill is a distinct class name, so the rule above misses
+   it and it resolves to the token's *light* #CFE0FF — a near-white pill flashing
+   on a dark card, on the exam stepper's completed tabs and the users table's
+   buttons. Follow the fill, not the token. */
+.dark .hover\:bg-blue-100:hover { background-color: #17253F; }
+
+/* blue-200 is sidebar text (stays light) and the notification card's border.
+   Deliberately *not* paired with a fill rule like blue-100's above: its fill role
+   is the lightest step of the difficulty ramp (the lecturer's bars and chart), which
+   needs to stay light in both themes. Where that value collided with lifted text —
+   the exam stepper's completed chip — the component moved to bg-blue-100 instead. */
+.dark .border-blue-200 { border-color: #2A3F63; }
+
+/* gray-700 is body text (light in dark mode) but is also the toast's border,
+   and gray-900 is the toast's fill. Both need to stay dark. */
+.dark .bg-gray-900 { background-color: #0A1020; }
+.dark .border-gray-700 { border-color: #38465F; }
+.dark .bg-gray-300 { background-color: #38465F; }
+
+/* gray-700 has a *third* role beyond body text and the toast border: a solid
+   fill behind white text — the Badge `gray-solid` variant and the invigilation
+   console's scope toggle. The token flips it to #C7D0E0 for the text role, which
+   would paint white on near-white, so the fill is restored here. Same value as
+   bg-gray-300 above, where the surface needed exactly this treatment. */
+.dark .bg-gray-700 { background-color: #38465F; }
+
+/* ── Status families: the ink and the dual-role fills ────────────────────────
+   The 50/100/200 tints are remapped as tokens in styles/tokens.css's `.dark`
+   block. These are the matching *text* shades. They cannot travel with the
+   token because several of them also sit on surfaces that are dark in *both*
+   themes. Unlike `white`, no `text-<family>-<shade>/<opacity>` form exists
+   anywhere in these families, so a plain class-name rule reaches every use. */
+
+.dark .text-red-500 { color: #F87171; }
+.dark .text-red-600,
+.dark .text-red-700 { color: #FCA5A5; }
+.dark .text-red-800,
+.dark .text-red-900 { color: #FECACA; }
+
+.dark .text-rose-600 { color: #FB7185; }
+.dark .text-rose-700 { color: #FDA4AF; }
+.dark .text-rose-800,
+.dark .text-rose-900 { color: #FECDD3; }
+
+.dark .text-amber-500,
+.dark .text-amber-600 { color: #FBBF24; }
+.dark .text-amber-700 { color: #FCD34D; }
+.dark .text-amber-800,
+.dark .text-amber-900 { color: #FDE68A; }
+
+.dark .text-green-500,
+.dark .text-green-600,
+.dark .text-green-700 { color: #86EFAC; }
+.dark .text-green-800,
+.dark .text-green-900 { color: #A7F3D0; }
+
+.dark .text-emerald-600,
+.dark .text-emerald-700 { color: #6EE7B7; }
+.dark .text-emerald-800 { color: #A7F3D0; }
+
+.dark .text-orange-800 { color: #FDBA74; }
+
+.dark .text-purple-600 { color: #D8B4FE; }
+.dark .text-purple-700 { color: #E9D5FF; }
+.dark .text-purple-900 { color: #DDD6FE; }
+
+/* gray-300 stays a *border* in the remapped ramp, but it is also body text on
+   permanently dark surfaces — the audit-log terminal rows and the settings
+   toast — where the ramp's #38465F lands at roughly 1.7:1 against bg-slate-900.
+   Restore the light-mode value for the text role. */
+.dark .text-gray-300 { color: #C9CFD8; }
+
+/* gray-100's only *text* role is the import page's CSV sample, which pins its own
+   `bg-gray-900` panel in both themes. The ramp flips gray-100 to #1A2436 for its
+   surface role, which inside that #0A1020 panel is unreadable; the text role
+   comes back here. */
+.dark .text-gray-100 { color: #E6EDF7; }
+
+/* The hover / group-hover forms of the ink shades above. Tailwind emits
+   `group-hover:x` as `.group-hover\:x:is(:where(.group):hover *)`; writing the
+   equivalent selector independently matches the same DOM without re-deriving
+   its escaping, and wins on both layer order and specificity. */
+.dark .hover\:text-red-700:hover { color: #FCA5A5; }
+.dark .hover\:text-amber-700:hover { color: #FCD34D; }
+.dark .group:hover .group-hover\:text-emerald-700 { color: #6EE7B7; }
+.dark .group:hover .group-hover\:text-blue-700 { color: #BFD7F7; }
+
+/* red-100 and amber-200 are the two shades that back *both* a fill and text:
+   the calculator's AC key and the exam header's live pill (red), the flag
+   button and the invigilation console's amber notice (amber). Their tokens stay
+   at Tailwind's light values so the text role keeps working, and the fill role
+   is corrected per-utility here. */
+.dark .bg-red-100 { background-color: #3A1B1E; }
+.dark .hover\:bg-red-100:hover { background-color: #472225; }
+.dark .border-red-100 { border-color: #4E2226; }
+.dark .bg-amber-200 { background-color: #4A3A14; }
+.dark .hover\:bg-amber-200:hover { background-color: #5A4718; }
+.dark .border-amber-200 { border-color: #5A4718; }
+
+/* `fill-*` compiles to `fill: var(--color-*)`, not `currentColor`, so the ink
+   rules above do not reach the flag icon's filled state — it would otherwise
+   paint a dark glyph inside an already-lightened stroke. */
+.dark .fill-amber-500,
+.dark .fill-amber-600 { fill: #FBBF24; }
+.dark .fill-amber-700 { fill: #FCD34D; }
+
 .scrollbar-clean::-webkit-scrollbar {
   width: 8px;
 }
@@ -41,6 +242,6 @@ body {
   background: transparent;
 }
 .scrollbar-clean::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+  background-color: var(--color-gray-300);
   border-radius: 20px;
 }

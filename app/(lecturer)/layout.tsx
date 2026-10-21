@@ -1,5 +1,9 @@
-import { AppShell } from "@/components/layout/app-shell";
+import { RoleArea } from "@/components/layout/role-area";
 
-export default function RoleLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell role="lecturer" title="Lecturer Dashboard">{children}</AppShell>;
+export default function LecturerLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <RoleArea area="lecturer" title="Lecturer Dashboard">
+      {children}
+    </RoleArea>
+  );
 }

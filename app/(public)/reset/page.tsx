@@ -2,18 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowLeft, CheckCircle2, Send, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Send, Loader2, AlertCircle, ShieldAlert, KeyRound, ArrowRight } from "lucide-react";
 import { Inter } from "next/font/google";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SCHOOL_NAME } from "@/lib/school";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
-
-const SCHOOL_NAME = "Lagos State University of Science and Technology";
-
-// One place to change the picture. File must be at public/info6.png
-const RESET_IMAGE = "/info6.png";
 
 // Dark input that survives Chrome autofill (same as the login page)
 const inputClass = [
@@ -44,8 +39,8 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Backend connection template
-      const response = await fetch("/api/auth/reset-password", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+      const response = await fetch(`${baseUrl}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier }),
@@ -54,7 +49,7 @@ export default function ResetPasswordPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "An error occurred. Please try again.");
+        throw new Error(data.error?.message || data.message || "An error occurred. Please try again.");
       }
 
       setSubmitted(true);
@@ -77,23 +72,14 @@ export default function ResetPasswordPage() {
 
   return (
     <main className={`${inter.className} min-h-dvh grid lg:grid-cols-2 bg-[#081229]`}>
-      {/* LEFT: picture panel (desktop only, decorative) */}
+      {/* LEFT: institutional panel (desktop only) */}
       <section
         aria-hidden="true"
         className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden px-6 py-10 text-center bg-[radial-gradient(ellipse_at_center,_#14285a_0%,_#081229_70%)]"
       >
-        <Image
-          src={RESET_IMAGE}
-          alt=""
-          width={900}
-          height={900}
-          sizes="50vw"
-          priority
-          className="h-auto w-full max-w-[860px] max-h-[62dvh] object-contain drop-shadow-[0_0_48px_rgba(125,211,252,0.45)]"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
+        <div className="flex h-36 w-36 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 shadow-[0_0_50px_rgba(56,189,248,0.25)] backdrop-blur-md mb-6">
+          <KeyRound className="h-16 w-16 text-sky-400 drop-shadow-[0_0_16px_rgba(56,189,248,0.5)]" />
+        </div>
         <p className="mt-6 text-2xl xl:text-3xl font-semibold text-white text-balance max-w-md">
           {SCHOOL_NAME}
         </p>
@@ -103,18 +89,10 @@ export default function ResetPasswordPage() {
       {/* RIGHT: form panel */}
       <section className="flex items-center justify-center px-4 py-8 sm:px-8 bg-[#0b1733] lg:border-l lg:border-white/10">
         <div className="w-full max-w-[400px]">
-          {/* Small picture for phones and tablets, where the left panel is hidden */}
-          <Image
-            src={RESET_IMAGE}
-            alt=""
-            width={256}
-            height={256}
-            priority
-            className="mx-auto mb-4 h-auto w-36 sm:w-44 lg:hidden drop-shadow-[0_0_24px_rgba(125,211,252,0.45)]"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
+          {/* Small emblem for mobile */}
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 lg:hidden shadow-[0_0_24px_rgba(56,189,248,0.25)]">
+            <KeyRound className="h-10 w-10 text-sky-400" />
+          </div>
 
           <h1
             ref={headingRef}
@@ -126,22 +104,38 @@ export default function ResetPasswordPage() {
 
           {!submitted ? (
             <>
-              <p className="text-base text-slate-300 mb-6 leading-relaxed">
-                Enter your matric number or staff email and we&apos;ll send you instructions to
-                reset your password.
+              {/* Notice for Students */}
+              <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 space-y-2 mb-5">
+                <div className="flex items-center gap-1.5 font-bold text-amber-100">
+                  <ShieldAlert size={14} className="text-amber-400 shrink-0" />
+                  Examination Candidate Notice
+                </div>
+                <p className="leading-relaxed text-slate-300">
+                  Per LASUSTECH examination security policy, student accounts cannot self-reset passwords online. Student credentials are maintained and reset solely by the ICT CBT Center.
+                </p>
+                <Link
+                  href="/support"
+                  className="inline-flex items-center gap-1 font-semibold text-amber-300 underline underline-offset-4 hover:text-white"
+                >
+                  Submit Official Support Request <ArrowRight size={12} />
+                </Link>
+              </div>
+
+              <p className="text-sm text-slate-300 mb-5 leading-relaxed">
+                Staff, lecturers, and administrators may enter their registered email address to receive reset instructions.
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label htmlFor="identifier" className="text-sm font-medium text-slate-100 block">
-                    Matric number or staff email{" "}
+                    Staff or Lecturer Email{" "}
                     <span className="text-rose-300" aria-hidden="true">*</span>
                   </label>
                   <Input
                     id="identifier"
                     name="username"
                     required
-                    placeholder="e.g. CSC/2022/305 or name@lasustech.edu.ng"
+                    placeholder="e.g. j.doe@lasustech.edu.ng"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     autoComplete="username"

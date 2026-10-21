@@ -45,3 +45,6 @@ reap.js
 
 # generated designs & mock outputs
 Claude outputs/
+
+!.env.production.example
+!.env*.example

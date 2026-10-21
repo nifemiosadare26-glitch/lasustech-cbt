@@ -2,17 +2,17 @@
 
 import Image from "next/image";
 import * as React from "react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, Shield, GraduationCap, User, ArrowRight } from "lucide-react";
 import { Inter } from "next/font/google";
+import { apiClient, type ApiError } from "@/lib/apiClient";
+import { SCHOOL_NAME } from "@/lib/school";
+import { homeForRole, isPortal, type Portal, roleLabel } from "@/lib/roles";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
-
-const SCHOOL_NAME = "Lagos State University of Science and Technology";
 
 const inputClass = [
   "h-12 rounded-lg text-base",
@@ -23,8 +23,21 @@ const inputClass = [
   "[&:-webkit-autofill]:caret-white",
 ].join(" ");
 
-export default function LoginPage() {
-  const router = useRouter();
+const PORTAL_LABEL: Record<Portal, string> = {
+  admin: "Administrator portal",
+  lecturer: "Lecturer portal",
+  student: "Student portal",
+};
+
+/**
+ * One login form, three entrances: `/login?portal=admin|lecturer|student`
+ * (also reachable as `/login/admin`, `/login/lecturer`, `/login/student`).
+ *
+ * The portal is sent to the API, which refuses a valid account that does not
+ * hold the matching role. Hiding the other portals in the UI alone would not be
+ * security.
+ */
+export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [identifier, setIdentifier] = useState("");
@@ -32,6 +45,37 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [portal, setPortal] = useState<Portal | undefined>(fixedPortal);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [userName, setUserName] = useState("");
+
+  // The portal can arrive as a path segment (from /login/admin) or as a query
+  // parameter (from a link to /login?portal=admin). Read the query string after
+  // mount so the page still renders on the server.
+  useEffect(() => {
+    if (fixedPortal) return;
+    const q = new URLSearchParams(window.location.search).get("portal");
+    if (isPortal(q)) {
+      setPortal(q);
+      return;
+    }
+
+    // Check if platform is in maintenance mode
+    const checkMaintenance = async () => {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+        const res = await fetch(`${baseUrl}/system/status`);
+        if (res.ok) {
+          const body = await res.json();
+          if (body.data?.maintenanceMode) {
+            window.location.replace("/maintenance");
+          }
+        }
+      } catch {}
+    };
+    checkMaintenance();
+  }, [fixedPortal]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,34 +84,48 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Backend connection template
-      const response = await fetch("/api/auth/login", {
+      const res = await apiClient<{
+        data: {
+          accessToken: string;
+          user: { id: string; names: string; primaryRole: string; roles: string[] };
+        };
+      }>("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password, rememberMe }),
+        body: JSON.stringify({ identifier, password }),
       });
 
-      const data = await response.json();
+      // The exact key apiClient.ts reads when building the Authorization header.
+      localStorage.setItem("accessToken", res.data.accessToken);
 
-      if (!response.ok) {
-        throw new Error(data.message || "Invalid credentials");
+      const roles = res.data.user.roles?.length ? res.data.user.roles : [res.data.user.primaryRole];
+
+      // If user holds multiple roles (e.g. ADMIN + LECTURER), prompt them to pick which portal they want
+      if (roles.length > 1) {
+        setUserRoles(roles);
+        setUserName(res.data.user.names || "User");
+        setRoleModalOpen(true);
+        setIsLoading(false);
+        return;
       }
 
-      // Route based on role returned from the backend (consolidated roles)
-      const role = data.role?.toLowerCase();
-      if (role === "admin" || role === "officer" || role === "invigilator") router.push("/admin");
-      else if (role === "lecturer" || role === "staff") router.push("/lecturer");
-      else router.push("/student");
-
+      // Full navigation rather than router.push: the destination layout's
+      // RoleGuard calls getMe() on mount and needs the new token in place.
+      window.location.assign(homeForRole(res.data.user.primaryRole));
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An error occurred during login.");
+      const apiError = err as ApiError;
+      if (apiError?.code === "MAINTENANCE_MODE" || apiError?.message?.toLowerCase().includes("maintenance")) {
+        window.location.replace("/maintenance");
+        return;
       }
-    } finally {
+      setError(
+        apiError?.message ?? "We couldn't sign you in. Check your details and try again.",
+      );
       setIsLoading(false);
     }
+  };
+
+  const chooseRole = (r: string) => {
+    window.location.assign(homeForRole(r));
   };
 
   const describedBy =
@@ -114,6 +172,11 @@ export default function LoginPage() {
 
         {/* FORM CARD */}
         <div className="w-full rounded-2xl border border-white/10 bg-[#0b1733]/80 backdrop-blur-md p-5 shadow-2xl">
+          {portal && (
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-sky-300">
+              {PORTAL_LABEL[portal]}
+            </p>
+          )}
           <form onSubmit={handleLogin} className="w-full text-left space-y-4">
             {/* Identifier */}
             <div className="space-y-1.5">
@@ -258,6 +321,79 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
+
+      {/* Role Selection Modal for accounts with multiple roles */}
+      {roleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#0b1733] border border-white/20 rounded-2xl max-w-md w-full p-6 text-white shadow-2xl space-y-5">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+                Multiple Roles Detected
+              </span>
+              <h2 className="text-xl font-bold mt-1 text-white">Choose your portal</h2>
+              <p className="text-sm text-slate-300 mt-1">
+                Welcome back, <strong className="text-white">{userName}</strong>. What portal would you like to enter as today?
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {userRoles.map((r) => {
+                const isAdmin = r === "ADMIN";
+                const isLecturer = r === "LECTURER";
+                const Icon = isAdmin ? Shield : isLecturer ? GraduationCap : User;
+                const label = isAdmin
+                  ? "Administrator Portal"
+                  : isLecturer
+                  ? "Lecturer Portal"
+                  : "Student Portal";
+                const desc = isAdmin
+                  ? "Schedule exams, live invigilation, manage courses & users"
+                  : isLecturer
+                  ? "Author questions, build exams, and view submissions"
+                  : "Sit for scheduled examinations and view test scores";
+
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => chooseRole(r)}
+                    className="w-full text-left p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-sky-400/60 transition-all flex items-start gap-3.5 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0 group-hover:bg-sky-500 group-hover:text-[#081229] transition-colors">
+                      <Icon size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-white group-hover:text-sky-300 transition-colors">
+                          {label}
+                        </span>
+                        <ArrowRight
+                          size={16}
+                          className="text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-300 mt-0.5 line-clamp-2">{desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-white/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem("accessToken");
+                  setRoleModalOpen(false);
+                }}
+                className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Cancel and sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

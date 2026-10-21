@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Card, StatCard } from "@/components/ui/card";
+import { useApi } from "@/lib/useApi";
+import { useAction } from "@/lib/useAction";
+import { actionLabel } from "@/lib/format";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,7 +26,9 @@ import {
   Layers,
   Sparkles,
   ShieldAlert,
-  Radio
+  Radio,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import {
   AreaChart,
@@ -38,136 +44,179 @@ import {
 } from "recharts";
 
 // 30 days of data for rich analysis
-const fullTrafficData = [
-  { date: 'Sep 08', logins: 380, exams: 2 },
-  { date: 'Sep 09', logins: 410, exams: 3 },
-  { date: 'Sep 10', logins: 395, exams: 2 },
-  { date: 'Sep 11', logins: 450, exams: 4 },
-  { date: 'Sep 12', logins: 480, exams: 3 },
-  { date: 'Sep 13', logins: 220, exams: 1 },
-  { date: 'Sep 14', logins: 190, exams: 0 },
-  { date: 'Sep 15', logins: 510, exams: 4 },
-  { date: 'Sep 16', logins: 530, exams: 5 },
-  { date: 'Sep 17', logins: 490, exams: 3 },
-  { date: 'Sep 18', logins: 560, exams: 5 },
-  { date: 'Sep 19', logins: 600, exams: 4 },
-  { date: 'Sep 20', logins: 250, exams: 1 },
-  { date: 'Sep 21', logins: 450, exams: 3 },
-  { date: 'Sep 22', logins: 520, exams: 4 },
-  { date: 'Sep 23', logins: 490, exams: 3 },
-  { date: 'Sep 24', logins: 590, exams: 5 },
-  { date: 'Sep 25', logins: 700, exams: 6 },
-  { date: 'Sep 26', logins: 610, exams: 4 },
-  { date: 'Sep 27', logins: 300, exams: 1 },
-  { date: 'Sep 28', logins: 280, exams: 1 },
-  { date: 'Sep 29', logins: 800, exams: 5 },
-  { date: 'Sep 30', logins: 950, exams: 7 },
-  { date: 'Oct 01', logins: 1100, exams: 6 },
-  { date: 'Oct 02', logins: 1250, exams: 8 },
-  { date: 'Oct 03', logins: 900, exams: 5 },
-  { date: 'Oct 04', logins: 1284, exams: 6 },
-];
+/** A day on the activity chart, as GET /admin/dashboard returns it. */
+type SeriesPoint = { date: string; logins: number; exams: number };
 
-const initialAuditEvents = [
-  { id: "req_9f8a", time: "10:42 AM", user: "N. Osadare", action: "Created session 2026/2027" },
-  { id: "req_8b3c", time: "09:15 AM", user: "T. Bello", action: "Scheduled CSC 301 exam" },
-  { id: "req_7d1e", time: "08:50 AM", user: "System", action: "Automated backup completed" },
-  { id: "req_6c9f", time: "Yesterday", user: "A. Ibrahim", action: "Assigned invigilators to Hall A" },
-  { id: "req_5e4d", time: "Yesterday", user: "N. Osadare", action: "Published semester results" },
-  { id: "req_4a2b", time: "Yesterday", user: "System", action: "Realtime sync verified" },
-];
+type DashboardData = {
+  stats: {
+    activeUsers: { value: number; previous: number };
+    examsToday: { total: number; inProgress: number };
+    openAlerts: { total: number; high: number };
+    uptimeSeconds: number;
+  };
+  series: SeriesPoint[];
+  health: { name: string; status: string; latencyMs: number | null }[];
+  recent: {
+    id: string;
+    requestId: string;
+    at: string;
+    actorName: string;
+    action: string;
+    targetType: string;
+    targetLabel: string | null;
+  }[];
+  serverTime: string;
+};
+
+/** Roles the API accepts on POST /admin/users, with their display labels. */
+const ROLE_OPTIONS = [
+  { key: "STUDENT", label: "Student" },
+  { key: "LECTURER", label: "Lecturer" },
+  { key: "ADMIN", label: "System Administrator" },
+] as const;
+
+const formatDay = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
+};
+
+const formatUptime = (seconds: number) => {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+};
+
+/** "10:42" today, "Yesterday", or a date — whichever reads fastest. */
+const formatWhen = (iso: string) => {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "—";
+
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const daysAgo = Math.round((startOfDay(new Date()) - startOfDay(at)) / 86_400_000);
+
+  if (daysAgo === 0) return at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  if (daysAgo === 1) return "Yesterday";
+  return at.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+};
 
 export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
   const [timeRange, setTimeRange] = useState<"7d" | "14d" | "30d">("14d");
   const [chartType, setChartType] = useState<"area" | "bar">("area");
   const [metric, setMetric] = useState<"logins" | "exams">("logins");
-  const [auditEvents, setAuditEvents] = useState(initialAuditEvents);
 
-  // Quick action modals & toasts
+  const { data, loading, error, reload } = useApi<DashboardData>("/admin/dashboard");
+  const { toast } = useToast();
+  const createUserAction = useAction();
+  const createSessionAction = useAction();
+
+  // Quick action modals
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Form states
+  // Form states. Role keys and field names match POST /admin/users exactly.
   const [newUser, setNewUser] = useState({
-    name: "",
+    names: "",
     staffId: "",
     email: "",
-    role: "Student",
-    dept: "Computer Science"
+    role: "STUDENT" as (typeof ROLE_OPTIONS)[number]["key"],
+    password: "",
   });
 
+  // POST /admin/sessions takes a consecutive-year name plus the two dates.
   const [newSession, setNewSession] = useState({
-    name: "2027/2028 Session",
-    semester: "Harmattan Semester",
-    startDate: "2027-10-01",
-    endDate: "2028-03-31"
+    name: "",
+    startsOn: "",
+    endsOn: "",
   });
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
+  const stats = data?.stats;
+  const series = data?.series ?? [];
 
-  // Filter data based on selected time range
-  const visibleData = fullTrafficData.slice(
-    timeRange === "7d" ? -7 : timeRange === "14d" ? -14 : 0
-  );
+  // Week-on-week change in distinct signed-in accounts. The endpoint compares
+  // the last 7 days against the 7 before them.
+  const { activeUsersDelta, activeUsersTrend } = useMemo(() => {
+    if (!stats) return { activeUsersDelta: "", activeUsersTrend: "neutral" as const };
+    const { value, previous } = stats.activeUsers;
+    if (!previous) return { activeUsersDelta: "no prior week to compare", activeUsersTrend: "neutral" as const };
+    const pct = Math.round(((value - previous) / previous) * 100);
+    return {
+      activeUsersDelta: `${pct >= 0 ? "+" : ""}${pct}% vs last week`,
+      activeUsersTrend: pct > 0 ? ("up" as const) : pct < 0 ? ("down" as const) : ("neutral" as const),
+    };
+  }, [stats]);
+
+  // The endpoint always returns a 30-day window; the range control slices it.
+  const visibleData = useMemo(() => {
+    const slice = timeRange === "7d" ? -7 : timeRange === "14d" ? -14 : 0;
+    return series.slice(slice).map((point) => ({ ...point, date: formatDay(point.date) }));
+  }, [series, timeRange]);
 
   // Calculations for graph KPIs
   const currentMetricValues = visibleData.map(d => d[metric]);
-  const peakVal = Math.max(...currentMetricValues);
+  const peakVal = currentMetricValues.length ? Math.max(...currentMetricValues) : 0;
   const totalVal = currentMetricValues.reduce((a, b) => a + b, 0);
-  const avgVal = Math.round(totalVal / visibleData.length);
+  const avgVal = currentMetricValues.length ? Math.round(totalVal / currentMetricValues.length) : 0;
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUser.name.trim()) return;
 
-    const event = {
-      id: `req_${Math.random().toString(36).substr(2, 4)}`,
-      time: "Just now",
-      user: "Admin (You)",
-      action: `Created user ${newUser.name} (${newUser.role})`
-    };
-
-    setAuditEvents([event, ...auditEvents]);
-    setIsAddUserOpen(false);
-    showToast(`User ${newUser.name} created successfully!`);
-    setNewUser({ name: "", staffId: "", email: "", role: "Student", dept: "Computer Science" });
+    await createUserAction.run<{ id: string }, { temporaryPassword?: string }>("/admin/users", {
+      method: "POST",
+      body: JSON.stringify({
+        names: newUser.names,
+        roles: [newUser.role],
+        staffId: newUser.staffId || undefined,
+        email: newUser.email || undefined,
+        // Omitted for a student, where the API derives one from surname+matric.
+        password: newUser.password || undefined,
+      }),
+      success: `${newUser.names} created`,
+      onSuccess: (_created, meta) => {
+        // The API returns the generated password exactly once, so surface it
+        // rather than silently discarding it — the admin has to pass it on.
+        if (meta?.temporaryPassword) {
+          toast({
+            title: "Temporary password",
+            description: `${meta.temporaryPassword} — share this now, it is not shown again.`,
+            variant: "info",
+            duration: 0,
+          });
+        }
+        setIsAddUserOpen(false);
+        setNewUser({ names: "", staffId: "", email: "", role: "STUDENT", password: "" });
+        void reload();
+      },
+    });
   };
 
-  const handleCreateSession = (e: React.FormEvent) => {
+  const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSession.name.trim()) return;
 
-    const event = {
-      id: `req_${Math.random().toString(36).substr(2, 4)}`,
-      time: "Just now",
-      user: "Admin (You)",
-      action: `Created session ${newSession.name} (${newSession.semester})`
-    };
-
-    setAuditEvents([event, ...auditEvents]);
-    setIsCreateSessionOpen(false);
-    showToast(`Session ${newSession.name} created successfully!`);
+    await createSessionAction.run("/admin/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        name: newSession.name,
+        startsOn: newSession.startsOn,
+        endsOn: newSession.endsOn,
+      }),
+      success: `Session ${newSession.name} created`,
+      onSuccess: () => {
+        setIsCreateSessionOpen(false);
+        setNewSession({ name: "", startsOn: "", endsOn: "" });
+        void reload();
+      },
+    });
   };
 
   return (
     <div className="space-y-6 pb-12 relative">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />
-          <span className="text-[14px] font-medium">{toastMessage}</span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
@@ -182,15 +231,15 @@ export default function AdminDashboard() {
 
       {/* 1. Stat Cards with mini trend sparklines */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Active users */}
+        {/* Active users — distinct accounts seen in the last 7 days */}
         <StatCard
           label="Active users"
-          value="1,284"
-          delta="+8% vs last week"
-          trendType="up"
+          value={stats ? stats.activeUsers.value.toLocaleString() : "—"}
+          delta={activeUsersDelta}
+          trendType={activeUsersTrend}
           href="/admin/users"
           chart={
-            <div className="w-16 h-8 flex items-end justify-end pb-1" title="User trend +8%">
+            <div className="w-16 h-8 flex items-end justify-end pb-1" title={activeUsersDelta}>
               <svg className="w-14 h-6 text-blue-500 overflow-visible" viewBox="0 0 56 24" fill="none">
                 <path
                   d="M2 18 L10 16 L18 19 L26 13 L34 14 L42 8 L54 3"
@@ -208,28 +257,24 @@ export default function AdminDashboard() {
         {/* Exams today */}
         <StatCard
           label="Exams today"
-          value="6"
-          delta="2 in progress"
+          value={stats ? String(stats.examsToday.total) : "—"}
+          delta={stats ? `${stats.examsToday.inProgress} in progress` : ""}
           trendType="neutral"
           href="/admin/sessions"
           chart={
-            <div className="w-16 h-8 flex items-end justify-end gap-1 pb-1" title="6 scheduled today">
-              <span className="w-1.5 h-3 bg-blue-200 rounded-xs"></span>
-              <span className="w-1.5 h-4 bg-blue-300 rounded-xs"></span>
-              <span className="w-1.5 h-5 bg-blue-400 rounded-xs"></span>
-              <span className="w-1.5 h-6 bg-blue-600 rounded-xs"></span>
-              <span className="w-1.5 h-3 bg-blue-300 rounded-xs"></span>
+            <div className="w-16 h-8 flex items-center justify-end pb-1">
+              <span className="text-[13px] font-semibold text-gray-500">today</span>
             </div>
           }
         />
 
-        {/* Open alerts */}
+        {/* Open alerts — unreviewed proctoring flags */}
         <StatCard
           label="Open alerts"
-          value="3"
-          delta="2 critical"
-          trendType="down"
-          href="/admin/audit"
+          value={stats ? String(stats.openAlerts.total) : "—"}
+          delta={stats ? `${stats.openAlerts.high} high severity` : ""}
+          trendType={stats && stats.openAlerts.high > 0 ? "down" : "neutral"}
+          href="/admin/incidents"
           chart={
             <div className="w-16 h-8 flex items-center justify-end pb-1">
               <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-50 text-amber-600 border border-amber-200 text-[11px] font-bold">
@@ -239,22 +284,43 @@ export default function AdminDashboard() {
           }
         />
 
-        {/* Uptime this month */}
+        {/* Server uptime. This is the API process, not a monthly figure — the
+            endpoint reports process.uptime(), so it restarts with the service. */}
         <StatCard
-          label="Uptime this month"
-          value="99.9%"
-          delta="Optimal"
+          label="Server uptime"
+          value={stats ? formatUptime(stats.uptimeSeconds) : "—"}
+          delta="since last restart"
           trendType="up"
           href="/admin/settings"
           chart={
             <div className="w-16 h-8 flex items-center justify-end pb-1">
-              <div className="w-14 bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full rounded-full" style={{ width: '99.9%' }}></div>
-              </div>
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
             </div>
           }
         />
       </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-danger/40 bg-danger-tint px-4 py-3"
+        >
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-danger-ink" aria-hidden="true" />
+          <div className="flex-1">
+            <p className="text-[14px] font-semibold text-gray-900">Couldn&apos;t load the dashboard</p>
+            <p className="mt-0.5 text-[13px] text-gray-600">
+              {error.message ?? "The server did not respond."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void reload()}
+            className="shrink-0 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="w-full">
         {/* 2. Proper Interactive Platform Activity Graph */}
@@ -494,13 +560,37 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {auditEvents.map((event) => (
+                {(data?.recent ?? []).map((event) => (
                   <tr key={event.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-[13px] text-gray-500 whitespace-nowrap">{event.time}</td>
-                    <td className="px-4 py-3 text-[14px] text-gray-900 font-medium whitespace-nowrap">{event.user}</td>
-                    <td className="px-4 py-3 text-[14px] text-gray-700">{event.action}</td>
+                    <td className="px-4 py-3 text-[13px] text-gray-500 whitespace-nowrap">
+                      {formatWhen(event.at)}
+                    </td>
+                    <td className="px-4 py-3 text-[14px] text-gray-900 font-medium whitespace-nowrap">
+                      {event.actorName}
+                    </td>
+                    <td className="px-4 py-3 text-[14px] text-gray-700">
+                      {actionLabel(event.action)}
+                      {event.targetLabel ? (
+                        <span className="text-gray-500"> · {event.targetLabel}</span>
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
+                {!loading && (data?.recent ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center text-[13px] text-gray-500">
+                      No audit activity recorded yet.
+                    </td>
+                  </tr>
+                )}
+                {loading && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center text-[13px] text-gray-500">
+                      <Loader2 size={16} className="inline animate-spin mr-2" />
+                      Loading recent activity…
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -556,7 +646,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <div className="text-[14px] font-semibold text-gray-900 group-hover:text-emerald-700">Live invigilation</div>
-                  <div className="text-[12px] text-gray-500">Monitor terminals & candidate states</div>
+                  <div className="text-[12px] text-gray-500">Monitor workstations & candidate states</div>
                 </div>
               </div>
               <ArrowRight size={16} className="text-gray-400 group-hover:text-emerald-700 group-hover:translate-x-0.5 transition-all" />
@@ -573,7 +663,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <div className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-700">Exam schedule</div>
-                  <div className="text-[12px] text-gray-500">Allocate venues, halls & invigilators</div>
+                  <div className="text-[12px] text-gray-500">Allocate dates, venues &amp; session windows</div>
                 </div>
               </div>
               <ArrowRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
@@ -631,8 +721,8 @@ export default function AdminDashboard() {
                   <Input
                     required
                     placeholder="e.g. Dr. Babatunde Lawal"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    value={newUser.names}
+                    onChange={(e) => setNewUser({ ...newUser, names: e.target.value })}
                   />
                 </div>
 
@@ -653,13 +743,18 @@ export default function AdminDashboard() {
                     <select
                       className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                       value={newUser.role}
-                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                      onChange={(e) =>
+                        setNewUser({
+                          ...newUser,
+                          role: e.target.value as (typeof ROLE_OPTIONS)[number]["key"],
+                        })
+                      }
                     >
-                      <option value="Student">Student</option>
-                      <option value="Lecturer">Lecturer</option>
-                      <option value="Exam Officer">Exam Officer</option>
-                      <option value="Admin">Administrator</option>
-                      <option value="Invigilator">Invigilator</option>
+                      {ROLE_OPTIONS.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -678,18 +773,19 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    value={newUser.dept}
-                    onChange={(e) => setNewUser({ ...newUser, dept: e.target.value })}
-                  >
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Software Engineering">Software Engineering</option>
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Electrical Engineering">Electrical Engineering</option>
-                    <option value="Registry">Registry / Exams Office</option>
-                  </select>
+                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Password</label>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Leave blank to generate one"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  />
+                  <p className="mt-1 text-[12px] text-gray-500">
+                    Students get a default password derived from their name and matric number.
+                    Staff passwords are generated and shown once after creation. Assign a
+                    department later from the Users page.
+                  </p>
                 </div>
               </form>
 
@@ -761,41 +857,33 @@ export default function AdminDashboard() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Semester</label>
-                  <select
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    value={newSession.semester}
-                    onChange={(e) => setNewSession({ ...newSession, semester: e.target.value })}
-                  >
-                    <option value="Harmattan Semester">Harmattan Semester (1st Semester)</option>
-                    <option value="Rain Semester">Rain Semester (2nd Semester)</option>
-                    <option value="Full Academic Year">Full Academic Year</option>
-                  </select>
-                </div>
-
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                      Start Date
+                      Start Date <span className="text-red-500">*</span>
                     </label>
                     <Input
                       type="date"
-                      value={newSession.startDate}
-                      onChange={(e) => setNewSession({ ...newSession, startDate: e.target.value })}
+                      required
+                      value={newSession.startsOn}
+                      onChange={(e) => setNewSession({ ...newSession, startsOn: e.target.value })}
                     />
                   </div>
                   <div>
                     <label className="text-[13px] font-medium text-gray-700 block mb-1">
-                      End Date
+                      End Date <span className="text-red-500">*</span>
                     </label>
                     <Input
                       type="date"
-                      value={newSession.endDate}
-                      onChange={(e) => setNewSession({ ...newSession, endDate: e.target.value })}
+                      required
+                      value={newSession.endsOn}
+                      onChange={(e) => setNewSession({ ...newSession, endsOn: e.target.value })}
                     />
                   </div>
                 </div>
+                <p className="text-[12px] text-gray-500">
+                  Semester dates can be configured after the session is created.
+                </p>
               </form>
 
               <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3 shrink-0">
