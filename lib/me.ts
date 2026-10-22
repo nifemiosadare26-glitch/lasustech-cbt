@@ -1,30 +1,33 @@
-
+import { RoleKey } from "./roles";
 import { apiClient } from "./apiClient";
 
-export interface Me {
+export type Me = {
   id: string;
   names: string;
-  roles: string[];
-  primaryRole: string;
   email: string | null;
-  matricNo: string | null;
-  staffId: string | null;
-}
+  identifier: string;
+  primaryRole: RoleKey;
+  roles: RoleKey[];
+};
 
-let cache: { at: number; promise: Promise<Me> } | null = null;
+let cachedMe: Promise<Me> | null = null;
 
-export function getMe(force = false): Promise<Me> {
-  if (!force && cache && Date.now() - cache.at < 60_000) return cache.promise;
+export function getMe(): Promise<Me> {
+  if (cachedMe) return cachedMe;
   const promise = apiClient("/me").then((r) => r.data as Me);
-  cache = { at: Date.now(), promise };
-  promise.catch(() => { if (cache?.promise === promise) cache = null; });
-  return promise;
+  cachedMe = promise.catch((err) => {
+    cachedMe = null;
+    throw err;
+  });
+  return cachedMe;
 }
 
-export const clearMe = () => { cache = null; };
+export function clearMe(): void {
+  cachedMe = null;
+}
 
 /**
- * Ends the session everywhere it is recorded on this device.
+ * End the current user's session cleanly.
  *
  * The API call comes first because it revokes the refresh-token session in the
  * database — that is the part that actually stops the account being usable. If it
@@ -40,6 +43,7 @@ export async function signOut(): Promise<void> {
 
   try {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
   } catch {
     /* Storage blocked; nothing to clear. */
   }

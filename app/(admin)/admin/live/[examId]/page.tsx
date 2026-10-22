@@ -236,11 +236,12 @@ export default function LiveCandidateGrid() {
 
     socket.emit("join_sitting", examId);
 
-    const handleCameraFrame = (data: { studentId?: string; matricNo?: string; frame: string }) => {
+    const handleCameraFrame = (data: { studentId?: string; attemptId?: string; matricNo?: string; frame: string }) => {
       if (data?.frame) {
         setCandidateFrames((prev) => {
           const next = { ...prev };
           if (data.studentId) next[data.studentId] = data.frame;
+          if (data.attemptId) next[data.attemptId] = data.frame;
           if (data.matricNo) next[data.matricNo] = data.frame;
           return next;
         });
@@ -1080,7 +1081,8 @@ function InspectorModal({
         if (event.candidate) {
           socket.emit("webrtc_signal", {
             sittingId,
-            targetSocketId: student.attemptId || student.studentId,
+            targetUserId: student.studentId,
+            targetStudentId: student.studentId,
             signal: { candidate: event.candidate },
             kind: "invigilator",
           });
@@ -1089,7 +1091,8 @@ function InspectorModal({
 
       socket.emit("request_live_feed", {
         sittingId,
-        targetStudentId: student.attemptId || student.studentId,
+        studentId: student.studentId,
+        targetStudentId: student.studentId,
         invigilatorSocketId: socket.id,
       });
     } catch (e) {

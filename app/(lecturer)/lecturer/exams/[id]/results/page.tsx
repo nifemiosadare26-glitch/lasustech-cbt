@@ -6,14 +6,16 @@ import { Card, StatCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Download, Loader2, Search } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Search, FileText } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useApi } from "@/lib/useApi";
 import { apiDownload } from "@/lib/apiClient";
 import { ErrorBanner, errMessage } from "@/components/admin/ui";
+import { CandidateScriptModal } from "@/components/exam/candidate-script-modal";
 
 interface ResultRow {
   id: string;
+  attemptId?: string;
   matric: string;
   name: string;
   rawScore?: number;
@@ -54,6 +56,7 @@ export default function ExamResults() {
   const [grade, setGrade] = React.useState("");
   const [exporting, setExporting] = React.useState(false);
   const [exportError, setExportError] = React.useState<string | null>(null);
+  const [selectedAttemptId, setSelectedAttemptId] = React.useState<string | null>(null);
 
   const exam = useApi<ExamDetail>(examId ? `/lecturer/exams/${examId}` : null);
   const results = useApi<ResultsPayload>(examId ? `/lecturer/exams/${examId}/results` : null);
@@ -183,12 +186,13 @@ export default function ExamResults() {
                         <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase text-center">Grade</th>
                         <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase">Time taken</th>
                         <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase text-right">Status</th>
+                        <th className="px-6 py-3 text-[12px] font-semibold text-gray-500 uppercase text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {students.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-[14px] text-gray-500">
+                          <td colSpan={7} className="px-6 py-12 text-center text-[14px] text-gray-500">
                             {payload?.students.length
                               ? "No candidates match this filter."
                               : "No one has taken this exam yet."}
@@ -232,6 +236,18 @@ export default function ExamResults() {
                                 >
                                   {passed ? "Passed" : "Failed"}
                                 </span>
+                              </td>
+                              <td className="px-6 py-3 text-right">
+                                {student.attemptId && (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => setSelectedAttemptId(student.attemptId!)}
+                                    className="h-7 px-2.5 text-[11px] bg-white hover:bg-gray-100 border border-gray-200"
+                                  >
+                                    <FileText size={12} className="mr-1 text-blue-600" /> Review Script
+                                  </Button>
+                                )}
                               </td>
                             </tr>
                           );
@@ -308,6 +324,14 @@ export default function ExamResults() {
             </div>
           </div>
         </>
+      )}
+
+      {selectedAttemptId && (
+        <CandidateScriptModal
+          attemptId={selectedAttemptId}
+          role="LECTURER"
+          onClose={() => setSelectedAttemptId(null)}
+        />
       )}
     </div>
   );

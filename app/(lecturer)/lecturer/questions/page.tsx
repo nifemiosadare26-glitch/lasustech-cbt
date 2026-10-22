@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, MoreHorizontal, Image as ImageIcon, CheckCircle2, Loader2, Sparkles, X,
+  Search, Plus, MoreHorizontal, Image as ImageIcon, CheckCircle2, Loader2, Sparkles, X, Trash2, Edit,
 } from "lucide-react";
 import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
 import { mediaSrc, apiClient } from "@/lib/apiClient";
-import { ErrorBanner, Pagination, selectCls, useToast } from "@/components/admin/ui";
+import { ConfirmModal, ErrorBanner, Pagination, selectCls, useToast } from "@/components/admin/ui";
 import { MathText, cleanQuestionStem } from "@/components/question/math-text";
 
 interface Course {
@@ -92,6 +92,8 @@ export default function QuestionBank() {
   const [page, setPage] = React.useState(1);
   const [approvingAll, setApprovingAll] = React.useState(false);
   const [togglingId, setTogglingId] = React.useState<string | null>(null);
+  const [deletingQuestion, setDeletingQuestion] = React.useState<QuestionRow | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const debounced = useDebounced(search, 300);
 
   const courses = useApi<Course[]>("/lecturer/courses");
@@ -157,6 +159,21 @@ export default function QuestionBank() {
       toast.show(e?.message ?? "Failed to update question status.", "err");
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const handleDeleteQuestion = async () => {
+    if (!deletingQuestion) return;
+    setIsDeleting(true);
+    try {
+      await apiClient(`/lecturer/questions/${deletingQuestion.id}`, { method: "DELETE" });
+      toast.show("Question deleted successfully.");
+      setDeletingQuestion(null);
+      await reload();
+    } catch (e: any) {
+      toast.show(e?.message ?? "Failed to delete question.", "err");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -431,13 +448,22 @@ export default function QuestionBank() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => router.push(`/lecturer/questions/${row.id}`)}
-                          className="text-gray-400 hover:text-gray-900 rounded p-1 cursor-pointer"
-                          title="Edit question"
-                        >
-                          <MoreHorizontal size={18} />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => router.push(`/lecturer/questions/${row.id}`)}
+                            className="text-gray-400 hover:text-blue-700 rounded p-1 cursor-pointer transition-colors"
+                            title="Edit question"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => setDeletingQuestion(row)}
+                            className="text-gray-400 hover:text-rose-600 rounded p-1 cursor-pointer transition-colors"
+                            title="Delete question"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -462,6 +488,17 @@ export default function QuestionBank() {
         <CheckCircle2 size={14} />
         <span>A question must have at least two options and one correct answer before it can be used in an exam.</span>
       </div>
+
+      {deletingQuestion && (
+        <ConfirmModal
+          title="Delete question"
+          body="Are you sure you want to delete this question? This will remove it from the question bank. If it is already bound to active candidate examination attempts, deletion will be blocked."
+          confirmLabel="Delete question"
+          danger
+          onConfirm={handleDeleteQuestion}
+          onClose={() => setDeletingQuestion(null)}
+        />
+      )}
     </div>
     </>
   );

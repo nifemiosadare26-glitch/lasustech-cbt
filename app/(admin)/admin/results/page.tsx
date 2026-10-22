@@ -5,13 +5,50 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileCheck, Send, CheckCircle2, ShieldAlert, Loader2 } from "lucide-react";
-import { apiClient } from "@/lib/apiClient";
+import { Search, FileCheck, Send, CheckCircle2, ShieldAlert, Loader2, Download, Eye, X, FileText } from "lucide-react";
+import { apiClient, apiDownload } from "@/lib/apiClient";
 import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
 import { fmtDateTime } from "@/lib/format";
-import { ConfirmModal, ErrorBanner, Pagination, errMessage, useToast } from "@/components/admin/ui";
+import { ConfirmModal, ErrorBanner, Modal, Pagination, errMessage, useToast } from "@/components/admin/ui";
+import { CandidateScriptModal } from "@/components/exam/candidate-script-modal";
 
 type ResultStatus = "PENDING" | "SUBMITTED" | "APPROVED" | "RELEASED";
+
+interface CandidateScore {
+  id: string;
+  attemptId: string;
+  studentId: string;
+  studentName: string;
+  matricNo: string;
+  rawScore: number;
+  maxScore: number;
+  percent: number;
+  grade: string;
+  status: string;
+  flagsCount: number;
+  flags: Array<{ id: string; flagType: string; reason?: string }>;
+  timeSpent: string;
+}
+
+interface SittingDetailsPayload {
+  sitting: {
+    id: string;
+    examTitle: string;
+    courseCode: string;
+    courseTitle: string;
+    startsAt: string;
+    endsAt: string;
+    status: string;
+  };
+  stats: {
+    total: number;
+    average: number;
+    passed: number;
+    failed: number;
+    flags: number;
+  };
+  candidates: CandidateScore[];
+}
 
 interface ResultRow {
   id: string;
@@ -68,6 +105,40 @@ export default function ResultsProcessing() {
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [releasing, setReleasing] = React.useState<ResultRow | null>(null);
   const [resolving, setResolving] = React.useState<ResultRow | null>(null);
+  const [inspectingSitting, setInspectingSitting] = React.useState<ResultRow | null>(null);
+  const [candidateFilter, setCandidateFilter] = React.useState("");
+  const [inspectingData, setInspectingData] = React.useState<SittingDetailsPayload | null>(null);
+  const [loadingDetails, setLoadingDetails] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
+  const [selectedAttemptId, setSelectedAttemptId] = React.useState<string | null>(null);
+
+  const viewDetails = async (row: ResultRow) => {
+    setInspectingSitting(row);
+    setInspectingData(null);
+    setCandidateFilter("");
+    setLoadingDetails(true);
+    try {
+      const res = await apiClient<{ data: SittingDetailsPayload }>(`/admin/results/${row.id}`);
+      setInspectingData(res.data);
+    } catch (e) {
+      toast.show(errMessage(e), "err");
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!inspectingSitting) return;
+    setExporting(true);
+    try {
+      await apiDownload(`/admin/results/${inspectingSitting.id}/export`, `${inspectingSitting.courseCode}_Results.csv`);
+      toast.show("Broadsheet downloaded.");
+    } catch (e) {
+      toast.show(errMessage(e), "err");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const approve = async (row: ResultRow) => {
     setBusyId(row.id);
@@ -228,6 +299,14 @@ export default function ResultsProcessing() {
                     </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-8 text-gray-700 hover:text-blue-700"
+                          onClick={() => void viewDetails(row)}
+                        >
+                          <Eye size={14} className="mr-1.5" /> View
+                        </Button>
                         {row.flags > 0 && (
                           <Button
                             variant="secondary"
@@ -319,6 +398,174 @@ export default function ResultsProcessing() {
           confirmLabel="Mark reviewed"
           onConfirm={resolveFlags}
           onClose={() => setResolving(null)}
+        />
+      )}
+
+      {inspectingSitting && (
+        <Modal
+          title={`Results: ${inspectingSitting.courseCode} — ${inspectingSitting.examTitle}`}
+          subtitle={`Sitting conducted on ${fmtDateTime(inspectingSitting.startsAt)}. Review candidate score records and export broadsheet.`}
+          onClose={() => setInspectingSitting(null)}
+          width="max-w-4xl"
+        >
+          <div className="space-y-4 pt-1">
+            {/* Action Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[13px] text-gray-700">
+                  Total: <strong>{inspectingData?.stats.total ?? inspectingSitting.scripts}</strong>
+                </span>
+                <span className="text-gray-300">|</span>
+                <span className="text-[13px] text-gray-700">
+                  Avg: <strong>{inspectingData?.stats.average ?? 0}%</strong>
+                </span>
+                <span className="text-gray-300">|</span>
+                <span className="text-[13px] text-emerald-700">
+                  Passed: <strong>{inspectingData?.stats.passed ?? 0}</strong>
+                </span>
+                <span className="text-gray-300">|</span>
+                <span className="text-[13px] text-rose-700">
+                  Failed: <strong>{inspectingData?.stats.failed ?? 0}</strong>
+                </span>
+                {Boolean(inspectingData?.stats.flags) && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-[13px] text-amber-700 font-medium">
+                      Flags: <strong>{inspectingData?.stats.flags}</strong>
+                    </span>
+                  </>
+                )}
+              </div>
+
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleExport}
+                isLoading={exporting}
+                className="shrink-0 text-[12px] bg-white hover:bg-gray-100"
+              >
+                <Download size={14} className="mr-1.5" /> Export Broadsheet (CSV)
+              </Button>
+            </div>
+
+            {/* Candidate Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+              <Input
+                placeholder="Search candidates by matric number or name..."
+                className="pl-9 h-9 text-[13px]"
+                value={candidateFilter}
+                onChange={(e) => setCandidateFilter(e.target.value)}
+              />
+            </div>
+
+            {/* Candidates Table */}
+            {loadingDetails ? (
+              <div className="py-12 flex flex-col items-center justify-center text-gray-500 space-y-2">
+                <Loader2 className="animate-spin text-blue-600" size={24} />
+                <p className="text-[13px]">Retrieving student scores...</p>
+              </div>
+            ) : inspectingData?.candidates.length === 0 ? (
+              <div className="py-8 text-center text-gray-500 text-[13px]">
+                No student attempts recorded for this sitting.
+              </div>
+            ) : (
+              <div className="max-h-[380px] overflow-y-auto border border-gray-200 rounded-lg">
+                <table className="w-full text-left text-[13px]">
+                  <thead className="bg-gray-50 sticky top-0 border-b border-gray-200 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-3 py-2">Matric No</th>
+                      <th className="px-3 py-2">Student Name</th>
+                      <th className="px-3 py-2 text-right">Raw Score</th>
+                      <th className="px-3 py-2 text-right">Percent</th>
+                      <th className="px-3 py-2 text-center">Grade</th>
+                      <th className="px-3 py-2 text-right">Time</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {inspectingData?.candidates
+                      .filter(
+                        (c) =>
+                          !candidateFilter.trim() ||
+                          c.matricNo.toLowerCase().includes(candidateFilter.toLowerCase()) ||
+                          c.studentName.toLowerCase().includes(candidateFilter.toLowerCase())
+                      )
+                      .map((c) => (
+                        <tr key={c.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 font-mono font-medium text-blue-700">
+                            {c.matricNo}
+                          </td>
+                          <td className="px-3 py-2 text-gray-900 font-medium">
+                            {c.studentName}
+                          </td>
+                          <td className="px-3 py-2 text-right text-gray-600">
+                            {c.rawScore} / {c.maxScore}
+                          </td>
+                          <td className="px-3 py-2 text-right font-bold text-gray-900">
+                            {c.percent}%
+                          </td>
+                          <td className="px-3 py-2 text-center font-bold">
+                            <span
+                              className={
+                                c.percent >= 70
+                                  ? "text-emerald-700"
+                                  : c.percent >= 50
+                                    ? "text-blue-700"
+                                    : c.percent >= 40
+                                      ? "text-amber-700"
+                                      : "text-rose-700"
+                              }
+                            >
+                              {c.grade}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right text-gray-500">
+                            {c.timeSpent}
+                          </td>
+                          <td className="px-3 py-2">
+                            {c.flagsCount > 0 ? (
+                              <Badge variant="warning" className="text-[11px]">
+                                {c.flagsCount} flag(s)
+                              </Badge>
+                            ) : (
+                              <Badge variant="success" className="text-[11px]">
+                                Normal
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setSelectedAttemptId(c.attemptId)}
+                              className="h-7 px-2 text-[11px] bg-white hover:bg-gray-100 border border-gray-300"
+                            >
+                              <FileText size={12} className="mr-1 text-blue-600" /> Review Script
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {selectedAttemptId && (
+        <CandidateScriptModal
+          attemptId={selectedAttemptId}
+          role="ADMIN"
+          onClose={() => setSelectedAttemptId(null)}
+          onScoreUpdated={async () => {
+            if (inspectingSitting) {
+              await viewDetails(inspectingSitting);
+            }
+            await reload();
+          }}
         />
       )}
     </div>

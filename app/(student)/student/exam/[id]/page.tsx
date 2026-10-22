@@ -55,6 +55,9 @@ type QuestionItem = {
 type PaperPayload = {
   attemptId: string;
   sittingId: string;
+  studentId?: string | null;
+  matricNo?: string | null;
+  studentName?: string | null;
   status: string;
   startedAt: string;
   deadlineAt: string;
@@ -112,8 +115,10 @@ export default function ExamAttemptPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const pendingSaveTimers = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const [candidateMatric, setCandidateMatric] = useState<string>("");
   const [candidateName, setCandidateName] = useState<string>("");
+  const [candidateStudentId, setCandidateStudentId] = useState<string>("");
 
   // Tab Switch Anti-Cheat State
   const [tabSwitches, setTabSwitches] = useState<number>(0);
@@ -149,6 +154,9 @@ export default function ExamAttemptPage() {
         }
 
         setAttemptId(paper.attemptId);
+        if (paper.studentId) setCandidateStudentId(paper.studentId);
+        if (paper.matricNo) setCandidateMatric(paper.matricNo);
+        if (paper.studentName) setCandidateName(paper.studentName);
         if (paper.courseCode) setCourseCode(paper.courseCode);
         if (paper.courseTitle) setCourseTitle(paper.courseTitle);
         if (typeof paper.antiCheatEnabled === "boolean") {
@@ -366,7 +374,8 @@ export default function ExamAttemptPage() {
         const frame = canvas.toDataURL("image/jpeg", 0.5);
         socket.emit("camera_frame", {
           sittingId,
-          studentId: attemptId,
+          studentId: candidateStudentId || attemptId,
+          attemptId,
           matricNo: candidateMatric,
           frame,
         });
@@ -376,7 +385,7 @@ export default function ExamAttemptPage() {
     }, 3500);
 
     return () => clearInterval(captureInterval);
-  }, [cameraActive, sittingId, attemptId, candidateMatric]);
+  }, [cameraActive, sittingId, attemptId, candidateStudentId, candidateMatric]);
 
   // Real-Time Socket Connection & WebRTC Signaling
   useEffect(() => {
@@ -456,11 +465,15 @@ export default function ExamAttemptPage() {
       } else if (data.action === "RESUME") {
         setIsPausedByProctor(false);
       } else if (data.action === "END") {
-        alert("Your examination has been concluded by the invigilator.");
-        router.replace(`/student/exam/${sittingId}/done`);
+        setProctorMessage("Your examination has been concluded by the invigilator. Redirecting to summary...");
+        setTimeout(() => {
+          router.replace(`/student/exam/${sittingId}/done?cause=invigilator_ended`);
+        }, 1200);
       } else if (data.action === "RESET_SESSION") {
-        alert("Your session has been released by the invigilator. Please log in on your replacement workstation.");
-        router.replace("/login");
+        setProctorMessage("Your session has been released by the invigilator. Please log in on your replacement workstation.");
+        setTimeout(() => {
+          router.replace("/login");
+        }, 1500);
       }
     };
 
@@ -637,9 +650,9 @@ export default function ExamAttemptPage() {
     }
   };
 
-  // Save answer to server
+  // Save answer to server with debounced coalescing for high concurrency
   const saveAnswerToServer = useCallback(
-    async (qPos: number, newSelected: number[], isFlag: boolean) => {
+    (qPos: number, newSelected: number[], isFlag: boolean) => {
       if (!attemptId) return;
 
       const targetQ = questions[qPos - 1];
@@ -647,19 +660,29 @@ export default function ExamAttemptPage() {
 
       setSaveStatus("saving");
 
-      try {
-        await apiClient(`/student/attempts/${attemptId}/answer`, {
-          method: "POST",
-          body: JSON.stringify({
-            questionVersionId: targetQ.questionVersionId,
-            selectedPositions: newSelected,
-            flagged: isFlag,
-          }),
-        });
-        setSaveStatus("saved");
-      } catch {
-        setSaveStatus("error");
-      }
+      // Clear any pending timer for this question to avoid sending rapid multi-clicks
+      const existingTimer = pendingSaveTimers.current.get(qPos);
+      if (existingTimer) clearTimeout(existingTimer);
+
+      const timer = setTimeout(async () => {
+        try {
+          await apiClient(`/student/attempts/${attemptId}/answer`, {
+            method: "POST",
+            body: JSON.stringify({
+              questionVersionId: targetQ.questionVersionId,
+              selectedPositions: newSelected,
+              flagged: isFlag,
+            }),
+          });
+          setSaveStatus("saved");
+        } catch {
+          setSaveStatus("error");
+        } finally {
+          pendingSaveTimers.current.delete(qPos);
+        }
+      }, 200);
+
+      pendingSaveTimers.current.set(qPos, timer);
     },
     [attemptId, questions]
   );
@@ -679,7 +702,15 @@ export default function ExamAttemptPage() {
       newSelected = [pos];
     }
 
-    setAnswers((prev) => ({ ...prev, [currentQuestion]: newSelected }));
+    setAnswers((prev) => {
+      const next = { ...prev, [currentQuestion]: newSelected };
+      try {
+        if (attemptId) {
+          localStorage.setItem(`cbt_attempt_${attemptId}`, JSON.stringify(next));
+        }
+      } catch {}
+      return next;
+    });
     saveAnswerToServer(currentQuestion, newSelected, flags.has(currentQuestion));
   };
 
@@ -737,7 +768,7 @@ export default function ExamAttemptPage() {
 
       router.push(`/student/exam/${sittingId}/done?cause=manual&ref=${encodeURIComponent(refCode)}${scoreQuery}`);
     } catch (err: any) {
-      alert(err?.message || "Failed to submit exam. Please try again or inform your invigilator.");
+      setProctorMessage(err?.message || "Failed to submit exam. Please try again or inform your invigilator.");
       setIsSubmitting(false);
     }
   };
@@ -1425,17 +1456,17 @@ export default function ExamAttemptPage() {
         </div>
       )}
 
-      {/* Offscreen Video & Canvas for Periodic Candidate Frame Snapshots (non-hidden so browser paints frames) */}
+      {/* In-viewport lightweight Video & Canvas for Periodic Candidate Frame Snapshots */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="fixed -top-[9999px] -left-[9999px] w-[320px] h-[240px] opacity-0 pointer-events-none"
+        className="fixed bottom-0 right-0 w-1 h-1 opacity-[0.01] pointer-events-none z-[-1]"
       />
       <canvas
         ref={canvasRef}
-        className="fixed -top-[9999px] -left-[9999px] w-[160px] h-[120px] opacity-0 pointer-events-none"
+        className="fixed bottom-0 right-0 w-1 h-1 opacity-[0.01] pointer-events-none z-[-1]"
       />
 
       {/* Floating Picture-in-Picture Candidate Webcam Preview */}

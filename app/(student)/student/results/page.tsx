@@ -276,7 +276,7 @@ export default function StudentResultsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {filteredResults.map((r, idx) => {
-                  const isFail = r.remark ? r.remark === "Fail" : r.examScore <= 30;
+                  const isFail = r.remark ? r.remark === "Fail" : r.examScore < 40;
                   const displayScore =
                     r.rawScore !== undefined && r.maxScore !== undefined
                       ? `${r.rawScore} / ${r.maxScore}`

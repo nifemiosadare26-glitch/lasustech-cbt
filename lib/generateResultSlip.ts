@@ -103,7 +103,7 @@ function scoreText(r: SlipCourse) {
 }
 
 function remarkOf(r: SlipCourse): "Pass" | "Fail" {
-  return r.remark ?? (r.examScore <= 30 ? "Fail" : "Pass");
+  return r.remark ?? (r.examScore < 40 ? "Fail" : "Pass");
 }
 
 export async function generateResultSlip(opts: SlipOptions) {

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Network, Users, CalendarRange, ScrollText, Settings,
   Library, Upload, FileCheck, BarChart3, CalendarClock,
   Radio, LogOut, Loader2, Headphones,
-  PanelLeftClose, PanelLeftOpen, ShieldAlert, X
+  PanelLeftClose, PanelLeftOpen, ShieldAlert, X, ShieldCheck, AlertCircle
 } from "lucide-react";
 import { initialsOf, useUser } from "@/components/auth/user-context";
 import { roleLabel, type UiRole } from "@/lib/roles";
@@ -25,6 +25,7 @@ const roleMenus = {
     { name: "Colleges & Depts", href: "/admin/structure", icon: Network },
     { name: "Users and roles", href: "/admin/users", icon: Users },
     { name: "Results", href: "/admin/results", icon: BarChart3 },
+    { name: "Appeals", href: "/admin/appeals", icon: AlertCircle },
     { name: "Sessions", href: "/admin/sessions", icon: CalendarRange },
     { name: "Audit logs", href: "/admin/audit", icon: ScrollText },
     { name: "Settings", href: "/admin/settings", icon: Settings },
@@ -32,6 +33,7 @@ const roleMenus = {
   lecturer: [
     { name: "Dashboard", href: "/lecturer", icon: LayoutDashboard },
     { name: "Question bank", href: "/lecturer/questions", icon: Library },
+    { name: "Moderation", href: "/lecturer/moderation", icon: ShieldCheck },
     { name: "Import", href: "/lecturer/import", icon: Upload },
     { name: "Exams", href: "/lecturer/exams", icon: FileCheck },
     { name: "Results", href: "/lecturer/results", icon: BarChart3 },

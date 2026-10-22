@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
 import { useAction } from "@/lib/useAction";
-import { apiDownload } from "@/lib/apiClient";
+import { apiClient, apiDownload } from "@/lib/apiClient";
 import { useToast } from "@/components/ui/toast";
 import { fmtDateTime, toCsv, parseCsv, downloadText, ROLE_LABEL } from "@/lib/format";
 import {
@@ -29,6 +29,7 @@ import {
   AlertCircle,
   Loader2,
   Check,
+  BookOpen,
 } from "lucide-react";
 
 type RoleKey = "ADMIN" | "LECTURER" | "STUDENT";
@@ -173,6 +174,12 @@ export default function UsersAndRoles() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [bulkRoleSelected, setBulkRoleSelected] = useState<RoleKey>("LECTURER");
 
+  // Courses for lecturer assignment
+  const { data: allCourses = [] } = useApi<{ id: string; code: string; title: string; level?: number }[]>("/admin/courses?status=active");
+  const [assignedCourseIds, setAssignedCourseIds] = useState<string[]>([]);
+  const [courseSearch, setCourseSearch] = useState<string>("");
+  const [loadingUserCourses, setLoadingUserCourses] = useState<boolean>(false);
+
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -220,6 +227,7 @@ export default function UsersAndRoles() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     const isStudent = form.roles.includes("STUDENT");
+    const isStaff = form.roles.includes("LECTURER") || form.roles.includes("ADMIN");
     await action.run<ApiUser, { temporaryPassword?: string }>("/admin/users", {
       method: "POST",
       body: JSON.stringify({
@@ -233,7 +241,7 @@ export default function UsersAndRoles() {
         password: form.password || undefined,
       }),
       success: `${form.names} created`,
-      onSuccess: (_created, meta) => {
+      onSuccess: async (created, meta) => {
         if (meta?.temporaryPassword) {
           toast({
             title: "Temporary password",
@@ -242,8 +250,20 @@ export default function UsersAndRoles() {
             duration: 0,
           });
         }
+        if (created?.id && isStaff && assignedCourseIds.length > 0) {
+          try {
+            await apiClient(`/admin/users/${created.id}/courses`, {
+              method: "PUT",
+              body: JSON.stringify({ courseIds: assignedCourseIds }),
+            });
+          } catch {
+            // Course assignment safe fail
+          }
+        }
         setIsAddUserOpen(false);
         setForm(EMPTY_FORM);
+        setAssignedCourseIds([]);
+        setCourseSearch("");
         void reload();
       },
     });
@@ -254,6 +274,7 @@ export default function UsersAndRoles() {
     e.preventDefault();
     if (!activeUserToEdit) return;
     const isStudent = form.roles.includes("STUDENT");
+    const isStaff = form.roles.includes("LECTURER") || form.roles.includes("ADMIN");
     await action.run<ApiUser>(`/admin/users/${activeUserToEdit.id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -267,15 +288,31 @@ export default function UsersAndRoles() {
         password: form.password?.trim() ? form.password.trim() : undefined,
       }),
       success: `Saved changes for ${form.names}`,
-      onSuccess: () => {
+      onSuccess: async () => {
+        if (isStaff) {
+          try {
+            await apiClient(`/admin/users/${activeUserToEdit.id}/courses`, {
+              method: "PUT",
+              body: JSON.stringify({ courseIds: assignedCourseIds }),
+            });
+          } catch (err: any) {
+            toast({
+              title: "Course assignment",
+              description: err?.message || "Failed to update assigned courses.",
+              variant: "error",
+            });
+          }
+        }
         setIsEditUserOpen(false);
         setActiveUserToEdit(null);
+        setAssignedCourseIds([]);
+        setCourseSearch("");
         void reload();
       },
     });
   };
 
-  const openEditUser = (user: ApiUser) => {
+  const openEditUser = async (user: ApiUser) => {
     setActiveUserToEdit(user);
     setForm({
       names: user.names,
@@ -287,7 +324,22 @@ export default function UsersAndRoles() {
       password: "",
       status: user.status,
     });
+    setCourseSearch("");
     setIsEditUserOpen(true);
+
+    if (user.roles.includes("LECTURER") || user.roles.includes("ADMIN")) {
+      setLoadingUserCourses(true);
+      try {
+        const res = await apiClient<{ data: { courseIds: string[] } }>(`/admin/users/${user.id}/courses`);
+        setAssignedCourseIds(res.data.courseIds || []);
+      } catch {
+        setAssignedCourseIds([]);
+      } finally {
+        setLoadingUserCourses(false);
+      }
+    } else {
+      setAssignedCourseIds([]);
+    }
   };
 
   const handleDeleteUser = async (user: ApiUser) => {
@@ -640,6 +692,13 @@ export default function UsersAndRoles() {
                             </span>
                           ))}
                         </div>
+                        {u.roles.includes("LECTURER") && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 text-[11px] text-blue-600 font-medium hover:text-blue-800">
+                              <BookOpen size={11} /> Manage courses
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-[14px] text-gray-700">{u.department?.name ?? "—"}</td>
@@ -795,6 +854,94 @@ export default function UsersAndRoles() {
                   {departments.map((d) => <option key={d.id} value={d.id} disabled={!d.active}>{d.name} ({d.code}){d.active ? "" : " — archived"}</option>)}
                 </select>
               </div>
+
+              {/* Course Assignment for Lecturers */}
+              {(form.roles.includes("LECTURER") || form.roles.includes("ADMIN")) && (
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[13px] font-medium text-gray-800 flex items-center gap-1.5">
+                      <BookOpen size={15} className="text-blue-600" />
+                      Assigned Courses ({assignedCourseIds.length})
+                    </label>
+                    <span className="text-[11px] text-gray-500">
+                      Lecturer will author &amp; manage exams for selected courses
+                    </span>
+                  </div>
+
+                  {loadingUserCourses ? (
+                    <div className="py-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                      <Loader2 size={14} className="animate-spin text-blue-600" /> Loading assignments...
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50/50 space-y-2">
+                      <div className="relative">
+                        <Search size={13} className="absolute left-2.5 top-2.5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search courses by code or title..."
+                          value={courseSearch}
+                          onChange={(e) => setCourseSearch(e.target.value)}
+                          className="w-full h-8 pl-8 pr-3 text-xs rounded border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {allCourses
+                          .filter((c) => {
+                            if (!courseSearch.trim()) return true;
+                            const term = courseSearch.toLowerCase();
+                            return (
+                              c.code?.toLowerCase().includes(term) ||
+                              c.title?.toLowerCase().includes(term)
+                            );
+                          })
+                          .map((c) => {
+                            const isChecked = assignedCourseIds.includes(c.id);
+                            return (
+                              <label
+                                key={c.id}
+                                className={`flex items-center justify-between p-2 rounded text-xs transition-colors cursor-pointer border ${
+                                  isChecked
+                                    ? "bg-blue-50/70 border-blue-200 text-blue-900 font-medium"
+                                    : "bg-white border-gray-100 hover:bg-gray-50 text-gray-700"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      setAssignedCourseIds((prev) =>
+                                        isChecked
+                                          ? prev.filter((id) => id !== c.id)
+                                          : [...prev, c.id]
+                                      );
+                                    }}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                                  />
+                                  <span className="font-mono font-semibold">{c.code}</span>
+                                  <span className="truncate max-w-[200px] text-gray-600">
+                                    {c.title}
+                                  </span>
+                                </div>
+                                {c.level && (
+                                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                    {c.level}L
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        {allCourses.length === 0 && (
+                          <p className="text-[11px] text-gray-400 text-center py-2">
+                            No courses found. Add courses in Academic Structure.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">Password</label>
@@ -982,6 +1129,94 @@ export default function UsersAndRoles() {
                   {departments.map((d) => <option key={d.id} value={d.id} disabled={!d.active}>{d.name} ({d.code}){d.active ? "" : " — archived"}</option>)}
                 </select>
               </div>
+
+              {/* Course Assignment for Lecturers */}
+              {(form.roles.includes("LECTURER") || form.roles.includes("ADMIN")) && (
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[13px] font-medium text-gray-800 flex items-center gap-1.5">
+                      <BookOpen size={15} className="text-blue-600" />
+                      Assigned Courses ({assignedCourseIds.length})
+                    </label>
+                    <span className="text-[11px] text-gray-500">
+                      Lecturer will author &amp; manage exams for selected courses
+                    </span>
+                  </div>
+
+                  {loadingUserCourses ? (
+                    <div className="py-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                      <Loader2 size={14} className="animate-spin text-blue-600" /> Loading assignments...
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50/50 space-y-2">
+                      <div className="relative">
+                        <Search size={13} className="absolute left-2.5 top-2.5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search courses by code or title..."
+                          value={courseSearch}
+                          onChange={(e) => setCourseSearch(e.target.value)}
+                          className="w-full h-8 pl-8 pr-3 text-xs rounded border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {allCourses
+                          .filter((c) => {
+                            if (!courseSearch.trim()) return true;
+                            const term = courseSearch.toLowerCase();
+                            return (
+                              c.code?.toLowerCase().includes(term) ||
+                              c.title?.toLowerCase().includes(term)
+                            );
+                          })
+                          .map((c) => {
+                            const isChecked = assignedCourseIds.includes(c.id);
+                            return (
+                              <label
+                                key={c.id}
+                                className={`flex items-center justify-between p-2 rounded text-xs transition-colors cursor-pointer border ${
+                                  isChecked
+                                    ? "bg-blue-50/70 border-blue-200 text-blue-900 font-medium"
+                                    : "bg-white border-gray-100 hover:bg-gray-50 text-gray-700"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      setAssignedCourseIds((prev) =>
+                                        isChecked
+                                          ? prev.filter((id) => id !== c.id)
+                                          : [...prev, c.id]
+                                      );
+                                    }}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                                  />
+                                  <span className="font-mono font-semibold">{c.code}</span>
+                                  <span className="truncate max-w-[200px] text-gray-600">
+                                    {c.title}
+                                  </span>
+                                </div>
+                                {c.level && (
+                                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                    {c.level}L
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        {allCourses.length === 0 && (
+                          <p className="text-[11px] text-gray-400 text-center py-2">
+                            No courses found. Add courses in Academic Structure.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">

@@ -27,10 +27,25 @@ let refreshing: Promise<string | null> | null = null;
 function refreshAccessToken(): Promise<string | null> {
   refreshing ??= (async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", headers: { "ngrok-skip-browser-warning": "true" }, credentials: "include" });
+      const storedRefresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+          ...(storedRefresh ? { "x-refresh-token": storedRefresh } : {}),
+        },
+        body: JSON.stringify({ refreshToken: storedRefresh }),
+        credentials: "include",
+      });
       if (!res.ok) return null;
-      const token = (await res.json())?.data?.accessToken as string | undefined;
-      if (token) localStorage.setItem("accessToken", token);
+      const json = await res.json().catch(() => ({}));
+      const token = json?.data?.accessToken as string | undefined;
+      const nextRefresh = json?.data?.refreshToken as string | undefined;
+      if (token && typeof window !== "undefined") {
+        localStorage.setItem("accessToken", token);
+        if (nextRefresh) localStorage.setItem("refreshToken", nextRefresh);
+      }
       return token ?? null;
     } catch {
       return null;
@@ -43,7 +58,12 @@ function refreshAccessToken(): Promise<string | null> {
 
 function endSession() {
   if (typeof window === "undefined") return;
+  // Never redirect candidates out of an ongoing examination attempt on transient auth issues
+  if (window.location.pathname.startsWith("/student/exam")) {
+    return;
+  }
   localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
   if (!window.location.pathname.startsWith("/login")) window.location.assign("/session-ended");
 }
 
@@ -60,6 +80,12 @@ async function request(endpoint: string, options: RequestInit, canRetry = true):
 
   // Access token expired: refresh once, then retry. Never for /auth/* calls.
   if (res.status === 401 && canRetry && !endpoint.startsWith("/auth/")) {
+    // If another concurrent request already refreshed the token in localStorage, retry with it
+    const currentToken = getToken();
+    if (currentToken && currentToken !== token) {
+      return request(endpoint, options, false);
+    }
+
     const fresh = await refreshAccessToken();
     if (fresh) return request(endpoint, options, false);
     endSession();

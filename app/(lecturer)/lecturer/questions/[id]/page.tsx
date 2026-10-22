@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 import { useApi } from "@/lib/useApi";
-import { ErrorBanner, errMessage, selectCls, useToast } from "@/components/admin/ui";
+import { ErrorBanner, ConfirmModal, errMessage, selectCls, useToast } from "@/components/admin/ui";
 import { MediaUpload, type MediaRef } from "@/components/lecturer/media-upload";
 import { DiagramRenderer } from "@/components/question/diagram-renderer";
 import { MathText } from "@/components/question/math-text";
@@ -223,6 +223,24 @@ export default function QuestionEditor() {
     }
   };
 
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+
+  const handleDelete = async () => {
+    if (isNew) return;
+    setDeleting(true);
+    try {
+      await apiClient(`/lecturer/questions/${id}`, { method: "DELETE" });
+      toast.show("Question deleted successfully.");
+      router.push("/lecturer/questions");
+    } catch (e: any) {
+      toast.show(e?.message ?? "Failed to delete question.", "err");
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!isNew && loading && !existing) {
     return (
       <div className="flex items-center justify-center py-24 text-gray-500">
@@ -248,29 +266,41 @@ export default function QuestionEditor() {
     <>
       {toast.node}
       <div className="space-y-6 pb-24 flex flex-col h-full max-w-4xl mx-auto relative">
-        <div className="flex items-center gap-4">
-          <Button variant="secondary" className="px-2 h-9" onClick={() => router.push("/lecturer/questions")}>
-            <ArrowLeft size={18} />
-          </Button>
-          <div>
-            <h2 className="text-[20px] font-semibold text-gray-900 tracking-tight flex flex-wrap items-center gap-3">
-              {isNew ? "Create question" : "Edit question"}
-              {!isNew && existing && (
-                <Badge variant={existing.version.status === "APPROVED" ? "success" : "gray-tint"}>
-                  {existing.version.status.toLowerCase()}
-                </Badge>
-              )}
-              {sourceLabel && sourceLabel !== "LECTURER" && sourceLabel !== "SOURCE" && (
-                <span className="text-[12px] font-normal text-gray-500 inline-flex items-center gap-1">
-                  <Sparkles size={13} />
-                  {sourceLabel === "AI_SUGGESTED" ? "AI-suggested answer" : "AI-generated"}
-                </span>
-              )}
-            </h2>
-            <p className="text-[13px] text-gray-500 mt-0.5">
-              Saving an edit to an approved question creates a new version.
-            </p>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="secondary" className="px-2 h-9" onClick={() => router.push("/lecturer/questions")}>
+              <ArrowLeft size={18} />
+            </Button>
+            <div>
+              <h2 className="text-[20px] font-semibold text-gray-900 tracking-tight flex flex-wrap items-center gap-3">
+                {isNew ? "Create question" : "Edit question"}
+                {!isNew && existing && (
+                  <Badge variant={existing.version.status === "APPROVED" ? "success" : "gray-tint"}>
+                    {existing.version.status.toLowerCase()}
+                  </Badge>
+                )}
+                {sourceLabel && sourceLabel !== "LECTURER" && sourceLabel !== "SOURCE" && (
+                  <span className="text-[12px] font-normal text-gray-500 inline-flex items-center gap-1">
+                    <Sparkles size={13} />
+                    {sourceLabel === "AI_SUGGESTED" ? "AI-suggested answer" : "AI-generated"}
+                  </span>
+                )}
+              </h2>
+              <p className="text-[13px] text-gray-500 mt-0.5">
+                Saving an edit to an approved question creates a new version.
+              </p>
+            </div>
           </div>
+          {!isNew && (
+            <Button
+              variant="danger-outline"
+              size="sm"
+              onClick={() => setShowDeleteModal(true)}
+              className="text-[13px]"
+            >
+              <Trash2 size={15} className="mr-1.5" /> Delete question
+            </Button>
+          )}
         </div>
 
         {error && (
@@ -551,6 +581,17 @@ export default function QuestionEditor() {
             </Button>
           </div>
         </div>
+
+        {showDeleteModal && (
+          <ConfirmModal
+            title="Delete question"
+            body="Are you sure you want to delete this question? This will permanently remove it from the question bank. If it is already bound to candidate examination attempts, deletion will be blocked."
+            confirmLabel="Delete question"
+            danger
+            onConfirm={handleDelete}
+            onClose={() => setShowDeleteModal(false)}
+          />
+        )}
       </div>
     </>
   );

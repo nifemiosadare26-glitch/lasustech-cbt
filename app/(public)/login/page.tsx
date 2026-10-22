@@ -87,6 +87,7 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
       const res = await apiClient<{
         data: {
           accessToken: string;
+          refreshToken?: string;
           user: { id: string; names: string; primaryRole: string; roles: string[] };
         };
       }>("/auth/login", {
@@ -96,6 +97,9 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
 
       // The exact key apiClient.ts reads when building the Authorization header.
       localStorage.setItem("accessToken", res.data.accessToken);
+      if (res.data.refreshToken) {
+        localStorage.setItem("refreshToken", res.data.refreshToken);
+      }
 
       const roles = res.data.user.roles?.length ? res.data.user.roles : [res.data.user.primaryRole];
 
