@@ -33,7 +33,6 @@ const roleMenus = {
   lecturer: [
     { name: "Dashboard", href: "/lecturer", icon: LayoutDashboard },
     { name: "Question bank", href: "/lecturer/questions", icon: Library },
-    { name: "Moderation", href: "/lecturer/moderation", icon: ShieldCheck },
     { name: "Import", href: "/lecturer/import", icon: Upload },
     { name: "Exams", href: "/lecturer/exams", icon: FileCheck },
     { name: "Results", href: "/lecturer/results", icon: BarChart3 },
