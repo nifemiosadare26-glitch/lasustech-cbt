@@ -106,6 +106,7 @@ type DashboardPayload = {
 /* -------------------------------------------------------------------------- */
 
 export default function StudentDashboard() {
+  const user = useUser();
   const { data, loading, error, reload } =
     useApi<DashboardPayload>("/student/dashboard");
 
@@ -175,7 +176,6 @@ export default function StudentDashboard() {
     );
   }
 
-  const user = useUser();
   const student = data?.student ?? {
     firstName: user?.me?.names ? user.me.names.split(" ")[0] : "Student",
     names: user?.me?.names ?? "Candidate",
