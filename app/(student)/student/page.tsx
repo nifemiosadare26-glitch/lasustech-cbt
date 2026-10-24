@@ -254,8 +254,66 @@ export default function StudentDashboard() {
     department: rawStudent?.department || { name: "Computer Science" },
     college: rawStudent?.college || { name: "College of Basic Sciences" },
   };
-  const live = (data?.live && data.live.length > 0) ? data.live : FALLBACK_LIVE;
-  const upcoming = (data?.upcoming && data.upcoming.length > 0) ? data.upcoming : FALLBACK_UPCOMING;
+  // Load custom scheduled sittings if created in timetable
+  const [customSittings, setCustomSittings] = useState<any[]>([]);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lasustech_custom_sittings");
+      if (stored) {
+        setCustomSittings(JSON.parse(stored));
+      }
+    } catch {}
+  }, []);
+
+  const now = Date.now();
+  const dynamicLive: LiveExam[] = [];
+  const dynamicUpcoming: UpcomingExam[] = [];
+
+  if (customSittings.length > 0) {
+    customSittings.forEach((s) => {
+      const startMs = new Date(s.startsAt).getTime();
+      const endMs = s.endsAt ? new Date(s.endsAt).getTime() : startMs + (s.durationMin || 60) * 60000;
+
+      if (now >= startMs && now <= endMs) {
+        // Exam window is open and ongoing
+        dynamicLive.push({
+          id: s.id,
+          examId: s.examId || s.id,
+          code: s.courseCode || "EXAM",
+          title: s.courseTitle || s.examTitle || "Examination",
+          status: "live",
+          dateLabel: "Ongoing Now",
+          durationLabel: `${s.durationMin || 60} Mins`,
+          durationMin: s.durationMin || 60,
+          venue: s.venue || "CBT Centre 1",
+          unit: 3,
+          attemptId: null,
+          attemptStatus: "not_started",
+          accessCode: s.accessCode || "LASU-CBT",
+        });
+      } else if (now < startMs) {
+        // Scheduled in the future - entry locked until scheduled date & time
+        const dateObj = new Date(s.startsAt);
+        const timeStr = dateObj.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true });
+        const dateStr = dateObj.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+        dynamicUpcoming.push({
+          id: s.id,
+          examId: s.examId || s.id,
+          code: s.courseCode || "EXAM",
+          title: s.courseTitle || s.examTitle || "Examination",
+          status: "upcoming",
+          dateLabel: `${dateStr}, ${timeStr}`,
+          windowLabel: `Entry locked until ${timeStr}`,
+          durationLabel: `${s.durationMin || 60} Mins`,
+          venue: s.venue || "CBT Centre 1",
+          unit: 3,
+        });
+      }
+    });
+  }
+
+  const live = dynamicLive.length > 0 ? dynamicLive : ((data?.live && data.live.length > 0) ? data.live : FALLBACK_LIVE);
+  const upcoming = dynamicUpcoming.length > 0 ? dynamicUpcoming : ((data?.upcoming && data.upcoming.length > 0) ? data.upcoming : FALLBACK_UPCOMING);
   const completed = (data?.completed && data.completed.length > 0) ? data.completed : FALLBACK_COMPLETED;
 
   return (
@@ -496,9 +554,10 @@ export default function StudentDashboard() {
                   </div>
                 </div>
 
-                <div className="shrink-0">
-                  <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                    Scheduled
+                <div className="shrink-0 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 px-3 py-1.5 text-xs font-semibold text-blue-800 dark:text-blue-300">
+                    <Lock size={12} className="text-blue-600 dark:text-blue-400" />
+                    Entry locked until {exam.dateLabel.includes(",") ? exam.dateLabel.split(",")[1].trim() : exam.dateLabel}
                   </span>
                 </div>
               </div>

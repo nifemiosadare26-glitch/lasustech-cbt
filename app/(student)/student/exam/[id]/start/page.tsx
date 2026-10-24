@@ -36,6 +36,8 @@ type SittingPayload = {
     status: string;
     requiresAccessCode: boolean;
     instructions: Record<string, any> | null;
+    startsAt?: string;
+    endsAt?: string;
     isAlreadyTaken?: boolean;
     isGraceExpired?: boolean;
     isWindowClosed?: boolean;
@@ -81,6 +83,10 @@ export default function ExamStartPage() {
     setSubmitError(null);
 
     const requiresCode = data?.sitting.requiresAccessCode;
+    if (isNotYetStarted) {
+      setSubmitError("You cannot start this examination until the scheduled date and time.");
+      return;
+    }
     if (requiresCode && !accessCode.trim()) {
       setSubmitError("Please enter the access code provided by your invigilator.");
       return;
@@ -134,6 +140,21 @@ export default function ExamStartPage() {
     matricNo: "CSC/2022/305",
     department: "Computer Science",
   };
+
+  // Check if sitting has a scheduled start time in the future
+  let scheduledStart: string | undefined = data?.sitting?.startsAt;
+  try {
+    const stored = localStorage.getItem("lasustech_custom_sittings");
+    if (stored) {
+      const list: any[] = JSON.parse(stored);
+      const match = list.find((s) => s.id === sittingId || s.examId === sittingId);
+      if (match?.startsAt) {
+        scheduledStart = match.startsAt;
+      }
+    }
+  } catch {}
+
+  const isNotYetStarted = scheduledStart ? new Date(scheduledStart).getTime() > Date.now() : false;
 
   const isAlreadyTaken =
     Boolean(data?.isAlreadyTaken) ||
@@ -288,6 +309,39 @@ export default function ExamStartPage() {
             </div>
           )}
 
+          {/* EXAMINATION NOT YET STARTED ALERT - ENTRY LOCKED */}
+          {!isAlreadyTaken && isNotYetStarted && (
+            <div className="p-5 rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 space-y-3">
+              <div className="flex items-center gap-2 font-bold text-base text-blue-900 dark:text-blue-300">
+                <Clock size={20} className="text-blue-600 dark:text-blue-400" />
+                Examination Entry Locked Until Scheduled Time
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                This examination is scheduled for{" "}
+                <strong className="text-slate-900 dark:text-white">
+                  {new Date(scheduledStart!).toLocaleString("en-GB", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </strong>
+                . Candidates cannot start this examination until the scheduled date and time.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/student"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-2xs"
+                >
+                  <ArrowLeft size={14} /> Back to Dashboard
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Exam Instructions Bar - explicitly styled for dark mode clarity */}
           <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-3">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm uppercase tracking-wider flex items-center gap-1.5">
@@ -322,8 +376,8 @@ export default function ExamStartPage() {
             </ul>
           </div>
 
-          {/* Form / Start Bar (hidden if blocked) */}
-          {!isAlreadyTaken && !isGraceExpired && !isWindowClosed && (
+          {/* Form / Start Bar (hidden if blocked or not yet started) */}
+          {!isAlreadyTaken && !isGraceExpired && !isWindowClosed && !isNotYetStarted && (
             <form onSubmit={handleStart} className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {submitError && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-2">
