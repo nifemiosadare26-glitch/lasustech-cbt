@@ -874,11 +874,11 @@ export default function UsersAndRoles() {
                       setForm({ ...form, departmentId: deptId });
                       if (deptId) {
                         const targetLvl = form.roles.includes("STUDENT") ? Number(form.level) || 100 : undefined;
-                        const deptCourseIds = allCourses
-                          .filter((c) => (c.departmentId === deptId || c.department?.id === deptId) && (!targetLvl || !c.level || c.level === targetLvl))
-                          .map((c) => c.id);
-                        if (deptCourseIds.length > 0) {
-                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                        const matching = allCourses.filter((c) => c.departmentId === deptId || c.department?.id === deptId);
+                        const lvlCourses = matching.filter((c) => !targetLvl || !c.level || c.level === targetLvl);
+                        const toAssign = lvlCourses.length > 0 ? lvlCourses : matching;
+                        if (toAssign.length > 0) {
+                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...toAssign.map((c) => c.id)])));
                         }
                       }
                     }}
@@ -1253,11 +1253,11 @@ export default function UsersAndRoles() {
                       setForm({ ...form, departmentId: deptId });
                       if (deptId) {
                         const targetLvl = form.roles.includes("STUDENT") ? Number(form.level) || 100 : undefined;
-                        const deptCourseIds = allCourses
-                          .filter((c) => (c.departmentId === deptId || c.department?.id === deptId) && (!targetLvl || !c.level || c.level === targetLvl))
-                          .map((c) => c.id);
-                        if (deptCourseIds.length > 0) {
-                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                        const matching = allCourses.filter((c) => c.departmentId === deptId || c.department?.id === deptId);
+                        const lvlCourses = matching.filter((c) => !targetLvl || !c.level || c.level === targetLvl);
+                        const toAssign = lvlCourses.length > 0 ? lvlCourses : matching;
+                        if (toAssign.length > 0) {
+                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...toAssign.map((c) => c.id)])));
                         }
                       }
                     }}
