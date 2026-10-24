@@ -294,7 +294,7 @@ export default function ExamAttemptPage() {
         setCourseCode("CSC 301");
         setCourseTitle("Data Structures & Algorithms");
         setCandidateMatric("CSC/2022/305");
-        setCandidateName("Student Candidate");
+        setCandidateName("Nifemi Osadare");
         setQuestions(MOCK_PAPER_QUESTIONS);
         setRemainingSec(3600);
         setLoadError(null);

@@ -31,8 +31,8 @@ const MOCK_ACCOUNTS: Record<string, Me> = {
   },
   STUDENT: {
     id: "usr_stud_1",
-    names: "Student Candidate",
-    email: "student@lasustech.edu.ng",
+    names: "Nifemi Osadare",
+    email: "nifemi.osadare@lasustech.edu.ng",
     identifier: "CSC/2022/305",
     primaryRole: "STUDENT",
     roles: ["STUDENT"],

@@ -105,9 +105,10 @@ type DashboardPayload = {
 /* -------------------------------------------------------------------------- */
 
 const FALLBACK_STUDENT = {
-  firstName: "Student",
-  names: "Student Candidate",
+  firstName: "Nifemi",
+  names: "Nifemi Osadare",
   matricNo: "CSC/2022/305",
+  email: "nifemi.osadare@lasustech.edu.ng",
   level: "300 Level",
   department: { name: "Computer Science" },
   college: { name: "College of Basic Sciences" },
@@ -244,7 +245,15 @@ export default function StudentDashboard() {
     );
   }
 
-  const student = data?.student ?? FALLBACK_STUDENT;
+  const rawStudent = data?.student;
+  const student = {
+    firstName: (rawStudent?.firstName && rawStudent.firstName !== "Student") ? rawStudent.firstName : "Nifemi",
+    names: (rawStudent?.names && rawStudent.names !== "Student Candidate" && rawStudent.names !== "Student") ? rawStudent.names : "Nifemi Osadare",
+    matricNo: rawStudent?.matricNo || "CSC/2022/305",
+    level: rawStudent?.level || "300 Level",
+    department: rawStudent?.department || { name: "Computer Science" },
+    college: rawStudent?.college || { name: "College of Basic Sciences" },
+  };
   const live = (data?.live && data.live.length > 0) ? data.live : FALLBACK_LIVE;
   const upcoming = (data?.upcoming && data.upcoming.length > 0) ? data.upcoming : FALLBACK_UPCOMING;
   const completed = (data?.completed && data.completed.length > 0) ? data.completed : FALLBACK_COMPLETED;
@@ -390,7 +399,7 @@ export default function StudentDashboard() {
           <div className="flex items-start gap-4">
             {/* Student Avatar / Initials badge */}
             <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 shadow-inner text-sky-300 font-bold text-xl">
-              {student.firstName?.[0] || "S"}
+              {student.names ? student.names.split(" ").map((n: string) => n[0]).join("").slice(0, 2) : "NO"}
             </div>
 
             <div className="space-y-1.5">
@@ -405,7 +414,7 @@ export default function StudentDashboard() {
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                Welcome back, {student.firstName}
+                Welcome back, {student.names || "Nifemi Osadare"}
               </h1>
 
               <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-200 pt-0.5">
