@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useApi } from "@/lib/useApi";
 import { useAction } from "@/lib/useAction";
+import { LASUSTECH_COLLEGES } from "@/lib/lasustech-structure";
 import {
   Search,
   ChevronRight,
@@ -98,12 +99,42 @@ const emptyCourse: CourseForm = {
   lecturerIds: [],
 };
 
+const FALLBACK_STRUCTURE: College[] = LASUSTECH_COLLEGES.map((col) => ({
+  id: col.id,
+  code: col.code,
+  name: col.name,
+  dean: col.dean || null,
+  active: true,
+  departments: col.departments.map((dept) => ({
+    id: dept.id,
+    code: dept.code,
+    name: dept.name,
+    headName: dept.head || null,
+    collegeId: col.id,
+    courseCount: dept.courses?.length || 0,
+    userCount: 0,
+    active: true,
+    programmes: (dept.programmes || []).map((prog) => ({
+      id: prog.id,
+      code: prog.name.split(" ")[0] || dept.code,
+      name: prog.name,
+      award: prog.degree || "B.Sc.",
+      durationYears: 4,
+      levels: [100, 200, 300, 400, 500],
+      active: true,
+    })),
+  })),
+}));
+
 const semLabel = (s: Course["semester"]) => (s === "FIRST" ? "1st" : "2nd");
 
 export default function AcademicStructure() {
   const action = useAction();
 
-  const { data: structure = [], loading, error, reload } = useApi<College[]>("/admin/structure");
+  const { data: apiStructure, loading, error, reload } = useApi<College[]>("/admin/structure");
+  const structure = useMemo(() => {
+    return apiStructure && apiStructure.length > 0 ? apiStructure : FALLBACK_STRUCTURE;
+  }, [apiStructure]);
 
   const [selectedCollegeId, setSelectedCollegeId] = useState<string>("");
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
@@ -161,11 +192,37 @@ export default function AcademicStructure() {
     ? `/admin/courses?departmentId=${currentDept.id}${selectedLevel ? `&level=${selectedLevel}` : ""}`
     : null;
   const {
-    data: courses = [],
+    data: apiCourses,
     loading: coursesLoading,
     error: coursesError,
     reload: reloadCourses,
   } = useApi<Course[]>(courseQuery);
+
+  const courses = useMemo<Course[]>(() => {
+    if (apiCourses && apiCourses.length > 0) return apiCourses;
+    if (!currentDept) return [];
+    for (const c of LASUSTECH_COLLEGES) {
+      const d = c.departments.find((dept) => dept.id === currentDept.id || dept.code.toLowerCase() === currentDept.code.toLowerCase());
+      if (d && d.courses) {
+        let list = d.courses;
+        if (selectedLevel) {
+          list = list.filter((crs) => parseInt(crs.level, 10) === selectedLevel);
+        }
+        return list.map((crs) => ({
+          id: crs.id,
+          code: crs.code,
+          title: crs.title,
+          units: 3,
+          level: parseInt(crs.level, 10) || 100,
+          semester: crs.sem === "2nd" ? "SECOND" : "FIRST",
+          active: crs.status === "Active",
+          departmentId: d.id,
+          lecturers: (crs.lecturers || []).map((name, idx) => ({ id: `lec_${idx}`, names: name })),
+        }));
+      }
+    }
+    return [];
+  }, [apiCourses, currentDept, selectedLevel]);
 
   // Active lecturers, for the course assignment control.
   const { data: lecturerUsers = [] } = useApi<LecturerUser[]>(

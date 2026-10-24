@@ -13,7 +13,7 @@ export default function NotFoundPage() {
   // history.back() does nothing if the page was opened directly (new tab, pasted link)
   const handleBack = () => {
     if (window.history.length > 1) router.back();
-    else router.push("/");
+    else router.push("/login");
   };
 
   return (
@@ -52,10 +52,10 @@ export default function NotFoundPage() {
 
         <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
           <Link
-            href="/"
+            href="/login"
             className="inline-flex items-center justify-center min-h-12 rounded-full bg-white px-7 text-base font-semibold text-[#081229] shadow-[0_6px_20px_rgba(255,255,255,0.15)] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#081229]"
           >
-            Back to homepage
+            Back to sign in
           </Link>
 
           <button

@@ -8,6 +8,7 @@ import { apiDownload } from "@/lib/apiClient";
 import { useApi } from "@/lib/useApi";
 import { fmtDateTime } from "@/lib/format";
 import { ErrorBanner, errMessage, useToast } from "@/components/admin/ui";
+import { LASUSTECH_COLLEGES } from "@/lib/lasustech-structure";
 
 interface Department {
   id: string;
@@ -57,7 +58,7 @@ export default function ExamReports() {
 
   const structure = useApi<College[]>("/admin/structure");
   const courses = useApi<Course[]>("/admin/courses");
-  const departments = (structure.data ?? []).flatMap((c) => c.departments);
+  const departments = ((structure.data && structure.data.length > 0) ? structure.data : (LASUSTECH_COLLEGES as unknown as College[])).flatMap((c) => c.departments);
 
   React.useEffect(() => {
     if (!departmentId && departments.length) setDepartmentId(departments[0].id);

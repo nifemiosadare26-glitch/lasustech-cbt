@@ -105,11 +105,92 @@ body {
    surface role, so the text role is lifted here. Plain rules are enough — no
    `text-slate-NN/opacity` form exists anywhere in the codebase. Values follow the
    gray ramp, which is this app's text ramp. */
-.dark .text-slate-900 { color: #F2F5FA; }
-.dark .text-slate-800 { color: #DDE4EE; }
+/* Comprehensive dark mode text overrides: Ensure all text in dark mode is high-contrast light ink */
+.dark .text-slate-50,
+.dark .text-slate-100,
+.dark .text-slate-200,
+.dark .text-slate-300,
+.dark .text-slate-800,
+.dark .text-slate-900,
+.dark [class*="text-slate-50"],
+.dark [class*="text-slate-100"],
+.dark [class*="text-slate-200"],
+.dark [class*="text-slate-300"],
+.dark [class*="text-slate-800"],
+.dark [class*="text-slate-900"],
+.dark [class*="dark:text-slate-50"],
+.dark [class*="dark:text-slate-100"],
+.dark [class*="dark:text-slate-200"],
+.dark [class*="dark:text-slate-300"],
+.dark [class*="dark:text-slate-800"],
+.dark [class*="dark:text-slate-900"] {
+  color: #F8FAFC !important;
+}
+
+.dark .text-slate-600,
 .dark .text-slate-700,
-.dark .text-slate-600 { color: #C7D0E0; }
-.dark .hover\:text-slate-900:hover { color: #F2F5FA; }
+.dark [class*="text-slate-600"],
+.dark [class*="text-slate-700"],
+.dark [class*="dark:text-slate-600"],
+.dark [class*="dark:text-slate-700"] {
+  color: #E2E8F0 !important;
+}
+
+.dark .text-slate-400,
+.dark [class*="text-slate-400"],
+.dark [class*="dark:text-slate-400"] {
+  color: #CBD5E1 !important;
+}
+
+.dark .text-slate-500,
+.dark [class*="text-slate-500"],
+.dark [class*="dark:text-slate-500"] {
+  color: #94A3B8 !important;
+}
+
+.dark .text-gray-100,
+.dark .text-gray-200,
+.dark .text-gray-300,
+.dark [class*="text-gray-100"],
+.dark [class*="text-gray-200"],
+.dark [class*="text-gray-300"],
+.dark [class*="dark:text-gray-100"],
+.dark [class*="dark:text-gray-200"],
+.dark [class*="dark:text-gray-300"] {
+  color: #F8FAFC !important;
+}
+
+.dark .text-gray-700,
+.dark .text-gray-800,
+.dark .text-gray-900,
+.dark [class*="text-gray-700"],
+.dark [class*="text-gray-800"],
+.dark [class*="text-gray-900"],
+.dark [class*="dark:text-gray-700"],
+.dark [class*="dark:text-gray-800"],
+.dark [class*="dark:text-gray-900"] {
+  color: #F8FAFC !important;
+}
+
+.dark .text-gray-500,
+.dark .text-gray-600,
+.dark [class*="text-gray-500"],
+.dark [class*="text-gray-600"],
+.dark [class*="dark:text-gray-500"],
+.dark [class*="dark:text-gray-600"] {
+  color: #CBD5E1 !important;
+}
+
+.dark .text-gray-400,
+.dark [class*="text-gray-400"],
+.dark [class*="dark:text-gray-400"] {
+  color: #94A3B8 !important;
+}
+
+.dark .hover\:text-slate-900:hover,
+.dark [class*="hover:text-white"]:hover {
+  color: #FFFFFF !important;
+}
 
 /* blue-900/950 are large dark-navy surfaces (the lecturer's save bar) *and*
    small dark-on-light text (tab labels, notification headings). Surfaces read
@@ -245,3 +326,28 @@ body {
   background-color: var(--color-gray-300);
   border-radius: 20px;
 }
+
+/* KaTeX math formulas in dark mode */
+.dark .katex,
+.dark .katex * {
+  color: #F2F5FA !important;
+}
+
+/* SVG diagrams text and strokes in dark mode */
+.dark svg text {
+  fill: #F2F5FA !important;
+}
+
+/* Ensure native inputs and controls adhere to dark mode */
+.dark input,
+.dark select,
+.dark textarea {
+  color: #F8FAFC;
+  color-scheme: dark;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94A3B8;
+}
+

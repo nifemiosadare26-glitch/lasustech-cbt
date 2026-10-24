@@ -9,16 +9,51 @@ import type { ApiError } from "@/lib/apiClient";
 export const selectCls =
   "w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
-export function errMessage(e: unknown, fallback = "Something went wrong. Please try again.") {
+export function humanizeError(raw: string): string {
+  if (!raw) return "Unable to complete request. Please try again.";
+  const lower = raw.toLowerCase();
+  if (lower.includes("fetch") || lower.includes("network") || lower.includes("econnrefused") || lower.includes("failed to fetch")) {
+    return "Unable to connect to the examination network. Please check your internet connection.";
+  }
+  if (lower.includes("jwt") || lower.includes("token") || lower.includes("unauthorized") || lower.includes("session expired")) {
+    return "Your login session has expired. Please sign in again to continue.";
+  }
+  if (lower.includes("forbidden") || lower.includes("permission") || lower.includes("access denied")) {
+    return "You do not have administrative permission to perform this action.";
+  }
+  if (lower.includes("not found") || lower.includes("404")) {
+    return "The requested record or examination could not be found.";
+  }
+  if (lower.includes("duplicate") || lower.includes("already exists") || lower.includes("unique constraint") || lower.includes("p2002")) {
+    return "A record with these details already exists. Please check and try a different code or identifier.";
+  }
+  if (lower.includes("cannot be deleted") || lower.includes("foreign key") || lower.includes("p2003")) {
+    return "This item cannot be deleted because it is linked to active candidate records or sittings. You can cancel it instead.";
+  }
+  if (lower.includes("identifier") || lower.includes("credential")) {
+    return "Wrong email or password. Please verify and try again.";
+  }
+  if (lower.includes("500") || lower.includes("internal server error") || lower.includes("crash") || lower.includes("prisma")) {
+    return "The system encountered a temporary problem processing this request. Please try again in a moment.";
+  }
+  return raw;
+}
+
+export function errMessage(e: unknown, fallback = "Unable to complete request. Please try again.") {
   const err = e as ApiError | undefined;
   if (!err) return fallback;
   if (err.code === "VALIDATION_FAILED" && Array.isArray(err.details) && err.details.length) {
-    return (err.details as { path?: (string | number)[]; message?: string }[])
+    const list = (err.details as { path?: (string | number)[]; message?: string }[])
       .slice(0, 3)
-      .map((i) => `${i.path?.length ? i.path.join(".") + ": " : ""}${i.message}`)
+      .map((i) => {
+        const field = i.path?.length ? String(i.path[i.path.length - 1]) : "";
+        const cleanField = field.replace(/([A-Z])/g, " $1").toLowerCase();
+        return `${cleanField ? cleanField + ": " : ""}${i.message}`;
+      })
       .join(" · ");
+    return humanizeError(list);
   }
-  return err.message || fallback;
+  return humanizeError(err.message || fallback);
 }
 
 // ---------- toast ----------

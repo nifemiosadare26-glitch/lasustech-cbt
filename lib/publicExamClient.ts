@@ -53,10 +53,34 @@ export async function publicApi<T>(
   return (await res.json().catch(() => ({}))) as T;
 }
 
+export function humanizeError(raw: string): string {
+  if (!raw) return "Unable to complete request. Please try again.";
+  const lower = raw.toLowerCase();
+  if (lower.includes("fetch") || lower.includes("network") || lower.includes("econnrefused") || lower.includes("failed to fetch")) {
+    return "Unable to connect to the examination network. Please check your internet connection or alert an invigilator.";
+  }
+  if (lower.includes("jwt") || lower.includes("token") || lower.includes("unauthorized") || lower.includes("session")) {
+    return "Your examination session has expired or is invalid. Please sign in again.";
+  }
+  if (lower.includes("access code") || lower.includes("passcode") || lower.includes("invalid code")) {
+    return "The access code entered is incorrect. Please verify with your invigilator in the hall.";
+  }
+  if (lower.includes("not found") || lower.includes("404")) {
+    return "The requested examination or sitting could not be found.";
+  }
+  if (lower.includes("submitted") || lower.includes("already completed") || lower.includes("closed")) {
+    return "This examination session has ended or has already been submitted.";
+  }
+  if (lower.includes("500") || lower.includes("internal server") || lower.includes("error")) {
+    return "A temporary service problem occurred. Please try again in a moment.";
+  }
+  return raw;
+}
+
 export function publicErrorMessage(error: unknown): string {
-  if (error instanceof PublicRequestError) return error.message;
-  if (error instanceof Error && error.message) return error.message;
-  return "Something went wrong. Check your connection and try again.";
+  if (error instanceof PublicRequestError) return humanizeError(error.message);
+  if (error instanceof Error && error.message) return humanizeError(error.message);
+  return "Unable to connect to the exam server. Please check your connection and try again.";
 }
 
 // --- Attempt hand-off -------------------------------------------------------

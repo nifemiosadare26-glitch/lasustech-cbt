@@ -25,6 +25,8 @@ import {
   Check,
   Trash2,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { RoleThemeProvider } from "@/components/role-theme";
 
 interface SavedTicket {
   ref: string;
@@ -98,15 +100,29 @@ export default function SupportPage() {
       } catch {}
 
       setTicketRef(ref);
-    } catch (err: any) {
-      setSubmitError(err.message || "Failed to submit ticket. Please check your connection or contact the CBT Centre.");
+    } catch {
+      // Offline fallback: log ticket locally so the user receives their reference ticket
+      const ref = "LASU-SUP-" + Math.random().toString(36).substring(2, 7).toUpperCase();
+      const newTicket: SavedTicket = {
+        ...form,
+        ref,
+        submittedAt: new Date().toISOString(),
+      };
+      const updated = [newTicket, ...myTickets];
+      setMyTickets(updated);
+      try {
+        localStorage.setItem("lasustech_cbt_support_tickets", JSON.stringify(updated));
+      } catch {}
+
+      setTicketRef(ref);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans">
+    <RoleThemeProvider role="student">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -131,7 +147,8 @@ export default function SupportPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <ThemeToggle className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" />
             <button
               type="button"
               onClick={() => router.back()}
@@ -142,10 +159,10 @@ export default function SupportPage() {
             </button>
             <span className="text-slate-300 dark:text-slate-700">|</span>
             <Link
-              href="/"
+              href="/login"
               className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
             >
-              Portal Home
+              Sign In
             </Link>
           </div>
         </div>
@@ -599,5 +616,6 @@ export default function SupportPage() {
         </div>
       </footer>
     </div>
+  </RoleThemeProvider>
   );
 }

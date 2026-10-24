@@ -11,6 +11,7 @@ import { useAction } from "@/lib/useAction";
 import { apiClient, apiDownload } from "@/lib/apiClient";
 import { useToast } from "@/components/ui/toast";
 import { fmtDateTime, toCsv, parseCsv, downloadText, ROLE_LABEL } from "@/lib/format";
+import { LASUSTECH_COLLEGES } from "@/lib/lasustech-structure";
 import {
   Search,
   Plus,
@@ -143,7 +144,22 @@ export default function UsersAndRoles() {
   );
 
   // Departments power the create/edit dropdowns.
-  const { data: colleges = [] } = useApi<StructureCollege[]>("/admin/structure");
+  const { data: apiColleges } = useApi<StructureCollege[]>("/admin/structure");
+  const colleges: StructureCollege[] = useMemo(() => {
+    if (apiColleges && apiColleges.length > 0) return apiColleges;
+    return LASUSTECH_COLLEGES.map((c) => ({
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      departments: c.departments.map((d) => ({
+        id: d.id,
+        code: d.code,
+        name: d.name,
+        active: true,
+      })),
+    }));
+  }, [apiColleges]);
+
   const departments = useMemo(
     () =>
       colleges

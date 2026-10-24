@@ -92,26 +92,21 @@ export default function PublicExamAttempt() {
       setCalcResult("0");
     } else if (btn === "=") {
       try {
-        const sanitized = calcExpr.replace(/×/g, "*").replace(/÷/g, "/");
+        let sanitized = calcExpr.replace(/×/g, "*").replace(/÷/g, "/");
+        sanitized = sanitized.replace(/sin\(([^)]+)\)/g, "Math.sin(($1) * Math.PI / 180)");
+        sanitized = sanitized.replace(/cos\(([^)]+)\)/g, "Math.cos(($1) * Math.PI / 180)");
+        sanitized = sanitized.replace(/tan\(([^)]+)\)/g, "Math.tan(($1) * Math.PI / 180)");
+        const openCount = (sanitized.match(/\(/g) || []).length;
+        const closeCount = (sanitized.match(/\)/g) || []).length;
+        if (openCount > closeCount) sanitized += ")".repeat(openCount - closeCount);
         // eslint-disable-next-line no-new-func
         const res = Function(`"use strict"; return (${sanitized})`)();
-        setCalcResult(String(res));
+        setCalcResult(String(Math.round(res * 10000) / 10000));
       } catch {
         setCalcResult("Error");
       }
     } else if (["sin", "cos", "tan"].includes(btn)) {
-      try {
-        const val = parseFloat(calcResult || "0");
-        const rad = (val * Math.PI) / 180;
-        let res = 0;
-        if (btn === "sin") res = Math.sin(rad);
-        if (btn === "cos") res = Math.cos(rad);
-        if (btn === "tan") res = Math.tan(rad);
-        setCalcResult(String(Math.round(res * 10000) / 10000));
-        setCalcExpr(`${btn}(${val})`);
-      } catch {
-        setCalcResult("Error");
-      }
+      setCalcExpr((prev) => prev + `${btn}(`);
     } else {
       setCalcExpr((prev) => prev + btn);
     }
@@ -406,8 +401,8 @@ export default function PublicExamAttempt() {
                                 : btn === "="
                                 ? "bg-blue-600 text-white border-blue-700 hover:bg-blue-700"
                                 : ["÷", "×", "-", "+"].includes(btn)
-                                ? "bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-gray-200"
-                                : "bg-white text-gray-800 border-gray-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 hover:bg-gray-50 shadow-2xs"
+                                ? "bg-gray-100 text-gray-800 border-gray-200 dark:bg-slate-800 dark:text-white dark:border-slate-700 hover:bg-gray-200"
+                                : "bg-white text-gray-900 border-gray-200 dark:bg-slate-800 dark:text-white dark:border-slate-700 hover:bg-gray-50 shadow-2xs"
                             )}
                           >
                             {btn}
@@ -449,8 +444,8 @@ export default function PublicExamAttempt() {
                 remaining !== null && remaining <= 300
                   ? "bg-rose-600 text-white animate-pulse"
                   : remaining !== null && remaining <= 600
-                  ? "bg-amber-100 text-amber-900"
-                  : "bg-white text-blue-900"
+                  ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700"
+                  : "bg-white dark:bg-slate-800 text-blue-950 dark:text-white border border-slate-200 dark:border-slate-700"
               )}
             >
               {remaining === null ? "--:--" : clock(remaining)}
@@ -557,7 +552,7 @@ export default function PublicExamAttempt() {
                 type="button"
                 onClick={() => setCurrent((prev) => Math.max(0, prev - 1))}
                 disabled={current === 0}
-                className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 font-semibold text-sm hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-800 dark:text-white font-semibold text-sm hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 Previous
               </button>
@@ -587,7 +582,7 @@ export default function PublicExamAttempt() {
           {/* Right Column: Question Palette Sidebar matching Student CBT */}
           <div className="w-80 border-l border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 overflow-y-auto">
             <div className="p-5 border-b border-gray-100 dark:border-slate-800">
-              <h3 className="font-bold text-sm text-gray-900 dark:text-slate-100 mb-2">
+              <h3 className="font-bold text-sm text-gray-900 dark:text-white mb-2">
                 Question Palette
               </h3>
               <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mb-2 font-medium">
@@ -621,7 +616,7 @@ export default function PublicExamAttempt() {
                           ? "ring-2 ring-blue-600 bg-blue-600 text-white shadow-sm"
                           : isAns
                           ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900"
-                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-700 dark:text-slate-300 hover:bg-gray-200"
+                          : "bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-slate-700"
                       )}
                     >
                       {idx + 1}

@@ -25,7 +25,6 @@ const roleMenus = {
     { name: "Colleges & Depts", href: "/admin/structure", icon: Network },
     { name: "Users and roles", href: "/admin/users", icon: Users },
     { name: "Results", href: "/admin/results", icon: BarChart3 },
-    { name: "Appeals", href: "/admin/appeals", icon: AlertCircle },
     { name: "Sessions", href: "/admin/sessions", icon: CalendarRange },
     { name: "Audit logs", href: "/admin/audit", icon: ScrollText },
     { name: "Settings", href: "/admin/settings", icon: Settings },

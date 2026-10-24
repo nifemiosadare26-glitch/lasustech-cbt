@@ -159,24 +159,6 @@ function ExamDoneContent() {
                 </span>
               </div>
 
-              {rawParam && maxParam && (
-                <div className="flex justify-between items-center py-2 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
-                  <span className="text-blue-900 dark:text-blue-300 font-bold text-xs uppercase tracking-wider">
-                    Score / Total Allotted
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-blue-950 dark:text-white text-sm tabular-nums">
-                      {rawParam} / {maxParam}
-                    </span>
-                    {pctParam && (
-                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300 tabular-nums">
-                        ({Math.round(Number(pctParam))}%)
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
               <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Reference Code</span>
                 <div className="flex items-center gap-2">
@@ -196,20 +178,13 @@ function ExamDoneContent() {
             </div>
           </div>
 
-          {/* Action CTAs (No print slip) */}
+          {/* Action CTA */}
           <div className="space-y-3">
             <Link
               href="/student"
               className="flex items-center justify-center gap-2 w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer"
             >
               <Home size={18} /> Return to Student Dashboard
-            </Link>
-
-            <Link
-              href="/student/results"
-              className="flex items-center justify-center gap-2 w-full h-11 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
-            >
-              View Examination Results <ArrowRight size={14} />
             </Link>
           </div>
 

@@ -16,7 +16,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         area="student"
         title="Exam"
         bare
-        bareClassName="page-scroll flex flex-col bg-gray-50 font-sans"
+        bareClassName="page-scroll flex flex-col bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 font-sans min-h-screen"
       >
         {children}
       </RoleArea>
