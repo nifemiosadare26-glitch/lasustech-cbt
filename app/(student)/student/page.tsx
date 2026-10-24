@@ -194,6 +194,17 @@ export default function StudentDashboard() {
 
   const [unreadNotifications, setUnreadNotifications] = useState<StudentNotification[]>([]);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
+  const [customSittings, setCustomSittings] = useState<any[]>([]);
+
+  // Load custom scheduled sittings if created in timetable
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lasustech_custom_sittings");
+      if (stored) {
+        setCustomSittings(JSON.parse(stored));
+      }
+    } catch {}
+  }, []);
 
   // Check for newly dropped notifications to display first-time popup
   useEffect(() => {
@@ -266,16 +277,6 @@ export default function StudentDashboard() {
     department: { name: deptName },
     college: { name: collegeName },
   };
-  // Load custom scheduled sittings if created in timetable
-  const [customSittings, setCustomSittings] = useState<any[]>([]);
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("lasustech_custom_sittings");
-      if (stored) {
-        setCustomSittings(JSON.parse(stored));
-      }
-    } catch {}
-  }, []);
 
   const now = Date.now();
   const dynamicLive: LiveExam[] = [];
