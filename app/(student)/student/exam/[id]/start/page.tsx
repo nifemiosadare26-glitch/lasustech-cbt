@@ -137,23 +137,31 @@ export default function ExamStartPage() {
     );
   }
 
-  const sitting = data?.sitting || {
-    courseCode: "CSC 301",
-    courseTitle: "Data Structures & Algorithms",
-    departmentName: "Computer Science",
-    collegeName: "College of Basic Sciences",
-    sessionName: "2026/2027 Academic Session",
-    durationMin: 60,
-    questionCount: 40,
-    venue: "CBT Centre 1",
-    seatLabel: "Seat 42",
-    requiresAccessCode: true,
-  };
+  if (!data?.sitting) {
+    return (
+      <div className="max-w-3xl mx-auto py-12 px-4 space-y-4">
+        <Link
+          href="/student"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft size={16} /> Back to My Exams
+        </Link>
+        <div className="p-6 rounded-3xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 space-y-2">
+          <div className="flex items-center gap-2 font-bold text-base">
+            <AlertCircle size={20} className="text-rose-600 dark:text-rose-400" />
+            Exam Unavailable
+          </div>
+          <p className="text-sm">{error?.message || "This examination sitting could not be found or has ended."}</p>
+        </div>
+      </div>
+    );
+  }
 
-  const candidate = data?.candidate || {
-    names: "Nifemi Osadare",
-    matricNo: "CSC/2022/305",
-    department: "Computer Science",
+  const sitting = data.sitting;
+  const candidate = data.candidate || {
+    names: "Candidate",
+    matricNo: "—",
+    department: "",
   };
 
   const isAlreadyTaken =

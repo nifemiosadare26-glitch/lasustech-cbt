@@ -5,6 +5,7 @@ import { CheckCircle2, Copy, AlertTriangle, Loader2, Info, ArrowRight, ShieldChe
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useApi } from "@/lib/useApi";
+import { useUser } from "@/components/auth/user-context";
 
 function ExamDoneContent() {
   const router = useRouter();
@@ -35,11 +36,12 @@ function ExamDoneContent() {
     };
   }>(sittingId ? `/student/sittings/${sittingId}` : null);
 
+  const user = useUser();
   const refCode = refParam || `LASU-${sittingId ? sittingId.slice(0, 4).toUpperCase() : "EXAM"}-${sittingId ? sittingId.slice(-4).toUpperCase() : "DONE"}`;
-  const studentName = data?.candidate.names || "Candidate";
-  const matric = data?.candidate.matricNo || "CSC/2022/305";
-  const courseCode = data?.sitting.courseCode || "CSC 301";
-  const courseTitle = data?.sitting.courseTitle || "CBT Examination";
+  const studentName = data?.candidate.names || user?.me?.names || "Candidate";
+  const matric = data?.candidate.matricNo || user?.me?.matricNo || "—";
+  const courseCode = data?.sitting.courseCode || "CBT Examination";
+  const courseTitle = data?.sitting.courseTitle || "Completed Examination";
 
   // Fullscreen exit & Time initialization
   useEffect(() => {

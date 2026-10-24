@@ -83,7 +83,7 @@ export default function ExamAttemptPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [courseCode, setCourseCode] = useState<string>("CSC 301");
+  const [courseCode, setCourseCode] = useState<string>("");
   const [courseTitle, setCourseTitle] = useState<string>("CBT Examination");
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(1);

@@ -13,6 +13,7 @@ import {
 import { useApi } from "@/lib/useApi";
 import { generateResultSlip } from "@/lib/generateResultSlip";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useUser } from "@/components/auth/user-context";
 
 interface ResultCourse {
   code: string;
@@ -42,16 +43,9 @@ type ResultsPayload = {
   results: ResultCourse[];
 };
 
-const FALLBACK_STUDENT = {
-  names: "Nifemi Osadare",
-  matricNo: "CSC/2022/305",
-  level: "300 Level",
-  department: { name: "Computer Science" },
-  college: { name: "College of Basic Sciences" },
-};
-
 export default function StudentResultsPage() {
   const { data, loading, error, reload } = useApi<ResultsPayload>("/student/results");
+  const user = useUser();
 
   const [selectedSession, setSelectedSession] = useState("2026/2027");
   const [selectedSemester, setSelectedSemester] = useState("All");
@@ -87,7 +81,15 @@ export default function StudentResultsPage() {
     );
   }
 
-  const student = data?.student ?? FALLBACK_STUDENT;
+  const student = data?.student ?? {
+    id: user?.me?.id ?? "",
+    names: user?.me?.names ?? "Candidate",
+    firstName: user?.me?.names ? user.me.names.split(" ")[0] : "Candidate",
+    matricNo: user?.me?.matricNo ?? "—",
+    level: "Undergraduate",
+    department: { name: "Academic Department" },
+    college: { name: "LASUSTECH" },
+  };
   const allResults = data?.results ?? [];
 
   const filteredResults = allResults.filter((r) => {

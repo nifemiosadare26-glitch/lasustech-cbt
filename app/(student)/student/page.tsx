@@ -18,6 +18,7 @@ import {
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useUser } from "@/components/auth/user-context";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Types                                   */
@@ -99,19 +100,6 @@ type DashboardPayload = {
 };
 
 /* -------------------------------------------------------------------------- */
-/*                                  Constants                                 */
-/* -------------------------------------------------------------------------- */
-
-const FALLBACK_STUDENT = {
-  firstName: "Student",
-  names: "Student Candidate",
-  matricNo: "CSC/2022/305",
-  level: "300 Level",
-  department: { name: "Computer Science" },
-  college: { name: "College of Basic Sciences" },
-};
-
-/* -------------------------------------------------------------------------- */
 /*                                  Component                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -164,7 +152,17 @@ export default function StudentDashboard() {
     );
   }
 
-  const student = data?.student ?? FALLBACK_STUDENT;
+  const user = useUser();
+  const student = data?.student ?? {
+    firstName: user?.me?.names ? user.me.names.split(" ")[0] : "Student",
+    names: user?.me?.names ?? "Candidate",
+    matricNo: user?.me?.matricNo ?? "—",
+    email: user?.me?.email ?? "",
+    level: "Undergraduate",
+    programme: { code: "DEGREE", name: "Undergraduate Studies" },
+    department: { code: "DEPT", name: "Academic Department" },
+    college: { code: "COL", name: "LASUSTECH" },
+  };
   const live = data?.live ?? [];
   const upcoming = data?.upcoming ?? [];
   const completed = data?.completed ?? [];
@@ -284,7 +282,7 @@ export default function StudentDashboard() {
                     <div>
                       <h3 className="text-xl font-bold text-slate-900">{exam.title}</h3>
                       <p className="mt-0.5 text-sm text-slate-500">
-                        {"college" in student ? student.college.name : ""}
+                        {student.college?.name || ""}
                       </p>
                     </div>
 

@@ -8,6 +8,8 @@ export type Me = {
   identifier: string;
   primaryRole: RoleKey;
   roles: RoleKey[];
+  matricNo?: string | null;
+  staffId?: string | null;
 };
 
 let cachedMe: Promise<Me> | null = null;
