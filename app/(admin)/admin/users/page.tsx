@@ -45,6 +45,7 @@ interface ApiUser {
   status: UserStatus;
   departmentId: string | null;
   department: { id: string; name: string; code: string } | null;
+  level?: number | null;
   roles: RoleKey[];
   primaryRole: RoleKey | null;
   lastLoginAt: string | null;
@@ -99,6 +100,7 @@ type FormState = {
   staffId: string;
   email: string;
   departmentId: string;
+  level: number;
   password: string;
   status: UserStatus;
 };
@@ -110,6 +112,7 @@ const EMPTY_FORM: FormState = {
   staffId: "",
   email: "",
   departmentId: "",
+  level: 100,
   password: "",
   status: "ACTIVE",
 };
@@ -244,6 +247,7 @@ export default function UsersAndRoles() {
         staffId: isStudent ? undefined : form.staffId || undefined,
         email: form.email || undefined,
         departmentId: form.departmentId || undefined,
+        level: isStudent ? Number(form.level) || 100 : undefined,
         status: form.status === "DEACTIVATED" ? "ACTIVE" : form.status,
         password: form.password || undefined,
       }),
@@ -291,6 +295,7 @@ export default function UsersAndRoles() {
         staffId: isStudent ? null : form.staffId || null,
         email: form.email || null,
         departmentId: form.departmentId || null,
+        level: isStudent ? Number(form.level) || 100 : undefined,
         status: form.status,
         password: form.password?.trim() ? form.password.trim() : undefined,
       }),
@@ -328,6 +333,7 @@ export default function UsersAndRoles() {
       staffId: user.staffId ?? "",
       email: user.email ?? "",
       departmentId: user.departmentId ?? "",
+      level: user.level ?? 100,
       password: "",
       status: user.status,
     });
@@ -704,7 +710,14 @@ export default function UsersAndRoles() {
                         )}
                       </td>
 
-                      <td className="px-6 py-4 text-[14px] text-gray-700">{u.department?.name ?? "—"}</td>
+                      <td className="px-6 py-4 text-[14px] text-gray-700">
+                        <div>{u.department?.name ?? "—"}</div>
+                        {u.level && u.roles.includes("STUDENT") && (
+                          <span className="inline-block mt-0.5 text-[11px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                            {u.level} Level
+                          </span>
+                        )}
+                      </td>
 
                       <td className="px-6 py-4">
                         <Badge variant={u.status === "ACTIVE" ? "success" : "default"}>
@@ -850,31 +863,69 @@ export default function UsersAndRoles() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
-                <select
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.departmentId}
-                  onChange={(e) => {
-                    const deptId = e.target.value;
-                    setForm({ ...form, departmentId: deptId });
-                    if (deptId) {
-                      const deptCourseIds = allCourses
-                        .filter((c) => c.departmentId === deptId || c.department?.id === deptId)
-                        .map((c) => c.id);
-                      if (deptCourseIds.length > 0) {
-                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+              <div className={`grid gap-3 ${form.roles.includes("STUDENT") ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+                <div>
+                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
+                  <select
+                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={form.departmentId}
+                    onChange={(e) => {
+                      const deptId = e.target.value;
+                      setForm({ ...form, departmentId: deptId });
+                      if (deptId) {
+                        const targetLvl = form.roles.includes("STUDENT") ? Number(form.level) || 100 : undefined;
+                        const deptCourseIds = allCourses
+                          .filter((c) => (c.departmentId === deptId || c.department?.id === deptId) && (!targetLvl || !c.level || c.level === targetLvl))
+                          .map((c) => c.id);
+                        if (deptCourseIds.length > 0) {
+                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                        }
                       }
-                    }
-                  }}
-                >
-                  <option value="">No department</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id} disabled={!d.active}>
-                      {d.name} ({d.code}){d.active ? "" : " — archived"}
-                    </option>
-                  ))}
-                </select>
+                    }}
+                  >
+                    <option value="">No department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id} disabled={!d.active}>
+                        {d.name} ({d.code}){d.active ? "" : " — archived"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {form.roles.includes("STUDENT") && (
+                  <div>
+                    <label className="text-[13px] font-medium text-gray-700 block mb-1">
+                      Academic Level <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      value={form.level}
+                      onChange={(e) => {
+                        const newLvl = Number(e.target.value);
+                        setForm({ ...form, level: newLvl });
+                        if (form.departmentId) {
+                          const matching = allCourses
+                            .filter(
+                              (c) =>
+                                (c.departmentId === form.departmentId || c.department?.id === form.departmentId) &&
+                                (!c.level || c.level === newLvl)
+                            )
+                            .map((c) => c.id);
+                          if (matching.length > 0) {
+                            setAssignedCourseIds(matching);
+                          }
+                        }
+                      }}
+                    >
+                      <option value={100}>100 Level</option>
+                      <option value={200}>200 Level</option>
+                      <option value={300}>300 Level</option>
+                      <option value={400}>400 Level</option>
+                      <option value={500}>500 Level</option>
+                      <option value={600}>600 Level</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Course Assignment & Enrollment */}
@@ -891,21 +942,42 @@ export default function UsersAndRoles() {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-blue-600 mb-1 px-1">
-                  {form.departmentId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const deptCourseIds = allCourses
-                          .filter((c) => c.departmentId === form.departmentId || c.department?.id === form.departmentId)
-                          .map((c) => c.id);
-                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
-                      }}
-                      className="hover:underline font-medium"
-                    >
-                      + Select all department courses
-                    </button>
-                  )}
+                <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-blue-600 mb-1 px-1">
+                  <div className="flex items-center gap-2">
+                    {form.departmentId && form.roles.includes("STUDENT") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const lvl = Number(form.level) || 100;
+                          const lvlCourses = allCourses
+                            .filter(
+                              (c) =>
+                                (c.departmentId === form.departmentId || c.department?.id === form.departmentId) &&
+                                (!c.level || c.level === lvl)
+                            )
+                            .map((c) => c.id);
+                          setAssignedCourseIds(lvlCourses.length > 0 ? lvlCourses : []);
+                        }}
+                        className="hover:underline font-semibold"
+                      >
+                        + Select {form.level}L dept courses
+                      </button>
+                    )}
+                    {form.departmentId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const deptCourseIds = allCourses
+                            .filter((c) => c.departmentId === form.departmentId || c.department?.id === form.departmentId)
+                            .map((c) => c.id);
+                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                        }}
+                        className="hover:underline text-gray-500 font-medium"
+                      >
+                        + All dept courses
+                      </button>
+                    )}
+                  </div>
                   {assignedCourseIds.length > 0 && (
                     <button
                       type="button"
@@ -1170,31 +1242,69 @@ export default function UsersAndRoles() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
-                <select
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.departmentId}
-                  onChange={(e) => {
-                    const deptId = e.target.value;
-                    setForm({ ...form, departmentId: deptId });
-                    if (deptId) {
-                      const deptCourseIds = allCourses
-                        .filter((c) => c.departmentId === deptId || c.department?.id === deptId)
-                        .map((c) => c.id);
-                      if (deptCourseIds.length > 0) {
-                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+              <div className={`grid gap-3 ${form.roles.includes("STUDENT") ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+                <div>
+                  <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
+                  <select
+                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={form.departmentId}
+                    onChange={(e) => {
+                      const deptId = e.target.value;
+                      setForm({ ...form, departmentId: deptId });
+                      if (deptId) {
+                        const targetLvl = form.roles.includes("STUDENT") ? Number(form.level) || 100 : undefined;
+                        const deptCourseIds = allCourses
+                          .filter((c) => (c.departmentId === deptId || c.department?.id === deptId) && (!targetLvl || !c.level || c.level === targetLvl))
+                          .map((c) => c.id);
+                        if (deptCourseIds.length > 0) {
+                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                        }
                       }
-                    }
-                  }}
-                >
-                  <option value="">No department</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id} disabled={!d.active}>
-                      {d.name} ({d.code}){d.active ? "" : " — archived"}
-                    </option>
-                  ))}
-                </select>
+                    }}
+                  >
+                    <option value="">No department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id} disabled={!d.active}>
+                        {d.name} ({d.code}){d.active ? "" : " — archived"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {form.roles.includes("STUDENT") && (
+                  <div>
+                    <label className="text-[13px] font-medium text-gray-700 block mb-1">
+                      Academic Level <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      value={form.level}
+                      onChange={(e) => {
+                        const newLvl = Number(e.target.value);
+                        setForm({ ...form, level: newLvl });
+                        if (form.departmentId) {
+                          const matching = allCourses
+                            .filter(
+                              (c) =>
+                                (c.departmentId === form.departmentId || c.department?.id === form.departmentId) &&
+                                (!c.level || c.level === newLvl)
+                            )
+                            .map((c) => c.id);
+                          if (matching.length > 0) {
+                            setAssignedCourseIds(matching);
+                          }
+                        }
+                      }}
+                    >
+                      <option value={100}>100 Level</option>
+                      <option value={200}>200 Level</option>
+                      <option value={300}>300 Level</option>
+                      <option value={400}>400 Level</option>
+                      <option value={500}>500 Level</option>
+                      <option value={600}>600 Level</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Course Assignment & Enrollment */}
@@ -1211,21 +1321,42 @@ export default function UsersAndRoles() {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-blue-600 mb-1 px-1">
-                  {form.departmentId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const deptCourseIds = allCourses
-                          .filter((c) => c.departmentId === form.departmentId || c.department?.id === form.departmentId)
-                          .map((c) => c.id);
-                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
-                      }}
-                      className="hover:underline font-medium"
-                    >
-                      + Select all department courses
-                    </button>
-                  )}
+                <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-blue-600 mb-1 px-1">
+                  <div className="flex items-center gap-2">
+                    {form.departmentId && form.roles.includes("STUDENT") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const lvl = Number(form.level) || 100;
+                          const lvlCourses = allCourses
+                            .filter(
+                              (c) =>
+                                (c.departmentId === form.departmentId || c.department?.id === form.departmentId) &&
+                                (!c.level || c.level === lvl)
+                            )
+                            .map((c) => c.id);
+                          setAssignedCourseIds(lvlCourses.length > 0 ? lvlCourses : []);
+                        }}
+                        className="hover:underline font-semibold"
+                      >
+                        + Select {form.level}L dept courses
+                      </button>
+                    )}
+                    {form.departmentId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const deptCourseIds = allCourses
+                            .filter((c) => c.departmentId === form.departmentId || c.department?.id === form.departmentId)
+                            .map((c) => c.id);
+                          setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                        }}
+                        className="hover:underline text-gray-500 font-medium"
+                      >
+                        + All dept courses
+                      </button>
+                    )}
+                  </div>
                   {assignedCourseIds.length > 0 && (
                     <button
                       type="button"
