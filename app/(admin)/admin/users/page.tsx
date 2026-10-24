@@ -174,8 +174,15 @@ export default function UsersAndRoles() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [bulkRoleSelected, setBulkRoleSelected] = useState<RoleKey>("LECTURER");
 
-  // Courses for lecturer assignment
-  const { data: allCourses = [] } = useApi<{ id: string; code: string; title: string; level?: number }[]>("/admin/courses?status=active");
+  // Courses for assignment & enrollment
+  const { data: allCourses = [] } = useApi<{
+    id: string;
+    code: string;
+    title: string;
+    level?: number;
+    departmentId?: string;
+    department?: { id: string; code: string; name: string } | null;
+  }[]>("/admin/courses?status=active");
   const [assignedCourseIds, setAssignedCourseIds] = useState<string[]>([]);
   const [courseSearch, setCourseSearch] = useState<string>("");
   const [loadingUserCourses, setLoadingUserCourses] = useState<boolean>(false);
@@ -250,7 +257,7 @@ export default function UsersAndRoles() {
             duration: 0,
           });
         }
-        if (created?.id && isStaff && assignedCourseIds.length > 0) {
+        if (created?.id && assignedCourseIds.length > 0) {
           try {
             await apiClient(`/admin/users/${created.id}/courses`, {
               method: "PUT",
@@ -289,7 +296,7 @@ export default function UsersAndRoles() {
       }),
       success: `Saved changes for ${form.names}`,
       onSuccess: async () => {
-        if (isStaff) {
+        if (activeUserToEdit?.id && (assignedCourseIds.length > 0 || isStaff)) {
           try {
             await apiClient(`/admin/users/${activeUserToEdit.id}/courses`, {
               method: "PUT",
@@ -327,18 +334,14 @@ export default function UsersAndRoles() {
     setCourseSearch("");
     setIsEditUserOpen(true);
 
-    if (user.roles.includes("LECTURER") || user.roles.includes("ADMIN")) {
-      setLoadingUserCourses(true);
-      try {
-        const res = await apiClient<{ data: { courseIds: string[] } }>(`/admin/users/${user.id}/courses`);
-        setAssignedCourseIds(res.data.courseIds || []);
-      } catch {
-        setAssignedCourseIds([]);
-      } finally {
-        setLoadingUserCourses(false);
-      }
-    } else {
+    setLoadingUserCourses(true);
+    try {
+      const res = await apiClient<{ data: { courseIds: string[] } }>(`/admin/users/${user.id}/courses`);
+      setAssignedCourseIds(res.data?.courseIds || []);
+    } catch {
       setAssignedCourseIds([]);
+    } finally {
+      setLoadingUserCourses(false);
     }
   };
 
@@ -849,24 +852,70 @@ export default function UsersAndRoles() {
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
-                <select className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                <select
+                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.departmentId}
+                  onChange={(e) => {
+                    const deptId = e.target.value;
+                    setForm({ ...form, departmentId: deptId });
+                    if (deptId) {
+                      const deptCourseIds = allCourses
+                        .filter((c) => c.departmentId === deptId || c.department?.id === deptId)
+                        .map((c) => c.id);
+                      if (deptCourseIds.length > 0) {
+                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                      }
+                    }
+                  }}
+                >
                   <option value="">No department</option>
-                  {departments.map((d) => <option key={d.id} value={d.id} disabled={!d.active}>{d.name} ({d.code}){d.active ? "" : " — archived"}</option>)}
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id} disabled={!d.active}>
+                      {d.name} ({d.code}){d.active ? "" : " — archived"}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* Course Assignment for Lecturers */}
-              {(form.roles.includes("LECTURER") || form.roles.includes("ADMIN")) && (
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[13px] font-medium text-gray-800 flex items-center gap-1.5">
-                      <BookOpen size={15} className="text-blue-600" />
-                      Assigned Courses ({assignedCourseIds.length})
-                    </label>
-                    <span className="text-[11px] text-gray-500">
-                      Lecturer will author &amp; manage exams for selected courses
-                    </span>
-                  </div>
+              {/* Course Assignment & Enrollment */}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[13px] font-medium text-gray-800 flex items-center gap-1.5">
+                    <BookOpen size={15} className="text-blue-600" />
+                    {form.roles.includes("STUDENT") ? "Enrolled Courses" : "Assigned Courses"} ({assignedCourseIds.length})
+                  </label>
+                  <span className="text-[11px] text-gray-500">
+                    {form.roles.includes("STUDENT")
+                      ? "Student will be registered for exams in selected courses"
+                      : "Staff will author & manage exams for selected courses"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-blue-600 mb-1 px-1">
+                  {form.departmentId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const deptCourseIds = allCourses
+                          .filter((c) => c.departmentId === form.departmentId || c.department?.id === form.departmentId)
+                          .map((c) => c.id);
+                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                      }}
+                      className="hover:underline font-medium"
+                    >
+                      + Select all department courses
+                    </button>
+                  )}
+                  {assignedCourseIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignedCourseIds([])}
+                      className="text-red-500 hover:underline ml-auto"
+                    >
+                      Clear selection
+                    </button>
+                  )}
+                </div>
 
                   {loadingUserCourses ? (
                     <div className="py-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
@@ -941,7 +990,6 @@ export default function UsersAndRoles() {
                     </div>
                   )}
                 </div>
-              )}
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">Password</label>
@@ -1124,24 +1172,70 @@ export default function UsersAndRoles() {
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">Department</label>
-                <select className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                <select
+                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.departmentId}
+                  onChange={(e) => {
+                    const deptId = e.target.value;
+                    setForm({ ...form, departmentId: deptId });
+                    if (deptId) {
+                      const deptCourseIds = allCourses
+                        .filter((c) => c.departmentId === deptId || c.department?.id === deptId)
+                        .map((c) => c.id);
+                      if (deptCourseIds.length > 0) {
+                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                      }
+                    }
+                  }}
+                >
                   <option value="">No department</option>
-                  {departments.map((d) => <option key={d.id} value={d.id} disabled={!d.active}>{d.name} ({d.code}){d.active ? "" : " — archived"}</option>)}
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id} disabled={!d.active}>
+                      {d.name} ({d.code}){d.active ? "" : " — archived"}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* Course Assignment for Lecturers */}
-              {(form.roles.includes("LECTURER") || form.roles.includes("ADMIN")) && (
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[13px] font-medium text-gray-800 flex items-center gap-1.5">
-                      <BookOpen size={15} className="text-blue-600" />
-                      Assigned Courses ({assignedCourseIds.length})
-                    </label>
-                    <span className="text-[11px] text-gray-500">
-                      Lecturer will author &amp; manage exams for selected courses
-                    </span>
-                  </div>
+              {/* Course Assignment & Enrollment */}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[13px] font-medium text-gray-800 flex items-center gap-1.5">
+                    <BookOpen size={15} className="text-blue-600" />
+                    {form.roles.includes("STUDENT") ? "Enrolled Courses" : "Assigned Courses"} ({assignedCourseIds.length})
+                  </label>
+                  <span className="text-[11px] text-gray-500">
+                    {form.roles.includes("STUDENT")
+                      ? "Student will be registered for exams in selected courses"
+                      : "Staff will author & manage exams for selected courses"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-blue-600 mb-1 px-1">
+                  {form.departmentId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const deptCourseIds = allCourses
+                          .filter((c) => c.departmentId === form.departmentId || c.department?.id === form.departmentId)
+                          .map((c) => c.id);
+                        setAssignedCourseIds((prev) => Array.from(new Set([...prev, ...deptCourseIds])));
+                      }}
+                      className="hover:underline font-medium"
+                    >
+                      + Select all department courses
+                    </button>
+                  )}
+                  {assignedCourseIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignedCourseIds([])}
+                      className="text-red-500 hover:underline ml-auto"
+                    >
+                      Clear selection
+                    </button>
+                  )}
+                </div>
 
                   {loadingUserCourses ? (
                     <div className="py-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
@@ -1216,7 +1310,6 @@ export default function UsersAndRoles() {
                     </div>
                   )}
                 </div>
-              )}
 
               <div>
                 <label className="text-[13px] font-medium text-gray-700 block mb-1">

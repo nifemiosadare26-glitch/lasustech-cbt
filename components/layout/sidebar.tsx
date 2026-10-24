@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Network, Users, CalendarRange, ScrollText, Settings,
   Library, Upload, FileCheck, BarChart3, CalendarClock,
   Radio, LogOut, Loader2, Headphones,
-  PanelLeftClose, PanelLeftOpen, ShieldAlert, X, ShieldCheck, AlertCircle, Bell
+  PanelLeftClose, PanelLeftOpen, ShieldAlert, X, ShieldCheck, AlertCircle, Bell, BookOpen
 } from "lucide-react";
 import { initialsOf, useUser } from "@/components/auth/user-context";
 import { roleLabel, type UiRole } from "@/lib/roles";
@@ -23,6 +23,7 @@ const roleMenus = {
     { name: "Incident reports", href: "/admin/incidents", icon: ShieldAlert },
     { name: "Support desk", href: "/admin/support", icon: Headphones },
     { name: "Colleges & Depts", href: "/admin/structure", icon: Network },
+    { name: "Course management", href: "/admin/courses", icon: BookOpen },
     { name: "Users and roles", href: "/admin/users", icon: Users },
     { name: "Results", href: "/admin/results", icon: BarChart3 },
     { name: "Appeals", href: "/admin/appeals", icon: AlertCircle },
