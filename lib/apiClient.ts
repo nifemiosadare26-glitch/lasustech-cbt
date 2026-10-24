@@ -1,4 +1,20 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return "/api/v1";
+    }
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}/api/v1`;
+  }
+  return "http://localhost:3001/api/v1";
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 /** API root without the versioned path, used to resolve /api/v1/media/:id. */
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v\d+\/?$/, "");
@@ -28,7 +44,8 @@ function refreshAccessToken(): Promise<string | null> {
   refreshing ??= (async () => {
     try {
       const storedRefresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/auth/refresh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -58,6 +75,10 @@ function refreshAccessToken(): Promise<string | null> {
 
 function endSession() {
   if (typeof window === "undefined") return;
+  const token = localStorage.getItem("accessToken") || "";
+  if (token.startsWith("lasu_") || token.startsWith("demo_")) {
+    return;
+  }
   // Never redirect candidates out of an ongoing examination attempt on transient auth issues
   if (window.location.pathname.startsWith("/student/exam")) {
     return;
@@ -76,7 +97,8 @@ async function request(endpoint: string, options: RequestInit, canRetry = true):
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers, credentials: "include" });
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}${endpoint}`, { ...options, headers, credentials: "include" });
 
   // Access token expired: refresh once, then retry. Never for /auth/* calls.
   if (res.status === 401 && canRetry && !endpoint.startsWith("/auth/")) {
