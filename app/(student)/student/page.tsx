@@ -425,9 +425,9 @@ export default function StudentDashboard() {
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/student/results"
-              className="inline-flex items-center gap-2 rounded-xl bg-white text-[#0B2A5B] hover:bg-sky-50 px-4 py-2.5 text-sm font-bold shadow-md transition-all hover:shadow-lg cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-white text-[#0B2A5B] dark:bg-slate-800 dark:text-white dark:border dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700 px-4 py-2.5 text-sm font-bold shadow-md transition-all hover:shadow-lg cursor-pointer"
             >
-              <Award size={16} className="text-blue-700" />
+              <Award size={16} className="text-blue-700 dark:text-sky-300" />
               Examination Records
             </Link>
             <Link

@@ -591,20 +591,6 @@ export default function SupportPage() {
                 </div>
               </div>
             </div>
-
-            {/* Quick Link Card */}
-            <div className="rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 p-5 flex items-center justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-blue-950 dark:text-blue-200">Forgotten password?</h3>
-                <p className="text-[11px] text-blue-800 dark:text-blue-300 mt-0.5">Reset your credential online via matric or email.</p>
-              </div>
-              <Link
-                href="/reset"
-                className="shrink-0 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 px-3.5 py-2 rounded-lg transition-colors shadow-xs"
-              >
-                Reset Password &rarr;
-              </Link>
-            </div>
           </div>
         </div>
       </main>

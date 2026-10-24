@@ -196,7 +196,9 @@ body {
    small dark-on-light text (tab labels, notification headings). Surfaces read
    the token; text is lifted back up here. */
 .dark .text-blue-900,
-.dark .text-blue-950 { color: #E4EEFF; }
+.dark .text-blue-950,
+.dark [class*="text-[#0B2A5B]"],
+.dark [class*="dark:text-[#0B2A5B]"] { color: #E4EEFF !important; }
 .dark .text-blue-800,
 .dark .text-blue-700 { color: #BFD7F7; }
 .dark .hover\:text-blue-900:hover,
