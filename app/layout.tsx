@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
+import { SystemWarmup } from "@/components/system-warmup";
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`h-full antialiased ${ibmPlexSans.variable}`}>
       <body className="min-h-full flex flex-col transition-colors duration-300 font-sans">
+        <SystemWarmup />
         {children}
       </body>
     </html>
