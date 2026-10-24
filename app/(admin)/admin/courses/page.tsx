@@ -27,6 +27,8 @@ import {
   X,
   Download,
   AlertTriangle,
+  AlertCircle,
+  RefreshCw,
   RotateCcw,
 } from "lucide-react";
 
@@ -63,6 +65,8 @@ interface LecturerUser {
   id: string;
   names: string;
   email?: string | null;
+  roles?: string[];
+  staffId?: string | null;
 }
 
 type CourseFormData = {
@@ -105,22 +109,24 @@ export default function CourseManagementPage() {
   const [deletingCourse, setDeletingCourse] = useState<CourseItem | null>(null);
 
   // Data fetching
-  const {
-    data: courses = [],
-    loading: loadingCourses,
-    reload: reloadCourses,
-  } = useApi<CourseItem[]>("/admin/courses");
+  const rawCourses = useApi<CourseItem[]>("/admin/courses");
+  const rawColleges = useApi<StructureCollege[]>("/admin/structure");
+  const rawStaff = useApi<LecturerUser[]>("/admin/users?pageSize=200");
 
-  const { data: colleges = [] } = useApi<StructureCollege[]>("/admin/structure");
+  const courses = useMemo(() => Array.isArray(rawCourses.data) ? rawCourses.data : [], [rawCourses.data]);
+  const colleges = useMemo(() => Array.isArray(rawColleges.data) ? rawColleges.data : [], [rawColleges.data]);
+  const staffList = useMemo(() => Array.isArray(rawStaff.data) ? rawStaff.data : [], [rawStaff.data]);
 
-  const { data: staffList = [] } = useApi<LecturerUser[]>("/admin/users?pageSize=200");
+  const loadingCourses = rawCourses.loading;
+  const reloadCourses = rawCourses.reload;
+  const coursesError = rawCourses.error;
 
   const lecturers = useMemo(() => {
-    return (staffList as any[]).filter(
+    return staffList.filter(
       (u) =>
-        (u.roles && (u.roles.includes("LECTURER") || u.roles.includes("ADMIN"))) ||
+        (Array.isArray(u.roles) && (u.roles.includes("LECTURER") || u.roles.includes("ADMIN"))) ||
         !!u.staffId ||
-        !(u.roles && u.roles.includes("STUDENT") && u.roles.length === 1)
+        !(Array.isArray(u.roles) && u.roles.includes("STUDENT") && u.roles.length === 1)
     );
   }, [staffList]);
 
@@ -128,13 +134,13 @@ export default function CourseManagementPage() {
   const departments = useMemo(() => {
     return colleges
       .flatMap((col) =>
-        col.departments.map((d) => ({
+        (Array.isArray(col.departments) ? col.departments : []).map((d) => ({
           ...d,
-          collegeName: col.name,
-          collegeCode: col.code,
+          collegeName: col.name || "",
+          collegeCode: col.code || "",
         }))
       )
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   }, [colleges]);
 
   // Filtered courses
@@ -337,6 +343,19 @@ export default function CourseManagementPage() {
           </Button>
         </div>
       </div>
+
+      {/* Error Alert */}
+      {coursesError && (
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 p-4 text-rose-800 dark:text-rose-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={18} className="text-rose-600 shrink-0" />
+            <span className="text-sm font-medium">{coursesError.message || "Failed to load courses. Please retry."}</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => void reloadCourses()} className="text-xs">
+            <RefreshCw size={13} className="mr-1.5" /> Retry
+          </Button>
+        </div>
+      )}
 
       {/* KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

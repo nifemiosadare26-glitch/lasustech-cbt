@@ -178,7 +178,7 @@ export default function UsersAndRoles() {
   const [bulkRoleSelected, setBulkRoleSelected] = useState<RoleKey>("LECTURER");
 
   // Courses for assignment & enrollment
-  const { data: allCourses = [] } = useApi<{
+  const { data: rawAllCourses } = useApi<{
     id: string;
     code: string;
     title: string;
@@ -186,6 +186,7 @@ export default function UsersAndRoles() {
     departmentId?: string;
     department?: { id: string; code: string; name: string } | null;
   }[]>("/admin/courses?status=active");
+  const allCourses = useMemo(() => (Array.isArray(rawAllCourses) ? rawAllCourses : []), [rawAllCourses]);
   const [assignedCourseIds, setAssignedCourseIds] = useState<string[]>([]);
   const [courseSearch, setCourseSearch] = useState<string>("");
   const [loadingUserCourses, setLoadingUserCourses] = useState<boolean>(false);
