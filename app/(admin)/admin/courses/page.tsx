@@ -56,6 +56,7 @@ interface CourseItem {
   departmentId: string;
   department?: { id: string; code: string; name: string } | null;
   lecturers: { id: string; names: string }[];
+  studentCount?: number;
 }
 
 interface LecturerUser {
@@ -158,10 +159,8 @@ export default function CourseManagementPage() {
   const uniqueDepartmentsCount = useMemo(() => {
     return new Set(courses.map((c) => c.departmentId)).size;
   }, [courses]);
-  const averageUnits = useMemo(() => {
-    if (!courses.length) return 0;
-    const sum = courses.reduce((acc, c) => acc + (c.units || 0), 0);
-    return (sum / courses.length).toFixed(1);
+  const totalEnrolledStudents = useMemo(() => {
+    return courses.reduce((acc, c) => acc + (c.studentCount ?? 0), 0);
   }, [courses]);
 
   // Handlers
@@ -271,6 +270,7 @@ export default function CourseManagementPage() {
       "Semester",
       "Status",
       "Lecturers",
+      "Enrolled Students",
     ];
     const rows = filteredCourses.map((c) => [
       c.code,
@@ -282,6 +282,7 @@ export default function CourseManagementPage() {
       c.semester === "FIRST" ? "1st Semester" : "2nd Semester",
       c.active ? "Active" : "Archived",
       c.lecturers.map((l) => l.names).join("; "),
+      c.studentCount ?? 0,
     ]);
     const csv = toCsv([headers, ...rows]);
     downloadText(`lasustech-courses-${new Date().toISOString().slice(0, 10)}.csv`, csv);
@@ -359,11 +360,11 @@ export default function CourseManagementPage() {
 
         <Card className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg Credit Units</span>
-            <Layers size={16} className="text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Enrolled</span>
+            <GraduationCap size={16} className="text-purple-600 dark:text-purple-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">{averageUnits}</div>
-          <p className="text-[11px] text-gray-400 mt-0.5">Credits per course offering</p>
+          <div className="mt-2 text-2xl font-bold text-purple-600 dark:text-purple-400">{totalEnrolledStudents}</div>
+          <p className="text-[11px] text-gray-400 mt-0.5">Students across all courses</p>
         </Card>
       </div>
 
@@ -520,6 +521,7 @@ export default function CourseManagementPage() {
                   <th className="py-3 px-3 text-center">Units</th>
                   <th className="py-3 px-3 text-center">Semester</th>
                   <th className="py-3 px-4">Lecturers</th>
+                  <th className="py-3 px-3 text-center">Students</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -585,6 +587,13 @@ export default function CourseManagementPage() {
                       ) : (
                         <span className="text-gray-400 text-[11px] italic">None assigned</span>
                       )}
+                    </td>
+
+                    <td className="py-3 px-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[11px] bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                        <GraduationCap size={12} className="text-purple-600 dark:text-purple-400" />
+                        {c.studentCount ?? 0}
+                      </span>
                     </td>
 
                     <td className="py-3 px-3 text-center">

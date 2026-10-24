@@ -301,7 +301,7 @@ export default function UsersAndRoles() {
       }),
       success: `Saved changes for ${form.names}`,
       onSuccess: async () => {
-        if (activeUserToEdit?.id && (assignedCourseIds.length > 0 || isStaff)) {
+        if (activeUserToEdit?.id) {
           try {
             await apiClient(`/admin/users/${activeUserToEdit.id}/courses`, {
               method: "PUT",
