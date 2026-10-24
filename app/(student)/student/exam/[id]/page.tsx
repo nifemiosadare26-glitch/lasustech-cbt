@@ -527,6 +527,43 @@ export default function ExamAttemptPage() {
   };
 
   // Calculator Logic
+  const handleCalcEval = () => {
+    if (!calcExpr) return;
+    try {
+      let s = calcExpr.trim();
+      s = s.replace(/×/g, "*").replace(/÷/g, "/").replace(/\^/g, "**");
+      s = s.replace(/π/g, `(${Math.PI})`).replace(/\be\b/g, `(${Math.E})`);
+
+      // Balance unclosed parentheses so functions like "sin(30" evaluate gracefully
+      const opens = (s.match(/\(/g) || []).length;
+      const closes = (s.match(/\)/g) || []).length;
+      if (opens > closes) {
+        s += ")".repeat(opens - closes);
+      }
+
+      // Convert standard degree inputs for trigonometric functions
+      s = s.replace(/sin\(([^)]+)\)/g, "Math.sin((($1) * Math.PI) / 180)");
+      s = s.replace(/cos\(([^)]+)\)/g, "Math.cos((($1) * Math.PI) / 180)");
+      s = s.replace(/tan\(([^)]+)\)/g, "Math.tan((($1) * Math.PI) / 180)");
+      s = s.replace(/log\(([^)]+)\)/g, "Math.log10($1)");
+      s = s.replace(/ln\(([^)]+)\)/g, "Math.log($1)");
+      s = s.replace(/√\(([^)]+)\)/g, "Math.sqrt($1)");
+      s = s.replace(/√([0-9.]+)/g, "Math.sqrt($1)");
+
+      // Safe Function evaluation
+      const computed = Function(`"use strict"; return (${s})`)();
+      if (typeof computed === "number" && !isNaN(computed) && isFinite(computed)) {
+        // Round cleanly to 5 decimal places
+        const rounded = Math.round(computed * 100000) / 100000;
+        setCalcResult(String(rounded));
+      } else {
+        setCalcResult("Error");
+      }
+    } catch {
+      setCalcResult("Error");
+    }
+  };
+
   const handleCalcInput = (btn: string) => {
     if (btn === "AC") {
       setCalcExpr("");
@@ -542,11 +579,11 @@ export default function ExamAttemptPage() {
       return;
     }
     if (btn === "π") {
-      setCalcExpr((prev) => prev + "3.14159");
+      setCalcExpr((prev) => prev + "π");
       return;
     }
     if (btn === "e") {
-      setCalcExpr((prev) => prev + "2.71828");
+      setCalcExpr((prev) => prev + "e");
       return;
     }
     if (btn === "Ans") {
@@ -567,87 +604,38 @@ export default function ExamAttemptPage() {
       setCalcExpr((prev) => prev + "/100");
       return;
     }
-    if (btn === "√") {
-      try {
-        const val = calcResult !== "0" && calcResult !== "Error" ? Number(calcResult) : Number(calcExpr || "0");
-        const res = Math.sqrt(val);
-        setCalcResult(String(Math.round(res * 100000) / 100000));
-        setCalcExpr(`√(${val})`);
-      } catch {
-        setCalcResult("Error");
-      }
-      return;
-    }
     if (btn === "x²") {
-      try {
-        const val = calcResult !== "0" && calcResult !== "Error" ? Number(calcResult) : Number(calcExpr || "0");
-        const res = val * val;
-        setCalcResult(String(Math.round(res * 100000) / 100000));
-        setCalcExpr(`(${val})²`);
-      } catch {
-        setCalcResult("Error");
-      }
+      setCalcExpr((prev) => prev + "^2");
       return;
     }
-    if (btn === "log") {
-      try {
-        const val = calcResult !== "0" && calcResult !== "Error" ? Number(calcResult) : Number(calcExpr || "0");
-        const res = Math.log10(val);
-        setCalcResult(String(Math.round(res * 100000) / 100000));
-        setCalcExpr(`log(${val})`);
-      } catch {
-        setCalcResult("Error");
-      }
-      return;
-    }
-    if (btn === "ln") {
-      try {
-        const val = calcResult !== "0" && calcResult !== "Error" ? Number(calcResult) : Number(calcExpr || "0");
-        const res = Math.log(val);
-        setCalcResult(String(Math.round(res * 100000) / 100000));
-        setCalcExpr(`ln(${val})`);
-      } catch {
-        setCalcResult("Error");
-      }
-      return;
-    }
-    if (btn === "sin" || btn === "cos" || btn === "tan") {
-      try {
-        const val = calcResult !== "0" && calcResult !== "Error" ? Number(calcResult) : Number(calcExpr || "0");
-        const rad = (val * Math.PI) / 180;
-        let res = 0;
-        if (btn === "sin") res = Math.sin(rad);
-        if (btn === "cos") res = Math.cos(rad);
-        if (btn === "tan") res = Math.tan(rad);
-        const formatted = String(Math.round(res * 100000) / 100000);
-        setCalcResult(formatted);
-        setCalcExpr(`${btn}(${val}°)`);
-      } catch {
-        setCalcResult("Error");
+    if (["sin", "cos", "tan", "log", "ln", "√"].includes(btn)) {
+      // Check if expression ends with an active number
+      const matchNumber = calcExpr.match(/(\d+(\.\d+)?)$/);
+      if (matchNumber && !calcExpr.endsWith(")")) {
+        const num = matchNumber[0];
+        const prefix = calcExpr.slice(0, -num.length);
+        const newExpr = `${prefix}${btn}(${num})`;
+        setCalcExpr(newExpr);
+        // Calculate immediately for convenience
+        try {
+          const val = Number(num);
+          let res = 0;
+          if (btn === "sin") res = Math.sin((val * Math.PI) / 180);
+          else if (btn === "cos") res = Math.cos((val * Math.PI) / 180);
+          else if (btn === "tan") res = Math.tan((val * Math.PI) / 180);
+          else if (btn === "log") res = Math.log10(val);
+          else if (btn === "ln") res = Math.log(val);
+          else if (btn === "√") res = Math.sqrt(val);
+          setCalcResult(String(Math.round(res * 100000) / 100000));
+        } catch {}
+      } else {
+        // Appends function opener so student can type the angle value, e.g. "sin(" -> "30" -> "=" yields 0.5!
+        setCalcExpr((prev) => prev + `${btn}(`);
       }
       return;
     }
 
     setCalcExpr((prev) => prev + btn);
-  };
-
-  const handleCalcEval = () => {
-    if (!calcExpr) return;
-    try {
-      const sanitized = calcExpr
-        .replace(/×/g, "*")
-        .replace(/÷/g, "/")
-        .replace(/\^/g, "**");
-      // Safe math evaluation
-      const computed = Function(`"use strict"; return (${sanitized})`)();
-      if (typeof computed === "number" && !isNaN(computed) && isFinite(computed)) {
-        setCalcResult(String(Math.round(computed * 10000) / 10000));
-      } else {
-        setCalcResult("Error");
-      }
-    } catch {
-      setCalcResult("Error");
-    }
   };
 
   // Save answer to server with debounced coalescing for high concurrency
@@ -1054,8 +1042,8 @@ export default function ExamAttemptPage() {
               remainingSec <= 300
                 ? "bg-rose-600 text-white animate-pulse"
                 : remainingSec <= 600
-                ? "bg-amber-100 text-amber-900"
-                : "bg-white text-blue-900"
+                ? "bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                : "bg-white dark:bg-slate-900 text-blue-900 dark:text-blue-300 border border-slate-200 dark:border-slate-800"
             )}
           >
             {formatTimer(remainingSec)}

@@ -121,9 +121,16 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
         window.location.replace("/maintenance");
         return;
       }
-      setError(
-        apiError?.message ?? "We couldn't sign you in. Check your details and try again.",
-      );
+      let errorMsg = apiError?.message ?? "We couldn't sign you in. Check your details and try again.";
+      if (
+        apiError?.code === "AUTH_INVALID_CREDENTIALS" ||
+        errorMsg.toLowerCase().includes("identifier") ||
+        errorMsg.toLowerCase().includes("credentials") ||
+        errorMsg.toLowerCase().includes("wrong identifier")
+      ) {
+        errorMsg = "Wrong email or password. Please verify your credentials and try again.";
+      }
+      setError(errorMsg);
       setIsLoading(false);
     }
   };

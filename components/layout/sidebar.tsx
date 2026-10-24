@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Network, Users, CalendarRange, ScrollText, Settings,
   Library, Upload, FileCheck, BarChart3, CalendarClock,
   Radio, LogOut, Loader2, Headphones,
-  PanelLeftClose, PanelLeftOpen, ShieldAlert, X, ShieldCheck, AlertCircle
+  PanelLeftClose, PanelLeftOpen, ShieldAlert, X, ShieldCheck, AlertCircle, Bell
 } from "lucide-react";
 import { initialsOf, useUser } from "@/components/auth/user-context";
 import { roleLabel, type UiRole } from "@/lib/roles";
@@ -41,6 +41,7 @@ const roleMenus = {
   student: [
     { name: "My exams", href: "/student", icon: FileCheck },
     { name: "Results", href: "/student/results", icon: BarChart3 },
+    { name: "Notifications", href: "#notifications", icon: Bell },
     { name: "Help & Support", href: "/support", icon: Headphones },
   ]
 };
@@ -89,11 +90,20 @@ export function Sidebar({
         const Icon = item.icon;
         const isActive = bestMatch?.href === item.href;
         
+        const isNotif = item.href === "#notifications";
+        const handleClick = (e: React.MouseEvent) => {
+          if (isDrawer) onCloseMobile?.();
+          if (isNotif) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent("open-notifications"));
+          }
+        };
+
         return (
           <Link 
             key={item.href} 
             href={item.href}
-            onClick={() => isDrawer && onCloseMobile?.()}
+            onClick={handleClick}
             title={!isDrawer && isCollapsed ? item.name : undefined}
             className={cn(
               "flex items-center h-10 rounded-md text-[14px] font-medium transition-colors",

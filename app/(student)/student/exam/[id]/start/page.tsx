@@ -34,11 +34,14 @@ type SittingPayload = {
     venue: string;
     seatLabel: string | null;
     status: string;
+    startsAt?: string;
+    endsAt?: string;
     requiresAccessCode: boolean;
     instructions: Record<string, any> | null;
     isAlreadyTaken?: boolean;
     isGraceExpired?: boolean;
     isWindowClosed?: boolean;
+    isNotStartedYet?: boolean;
     antiCheatEnabled?: boolean;
   };
   candidate: {
@@ -58,6 +61,7 @@ type SittingPayload = {
   isAlreadyTaken?: boolean;
   isGraceExpired?: boolean;
   isWindowClosed?: boolean;
+  isNotStartedYet?: boolean;
   antiCheatEnabled?: boolean;
 };
 
@@ -175,6 +179,11 @@ export default function ExamStartPage() {
     Boolean(data?.isWindowClosed) ||
     Boolean(data?.sitting?.isWindowClosed) ||
     data?.sitting?.status === "CLOSED";
+
+  const isNotStartedYet =
+    Boolean(data?.isNotStartedYet) ||
+    Boolean(data?.sitting?.isNotStartedYet) ||
+    (data?.sitting?.status === "SCHEDULED" && data?.sitting?.startsAt && new Date() < new Date(data.sitting.startsAt));
 
   const initials = candidate.names
     .split(" ")
@@ -317,6 +326,27 @@ export default function ExamStartPage() {
             </div>
           )}
 
+          {/* EXAM NOT STARTED YET ALERT */}
+          {!isAlreadyTaken && !isGraceExpired && !isWindowClosed && isNotStartedYet && (
+            <div className="p-5 rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-base">
+                <Clock size={20} className="text-blue-600 dark:text-blue-400" />
+                Examination Has Not Commenced Yet
+              </div>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                This examination is scheduled for {sitting.startsAt ? new Date(sitting.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "its designated schedule"}. Access to start the examination is restricted until the official scheduled start date and time.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/student"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition-colors"
+                >
+                  <ArrowLeft size={14} /> Back to Dashboard
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Exam Instructions Bar - explicitly styled for dark mode clarity */}
           <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-3">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm uppercase tracking-wider flex items-center gap-1.5">
@@ -352,7 +382,7 @@ export default function ExamStartPage() {
           </div>
 
           {/* Form / Start Bar (hidden if blocked) */}
-          {!isAlreadyTaken && !isGraceExpired && !isWindowClosed && (
+          {!isAlreadyTaken && !isGraceExpired && !isWindowClosed && !isNotStartedYet && (
             <form onSubmit={handleStart} className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               {submitError && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-2">

@@ -94,6 +94,16 @@ export function Topbar({
     return () => window.removeEventListener("keydown", onKey);
   }, [notificationsOpen]);
 
+  // Support opening notifications from external triggers (e.g. sidebar menu)
+  React.useEffect(() => {
+    const handleOpen = () => {
+      setNotificationsOpen(true);
+      void reloadNotifications(true);
+    };
+    window.addEventListener("open-notifications", handleOpen);
+    return () => window.removeEventListener("open-notifications", handleOpen);
+  }, [reloadNotifications]);
+
   const openNotifications = () => {
     setNotificationsOpen(true);
     void reloadNotifications(true);

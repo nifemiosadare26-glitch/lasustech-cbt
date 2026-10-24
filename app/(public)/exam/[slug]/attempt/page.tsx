@@ -86,31 +86,64 @@ export default function PublicExamAttempt() {
   const chains = React.useRef(new Map<string, Promise<void>>());
   const submittingRef = React.useRef(false);
 
+  const handleCalcEval = () => {
+    if (!calcExpr) return;
+    try {
+      let s = calcExpr.trim();
+      s = s.replace(/×/g, "*").replace(/÷/g, "/").replace(/\^/g, "**");
+      s = s.replace(/π/g, `(${Math.PI})`).replace(/\be\b/g, `(${Math.E})`);
+
+      const opens = (s.match(/\(/g) || []).length;
+      const closes = (s.match(/\)/g) || []).length;
+      if (opens > closes) {
+        s += ")".repeat(opens - closes);
+      }
+
+      s = s.replace(/sin\(([^)]+)\)/g, "Math.sin((($1) * Math.PI) / 180)");
+      s = s.replace(/cos\(([^)]+)\)/g, "Math.cos((($1) * Math.PI) / 180)");
+      s = s.replace(/tan\(([^)]+)\)/g, "Math.tan((($1) * Math.PI) / 180)");
+      s = s.replace(/log\(([^)]+)\)/g, "Math.log10($1)");
+      s = s.replace(/ln\(([^)]+)\)/g, "Math.log($1)");
+      s = s.replace(/√\(([^)]+)\)/g, "Math.sqrt($1)");
+      s = s.replace(/√([0-9.]+)/g, "Math.sqrt($1)");
+
+      const res = Function(`"use strict"; return (${s})`)();
+      if (typeof res === "number" && !isNaN(res) && isFinite(res)) {
+        setCalcResult(String(Math.round(res * 100000) / 100000));
+      } else {
+        setCalcResult("Error");
+      }
+    } catch {
+      setCalcResult("Error");
+    }
+  };
+
   const handleCalcInput = (btn: string) => {
     if (btn === "AC") {
       setCalcExpr("");
       setCalcResult("0");
     } else if (btn === "=") {
-      try {
-        const sanitized = calcExpr.replace(/×/g, "*").replace(/÷/g, "/");
-        // eslint-disable-next-line no-new-func
-        const res = Function(`"use strict"; return (${sanitized})`)();
-        setCalcResult(String(res));
-      } catch {
-        setCalcResult("Error");
-      }
-    } else if (["sin", "cos", "tan"].includes(btn)) {
-      try {
-        const val = parseFloat(calcResult || "0");
-        const rad = (val * Math.PI) / 180;
-        let res = 0;
-        if (btn === "sin") res = Math.sin(rad);
-        if (btn === "cos") res = Math.cos(rad);
-        if (btn === "tan") res = Math.tan(rad);
-        setCalcResult(String(Math.round(res * 10000) / 10000));
-        setCalcExpr(`${btn}(${val})`);
-      } catch {
-        setCalcResult("Error");
+      handleCalcEval();
+    } else if (["sin", "cos", "tan", "log", "ln", "√"].includes(btn)) {
+      const matchNumber = calcExpr.match(/(\d+(\.\d+)?)$/);
+      if (matchNumber && !calcExpr.endsWith(")")) {
+        const num = matchNumber[0];
+        const prefix = calcExpr.slice(0, -num.length);
+        const newExpr = `${prefix}${btn}(${num})`;
+        setCalcExpr(newExpr);
+        try {
+          const val = Number(num);
+          let res = 0;
+          if (btn === "sin") res = Math.sin((val * Math.PI) / 180);
+          else if (btn === "cos") res = Math.cos((val * Math.PI) / 180);
+          else if (btn === "tan") res = Math.tan((val * Math.PI) / 180);
+          else if (btn === "log") res = Math.log10(val);
+          else if (btn === "ln") res = Math.log(val);
+          else if (btn === "√") res = Math.sqrt(val);
+          setCalcResult(String(Math.round(res * 100000) / 100000));
+        } catch {}
+      } else {
+        setCalcExpr((prev) => prev + `${btn}(`);
       }
     } else {
       setCalcExpr((prev) => prev + btn);

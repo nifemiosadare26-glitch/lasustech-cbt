@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import {
   Clock,
@@ -14,6 +15,7 @@ import {
   Bell,
   KeyRound,
   Lock,
+  X,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
@@ -107,6 +109,27 @@ export default function StudentDashboard() {
   const { data, loading, error, reload } =
     useApi<DashboardPayload>("/student/dashboard");
 
+  const [showLoginNotice, setShowLoginNotice] = React.useState(false);
+
+  // Pop up notifications immediately upon login, then remember dismissal for the session
+  React.useEffect(() => {
+    if (data?.notifications && data.notifications.length > 0) {
+      try {
+        const seen = sessionStorage.getItem("cbt_seen_login_notice");
+        if (!seen) {
+          setShowLoginNotice(true);
+        }
+      } catch {}
+    }
+  }, [data?.notifications]);
+
+  const handleDismissNotice = () => {
+    setShowLoginNotice(false);
+    try {
+      sessionStorage.setItem("cbt_seen_login_notice", "true");
+    } catch {}
+  };
+
   // Refresh automatically when an exam is created or changes status
   useRealtimeEvent("sitting.status", () => {
     void reload();
@@ -120,7 +143,7 @@ export default function StudentDashboard() {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-4 py-12">
         <Loader2 className="animate-spin text-blue-600" size={32} />
-        <p className="text-sm font-medium text-slate-500">
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
           Loading your examination timetable...
         </p>
       </div>
@@ -131,9 +154,9 @@ export default function StudentDashboard() {
   if (error && !data) {
     return (
       <div className="mx-auto w-full max-w-4xl py-12">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 p-6 text-rose-800 dark:text-rose-200">
           <div className="flex items-center gap-3">
-            <AlertCircle size={20} className="shrink-0 text-rose-600" />
+            <AlertCircle size={20} className="shrink-0 text-rose-600 dark:text-rose-400" />
             <div>
               <h3 className="text-base font-bold">Unable to load student portal</h3>
               <p className="mt-0.5 text-sm">
@@ -143,7 +166,7 @@ export default function StudentDashboard() {
           </div>
           <button
             onClick={() => reload()}
-            className="mt-4 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700"
+            className="mt-4 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700 cursor-pointer"
           >
             Try Again
           </button>
@@ -168,17 +191,56 @@ export default function StudentDashboard() {
   const completed = data?.completed ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 pb-12 pt-2">
+    <div className="mx-auto w-full max-w-4xl space-y-6 pb-12 pt-2 text-slate-900 dark:text-slate-100 font-sans">
+      {/* ----------------- Blinking Red Line: Ongoing Exam Alert ----------------- */}
+      {live.length > 0 && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-4 shadow-lg border-2 border-red-500 animate-pulse">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-3.5 w-3.5 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-white" />
+              </span>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-extrabold text-[11px] uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded text-white">
+                    Ongoing Examination
+                  </span>
+                  <span className="font-bold text-sm">
+                    {live[0].code} — {live[0].title}
+                  </span>
+                </div>
+                <p className="text-xs text-red-100 mt-0.5">
+                  Your examination is currently LIVE. Please enter the examination hall immediately.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={
+                live[0].attemptStatus === "IN_PROGRESS"
+                  ? `/student/exam/${live[0].id}`
+                  : live[0].accessCode
+                    ? `/student/exam/${live[0].id}/start?code=${encodeURIComponent(live[0].accessCode)}`
+                    : `/student/exam/${live[0].id}/start`
+              }
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-white text-red-700 hover:bg-red-50 text-xs font-bold rounded-xl shadow-xs transition-colors"
+            >
+              {live[0].attemptStatus === "IN_PROGRESS" ? "Resume Exam Now" : "Enter Exam Now"} &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* ------------------------- Student profile strip ------------------------ */}
-      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs sm:flex-row sm:items-center">
         <div>
-          <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-blue-700">
+          <span className="rounded-md bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
             Student Examination Portal
           </span>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Welcome, {student.firstName}
           </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             {student.matricNo} • {student.department.name} ({student.level})
           </p>
         </div>
@@ -187,54 +249,19 @@ export default function StudentDashboard() {
           <ThemeToggle className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl" />
           <Link
             href="/student/results"
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-2xs transition-colors hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-2xs transition-colors hover:bg-slate-800 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700"
           >
             <Award size={16} />
             View Results
           </Link>
           <Link
             href="/support"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/60"
           >
             Help & Support <ExternalLink size={14} className="text-slate-400" />
           </Link>
         </div>
       </div>
-
-      {/* ----------------- Notifications & Access Codes Banner ----------------- */}
-      {data?.notifications && data.notifications.length > 0 && (
-        <div className="space-y-2.5">
-          {data.notifications.slice(0, 3).map((n) => (
-            <div
-              key={n.id}
-              className="flex items-start justify-between gap-3 p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-sm shadow-2xs"
-            >
-              <div className="flex items-start gap-3">
-                <Bell size={18} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-blue-950 dark:text-blue-100">{n.title}</p>
-                  <p className="text-xs text-blue-800 dark:text-blue-300 mt-0.5 leading-relaxed">{n.body}</p>
-                </div>
-              </div>
-              {n.meta?.accessCode && (
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="font-mono font-bold text-xs bg-white dark:bg-slate-800 px-3 py-1 rounded-lg border border-blue-200 dark:border-blue-700 text-blue-900 dark:text-blue-200 shadow-2xs">
-                    Code: {n.meta.accessCode}
-                  </span>
-                  {n.meta?.href && (
-                    <Link
-                      href={n.meta.href}
-                      className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 hover:underline inline-flex items-center gap-0.5"
-                    >
-                      Unlock now <ArrowRight size={11} />
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* ------------------------ Section 1: Live exams ------------------------- */}
       {live.length > 0 ? (
@@ -242,7 +269,7 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between">
             <h2
               id="live-heading"
-              className="flex items-center gap-2 text-lg font-bold text-slate-900"
+              className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"
             >
               <span className="relative flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 motion-safe:animate-ping" />
@@ -250,7 +277,7 @@ export default function StudentDashboard() {
               </span>
               Exam Ready to Take Now
             </h2>
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold uppercase text-emerald-700">
+            <span className="rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-300">
               Active Session
             </span>
           </div>
@@ -266,36 +293,36 @@ export default function StudentDashboard() {
             return (
               <div
                 key={exam.id}
-                className="relative overflow-hidden rounded-2xl border-2 border-blue-600 bg-white p-6 shadow-md"
+                className="relative overflow-hidden rounded-2xl border-2 border-blue-600 bg-white dark:bg-slate-900 p-6 shadow-md"
               >
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
-                      <span className="rounded-md bg-blue-100 px-3 py-1 font-mono text-base font-bold text-blue-900">
+                      <span className="rounded-md bg-blue-100 dark:bg-blue-900/60 px-3 py-1 font-mono text-base font-bold text-blue-900 dark:text-blue-200">
                         {exam.code}
                       </span>
-                      <span className="text-xs font-medium text-slate-500">
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                         {exam.unit} Credit Units
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900">{exam.title}</h3>
-                      <p className="mt-0.5 text-sm text-slate-500">
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">{exam.title}</h3>
+                      <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
                         {student.college?.name || ""}
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 pt-1 text-sm text-slate-700">
+                    <div className="flex flex-wrap items-center gap-4 pt-1 text-sm text-slate-700 dark:text-slate-300">
                       <div className="flex items-center gap-1.5 font-medium">
-                        <Clock size={16} className="text-blue-600" />
+                        <Clock size={16} className="text-blue-600 dark:text-blue-400" />
                         <span>
                           {exam.durationLabel}
                           {exam.windowLabel ? ` (${exam.windowLabel})` : ""}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 font-medium">
-                        <MapPin size={16} className="text-blue-600" />
+                        <MapPin size={16} className="text-blue-600 dark:text-blue-400" />
                         <span>
                           {exam.venue}
                           {exam.seat ? ` • ${exam.seat}` : ""}
@@ -306,13 +333,13 @@ export default function StudentDashboard() {
                     {exam.requiresAccessCode && (
                       <div className="flex items-center gap-2 pt-0.5">
                         {exam.accessCode ? (
-                          <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900">
-                            <KeyRound size={13} className="text-amber-600" />
+                          <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 text-xs font-semibold text-amber-900 dark:text-amber-200">
+                            <KeyRound size={13} className="text-amber-600 dark:text-amber-400" />
                             <span>Unlock Access Code: <strong className="font-mono tracking-wider">{exam.accessCode}</strong></span>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                            <Lock size={13} className="text-slate-500" />
+                          <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+                            <Lock size={13} className="text-slate-500 dark:text-slate-400" />
                             <span>Requires Invigilator Access Code</span>
                           </div>
                         )}
@@ -320,7 +347,7 @@ export default function StudentDashboard() {
                     )}
 
                     {exam.lateText && (
-                      <p className="inline-block rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-900">
+                      <p className="inline-block rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 px-3 py-1.5 text-xs font-medium text-blue-900 dark:text-blue-200">
                         {hasStarted ? "Exam in progress — resume now" : exam.lateText}
                       </p>
                     )}
@@ -341,12 +368,12 @@ export default function StudentDashboard() {
           })}
         </section>
       ) : (
-        <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-6 text-center">
-          <CheckCircle2 size={32} className="mx-auto text-emerald-600" />
-          <h3 className="text-base font-bold text-slate-900">
+        <div className="space-y-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center">
+          <CheckCircle2 size={32} className="mx-auto text-emerald-600 dark:text-emerald-400" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
             No Examinations In Progress
           </h3>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             You do not have any active CBT examinations scheduled for this moment.
           </p>
         </div>
@@ -358,37 +385,37 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between">
             <h2
               id="upcoming-heading"
-              className="flex items-center gap-2 text-lg font-bold text-slate-900"
+              className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"
             >
-              <Calendar size={18} className="text-blue-600" />
+              <Calendar size={18} className="text-blue-600 dark:text-blue-400" />
               Upcoming Scheduled Examinations
             </h2>
-            <span className="text-xs font-medium text-slate-500">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               {upcoming.length} Paper{upcoming.length === 1 ? "" : "s"} Scheduled
             </span>
           </div>
 
-          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
             {upcoming.map((exam) => (
               <div
                 key={exam.id}
-                className="flex flex-col justify-between gap-4 p-5 transition-colors hover:bg-slate-50/70 sm:flex-row sm:items-center"
+                className="flex flex-col justify-between gap-4 p-5 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/50 sm:flex-row sm:items-center"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-slate-100 px-2.5 py-0.5 font-mono text-sm font-bold text-slate-900">
+                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
                       {exam.code}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {exam.unit} Credit Units
                     </span>
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                     {exam.title}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-3 pt-0.5 text-xs text-slate-500">
-                    <span className="flex items-center gap-1 font-medium text-slate-700">
-                      <Clock size={13} className="text-blue-600" />
+                  <div className="flex flex-wrap items-center gap-3 pt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                      <Clock size={13} className="text-blue-600 dark:text-blue-400" />
                       {exam.dateLabel}
                       {exam.windowLabel ? ` (${exam.windowLabel})` : ""}
                     </span>
@@ -400,7 +427,7 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="shrink-0">
-                  <span className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Scheduled
                   </span>
                 </div>
@@ -416,34 +443,34 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between">
             <h2
               id="completed-heading"
-              className="flex items-center gap-2 text-lg font-bold text-slate-900"
+              className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"
             >
-              <CheckCircle2 size={18} className="text-blue-600" />
+              <CheckCircle2 size={18} className="text-blue-600 dark:text-blue-400" />
               Completed Examinations
             </h2>
           </div>
 
-          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
             {completed.map((exam) => (
               <div
                 key={exam.id}
-                className="flex flex-col justify-between gap-4 p-5 transition-colors hover:bg-slate-50/70 sm:flex-row sm:items-center"
+                className="flex flex-col justify-between gap-4 p-5 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/50 sm:flex-row sm:items-center"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-slate-100 px-2.5 py-0.5 font-mono text-sm font-bold text-slate-900">
+                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
                       {exam.code}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {exam.unit} Credit Units
                     </span>
                   </div>
-                  <h3 className="text-base font-semibold text-slate-900">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                     {exam.title}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-3 pt-0.5 text-xs text-slate-500">
-                    <span className="flex items-center gap-1 font-medium text-slate-700">
-                      <Clock size={13} className="text-blue-600" /> {exam.dateLabel}
+                  <div className="flex flex-wrap items-center gap-3 pt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                      <Clock size={13} className="text-blue-600 dark:text-blue-400" /> {exam.dateLabel}
                     </span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
@@ -453,7 +480,7 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="shrink-0">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                     <CheckCircle2 size={13} />
                     Completed
                   </span>
@@ -462,6 +489,64 @@ export default function StudentDashboard() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* -------------------- Login Pop-up Notification Modal -------------------- */}
+      {showLoginNotice && data?.notifications && data.notifications.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center">
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">Examination Notice</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Important notification for your session</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissNotice}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+              {data.notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className="p-4 rounded-2xl bg-blue-50/80 dark:bg-slate-800/80 border border-blue-200 dark:border-slate-700 space-y-2"
+                >
+                  <p className="font-bold text-sm text-slate-900 dark:text-slate-100">{n.title}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.body}</p>
+                  {n.meta?.accessCode && (
+                    <div className="pt-1 flex items-center justify-between">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Access Code:</span>
+                      <span className="font-mono font-bold text-xs bg-white dark:bg-slate-900 px-3 py-1 rounded-lg border border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200">
+                        {n.meta.accessCode}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+              You can revisit notifications anytime from the side panel or top navigation bar.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleDismissNotice}
+              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors cursor-pointer shadow-xs"
+            >
+              Acknowledge &amp; Continue
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
