@@ -701,13 +701,15 @@ export default function UsersAndRoles() {
                             </span>
                           ))}
                         </div>
-                        {u.roles.includes("LECTURER") && (
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 text-[11px] text-blue-600 font-medium hover:text-blue-800">
-                              <BookOpen size={11} /> Manage courses
-                            </span>
-                          </div>
-                        )}
+                        <div className="mt-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditUser(u)}
+                            className="inline-flex items-center gap-1 text-[11px] text-blue-600 font-medium hover:text-blue-800 hover:underline cursor-pointer"
+                          >
+                            <BookOpen size={11} /> {u.roles.includes("STUDENT") ? "Manage enrollments" : "Manage courses"}
+                          </button>
+                        </div>
                       </td>
 
                       <td className="px-6 py-4 text-[14px] text-gray-700">

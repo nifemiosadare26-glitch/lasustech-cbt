@@ -113,7 +113,16 @@ export default function CourseManagementPage() {
 
   const { data: colleges = [] } = useApi<StructureCollege[]>("/admin/structure");
 
-  const { data: lecturers = [] } = useApi<LecturerUser[]>("/admin/users?role=LECTURER&pageSize=200");
+  const { data: staffList = [] } = useApi<LecturerUser[]>("/admin/users?pageSize=200");
+
+  const lecturers = useMemo(() => {
+    return (staffList as any[]).filter(
+      (u) =>
+        (u.roles && (u.roles.includes("LECTURER") || u.roles.includes("ADMIN"))) ||
+        !!u.staffId ||
+        !(u.roles && u.roles.includes("STUDENT") && u.roles.length === 1)
+    );
+  }, [staffList]);
 
   // Flattened departments with college name for clean select grouping
   const departments = useMemo(() => {
