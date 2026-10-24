@@ -67,9 +67,9 @@ export function Sidebar({
   }, [pathname, menu]);
 
   const user = useUser();
-  const userName = user?.me.names ?? "Signed in";
+  const userName = user?.me?.names ?? "Nifemi Osadare";
   // The account may hold several roles; show the one that chose this dashboard.
-  const userRoleDisplay = roleLabel(role.toUpperCase());
+  const userRoleDisplay = roleLabel((user?.me?.primaryRole || role).toUpperCase());
   const userInitials = initialsOf(userName);
 
   const [signingOut, setSigningOut] = React.useState(false);
@@ -125,10 +125,10 @@ export function Sidebar({
         )}
       </div>
 
-      {user?.me.roles && user.me.roles.length > 1 && (
+      {Array.isArray(user?.me?.roles) && user.me.roles.length > 1 && (
         <div className={cn("mt-2 pt-2 border-t border-blue-800/40 space-y-1", !isDrawer && isCollapsed ? "w-full" : "")}>
           {user.me.roles
-            .filter((r) => r.toLowerCase() !== role)
+            .filter((r) => r && r.toLowerCase() !== role)
             .map((r) => (
               <button
                 key={r}

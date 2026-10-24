@@ -1,0 +1,72 @@
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    data: {
+      student: {
+        id: "usr_stud_1",
+        names: "Nifemi Osadare",
+        firstName: "Nifemi",
+        matricNo: "CSC/2022/305",
+        level: "300 Level",
+        department: { name: "Computer Science" },
+        college: { name: "College of Basic Sciences" },
+      },
+      results: [
+        {
+          code: "CSC 301",
+          title: "Data Structures & Algorithms",
+          rawScore: 82,
+          maxScore: 100,
+          examScore: 82,
+          percent: 82,
+          remark: "Pass",
+          passed: true,
+          level: "300 Level",
+          session: "2026/2027",
+          semester: "Harmattan",
+        },
+        {
+          code: "CSC 305",
+          title: "Operating Systems Principles",
+          rawScore: 74,
+          maxScore: 100,
+          examScore: 74,
+          percent: 74,
+          remark: "Pass",
+          passed: true,
+          level: "300 Level",
+          session: "2026/2027",
+          semester: "Harmattan",
+        },
+        {
+          code: "MTH 301",
+          title: "Numerical Analysis I",
+          rawScore: 68,
+          maxScore: 100,
+          examScore: 68,
+          percent: 68,
+          remark: "Pass",
+          passed: true,
+          level: "300 Level",
+          session: "2026/2027",
+          semester: "Harmattan",
+        },
+        {
+          code: "CSC 201",
+          title: "Computer Programming I",
+          rawScore: 88,
+          maxScore: 100,
+          examScore: 88,
+          percent: 88,
+          remark: "Pass",
+          passed: true,
+          level: "200 Level",
+          session: "2025/2026",
+          semester: "Rain",
+        },
+      ],
+    },
+  });
+}

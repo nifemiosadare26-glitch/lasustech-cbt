@@ -246,13 +246,25 @@ export default function StudentDashboard() {
   }
 
   const rawStudent = data?.student;
+  const deptName = typeof rawStudent?.department === "object" && rawStudent?.department !== null
+    ? (rawStudent.department.name || "Computer Science")
+    : typeof rawStudent?.department === "string"
+      ? rawStudent.department
+      : "Computer Science";
+
+  const collegeName = typeof rawStudent?.college === "object" && rawStudent?.college !== null
+    ? (rawStudent.college.name || "College of Basic Sciences")
+    : typeof rawStudent?.college === "string"
+      ? rawStudent.college
+      : "College of Basic Sciences";
+
   const student = {
     firstName: (rawStudent?.firstName && rawStudent.firstName !== "Student") ? rawStudent.firstName : "Nifemi",
     names: (rawStudent?.names && rawStudent.names !== "Student Candidate" && rawStudent.names !== "Student") ? rawStudent.names : "Nifemi Osadare",
     matricNo: rawStudent?.matricNo || "CSC/2022/305",
     level: rawStudent?.level || "300 Level",
-    department: rawStudent?.department || { name: "Computer Science" },
-    college: rawStudent?.college || { name: "College of Basic Sciences" },
+    department: { name: deptName },
+    college: { name: collegeName },
   };
   // Load custom scheduled sittings if created in timetable
   const [customSittings, setCustomSittings] = useState<any[]>([]);

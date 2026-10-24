@@ -13,6 +13,12 @@ export function getRealtimeSocket(): Socket {
     return null as unknown as Socket;
   }
 
+  // On remote host (e.g. Vercel) without custom REALTIME_URL, do not connect to localhost
+  const isRemote = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+  if (isRemote && !process.env.NEXT_PUBLIC_REALTIME_URL) {
+    return null as unknown as Socket;
+  }
+
   if (!socketInstance) {
     const token = localStorage.getItem("accessToken");
 
@@ -21,10 +27,10 @@ export function getRealtimeSocket(): Socket {
       transports: ["websocket", "polling"],
       extraHeaders: { "ngrok-skip-browser-warning": "true" },
       reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
       reconnectionDelayMax: 5000,
-      timeout: 20000,
+      timeout: 10000,
     });
 
     socketInstance.on("connect", () => {

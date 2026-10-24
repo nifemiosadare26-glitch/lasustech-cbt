@@ -25,7 +25,8 @@ export function useUser(): SessionUser | null {
 }
 
 /** Two-letter monogram for the avatar, e.g. "Nifemi Osadare" -> "NO". */
-export function initialsOf(names: string): string {
+export function initialsOf(names?: string | null): string {
+  if (!names || typeof names !== "string") return "?";
   const parts = names.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();

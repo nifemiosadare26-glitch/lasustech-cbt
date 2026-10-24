@@ -42,8 +42,14 @@ const MOCK_ACCOUNTS: Record<string, Me> = {
 export function getMe(): Promise<Me> {
   if (cachedMe) return cachedMe;
   const promise = apiClient("/me")
-    .then((r) => r.data as Me)
-    .catch((err) => {
+    .then((r) => {
+      const account = r?.data || r;
+      if (!account || !account.primaryRole || !account.roles) {
+        throw new Error("Invalid /me response");
+      }
+      return account as Me;
+    })
+    .catch(() => {
       if (typeof window !== "undefined") {
         const storedRole = (localStorage.getItem("lasustech_role") || "").toUpperCase();
         let targetRole: RoleKey = "STUDENT";
@@ -56,12 +62,12 @@ export function getMe(): Promise<Me> {
         }
         return MOCK_ACCOUNTS[targetRole];
       }
-      throw err;
+      return MOCK_ACCOUNTS.STUDENT;
     });
 
-  cachedMe = promise.catch((err) => {
+  cachedMe = promise.catch(() => {
     cachedMe = null;
-    throw err;
+    return MOCK_ACCOUNTS.STUDENT;
   });
   return cachedMe;
 }

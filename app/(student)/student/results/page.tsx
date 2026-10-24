@@ -122,7 +122,20 @@ export default function StudentResultsPage() {
     );
   }
 
-  const student = data?.student ?? FALLBACK_STUDENT;
+  const rawStudent = data?.student;
+  const deptName = typeof rawStudent?.department === "object" && rawStudent?.department !== null
+    ? (rawStudent.department.name || "Computer Science")
+    : typeof rawStudent?.department === "string"
+      ? rawStudent.department
+      : "Computer Science";
+
+  const student = {
+    names: rawStudent?.names || FALLBACK_STUDENT.names,
+    matricNo: rawStudent?.matricNo || FALLBACK_STUDENT.matricNo,
+    level: rawStudent?.level || FALLBACK_STUDENT.level,
+    department: { name: deptName },
+    college: { name: "College of Basic Sciences" },
+  };
   const allResults = (data?.results && data.results.length > 0) ? data.results : FALLBACK_RESULTS;
 
   const filteredResults = allResults.filter((r) => {
