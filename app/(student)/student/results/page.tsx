@@ -26,11 +26,15 @@ interface ResultCourse {
   maxScore?: number;
   percent?: number;
   scoreLabel?: string;
-  remark: "Pass" | "Fail";
+  remark: "Pass" | "Fail" | "Withheld";
   passed: boolean;
   level: string;
   semester: string;
   session: string;
+  isHeld?: boolean;
+  holdReason?: string;
+  canReviewScript?: boolean;
+  status?: string;
 }
 
 type ResultsPayload = {
@@ -312,9 +316,11 @@ export default function StudentResultsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {filteredResults.map((r, idx) => {
+                  const isHeld = r.isHeld || r.status === "HELD";
                   const isFail = r.remark ? r.remark === "Fail" : r.examScore < 40;
-                  const displayScore =
-                    r.rawScore !== undefined && r.maxScore !== undefined
+                  const displayScore = isHeld
+                    ? "WITHHELD"
+                    : r.rawScore !== undefined && r.maxScore !== undefined
                       ? `${r.rawScore} / ${r.maxScore}`
                       : r.scoreLabel ?? `${r.examScore} / 100`;
 
@@ -327,26 +333,45 @@ export default function StudentResultsPage() {
                         <span className="text-xs font-medium text-slate-600 block mt-0.5">
                           {r.title}
                         </span>
+                        {isHeld && r.holdReason && (
+                          <span className="text-[11px] font-semibold text-amber-700 block mt-1">
+                            Notice: {r.holdReason}
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className="tabular-nums font-extrabold text-base text-slate-900">
-                          {displayScore}
-                        </span>
+                        {isHeld ? (
+                          <span className="font-mono font-black text-xs px-2.5 py-1 rounded bg-amber-100 text-amber-900 border border-amber-300 inline-block">
+                            WITHHELD
+                          </span>
+                        ) : (
+                          <span className="tabular-nums font-extrabold text-base text-slate-900">
+                            {displayScore}
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span
-                          className={`tabular-nums font-bold text-xs px-2.5 py-1 rounded-md inline-block ${
-                            isFail
-                              ? "bg-rose-50 text-rose-700 border border-rose-200"
-                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          }`}
-                        >
-                          {r.percent ?? r.examScore}%
-                        </span>
+                        {isHeld ? (
+                          <span className="text-xs font-semibold text-slate-400 italic">—</span>
+                        ) : (
+                          <span
+                            className={`tabular-nums font-bold text-xs px-2.5 py-1 rounded-md inline-block ${
+                              isFail
+                                ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            }`}
+                          >
+                            {r.percent ?? r.examScore}%
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-4 sm:px-6 text-right">
                         <div className="flex items-center justify-end gap-2.5">
-                          {isFail ? (
+                          {isHeld ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 border border-amber-300">
+                              <AlertCircle size={13} className="text-amber-600" /> Malpractice Review
+                            </span>
+                          ) : isFail ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 border border-rose-200">
                               <AlertCircle size={13} className="text-rose-600" /> Fail
                             </span>
@@ -355,7 +380,7 @@ export default function StudentResultsPage() {
                               <CheckCircle2 size={13} className="text-emerald-600" /> Pass
                             </span>
                           )}
-                          {r.attemptId && (
+                          {r.attemptId && !isHeld && (
                             <button
                               type="button"
                               onClick={() => setSelectedAttemptId(r.attemptId!)}
@@ -363,6 +388,14 @@ export default function StudentResultsPage() {
                             >
                               <FileText size={12} /> Review Script
                             </button>
+                          )}
+                          {isHeld && (
+                            <span
+                              title="Script review is disabled while examination result is under malpractice review"
+                              className="text-[11px] text-slate-400 italic font-medium"
+                            >
+                              Review Locked
+                            </span>
                           )}
                         </div>
                       </td>

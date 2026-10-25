@@ -161,13 +161,6 @@ export function CandidateScriptModal({
       );
       return;
     }
-    if (!reason.trim() || reason.trim().length < 5) {
-      setOverrideError(
-        "A detailed reason (at least 5 characters) is required for Senate audit."
-      );
-      return;
-    }
-
     setIsSubmittingOverride(true);
     setOverrideError(null);
 
@@ -176,11 +169,11 @@ export function CandidateScriptModal({
         method: "POST",
         body: JSON.stringify({
           newRawScore: parsedScore,
-          reason: reason.trim(),
+          reason: reason.trim() || undefined,
         }),
       });
 
-      toast.show("Score successfully adjusted and logged into institutional audit.");
+      toast.show("Score successfully adjusted.");
       setIsOverrideOpen(false);
       setReason("");
       await fetchScript();
@@ -327,7 +320,7 @@ export function CandidateScriptModal({
                       <strong>Read-Only Academic Slip Review:</strong> Lecturers can inspect
                       the candidate&apos;s submitted choices against the answer key. To comply
                       with university examination integrity regulations, direct score overrides
-                      are restricted to CBT Administrators / Senate Examinations Office. If an
+                      are restricted to CBT Examination Administrators. If an
                       error in keying was found, submit an adjustment request to the admin.
                     </div>
                   </div>
@@ -629,19 +622,15 @@ export function CandidateScriptModal({
 
             <div>
               <label className="block text-[13px] font-semibold text-gray-700 mb-1">
-                Senate / Audit Justification Reason *
+                Remarks / Notes (Optional)
               </label>
               <textarea
-                rows={3}
-                required
+                rows={2}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g. Approved by Senate Examinations Committee due to typographical error in Option C of Question #5."
+                placeholder="Optional notes or remarks on this score adjustment."
                 className="w-full rounded-md border border-gray-300 p-2.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
               />
-              <span className="text-[11px] text-gray-500 mt-0.5 block">
-                Minimum 5 characters. This justification is permanently logged with your admin identity.
-              </span>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">

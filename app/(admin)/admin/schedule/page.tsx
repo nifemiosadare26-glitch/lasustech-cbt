@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock,
+  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock, Printer,
 } from "lucide-react";
 import Link from "next/link";
 import { apiClient } from "@/lib/apiClient";
@@ -14,6 +14,7 @@ import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
 import { fmtDateTime } from "@/lib/format";
 import { ConfirmModal, ErrorBanner, Modal, Pagination, errMessage, selectCls, useToast } from "@/components/admin/ui";
+import { ExamAttendanceModal } from "@/components/admin/exam-attendance-modal";
 
 type SittingStatus = "SCHEDULED" | "OPEN" | "CLOSED" | "CANCELLED";
 
@@ -127,6 +128,7 @@ export default function AdminExamSchedule() {
 
   const [panel, setPanel] = React.useState<{ mode: "create" } | { mode: "edit"; sitting: Sitting } | null>(null);
   const [accessCode, setAccessCode] = React.useState<string | null>(null);
+  const [attendanceSittingId, setAttendanceSittingId] = React.useState<string | null>(null);
   const [menu, setMenu] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [cancelling, setCancelling] = React.useState<Sitting | null>(null);
@@ -374,11 +376,11 @@ export default function AdminExamSchedule() {
                                 type="button"
                                 onClick={() => {
                                   setMenu(null);
-                                  window.print();
+                                  setAttendanceSittingId(slot.id);
                                 }}
-                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer flex items-center gap-1.5"
                               >
-                                Print Attendance
+                                <Printer size={13} className="text-slate-500" /> Print Attendance
                               </button>
                               <Link
                                 href={`/admin/live/${slot.id}`}
@@ -482,6 +484,13 @@ export default function AdminExamSchedule() {
             <p className="text-[12px] text-gray-500 mt-2">Stored only as a bcrypt hash.</p>
           </div>
         </Modal>
+      )}
+
+      {attendanceSittingId && (
+        <ExamAttendanceModal
+          sittingId={attendanceSittingId}
+          onClose={() => setAttendanceSittingId(null)}
+        />
       )}
 
       {cancelling && (

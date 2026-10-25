@@ -316,6 +316,45 @@ export default function ExamAttemptPage() {
     return () => clearInterval(interval);
   }, [attemptId, isSubmitting, loading, router, sittingId]);
 
+  // Real-time socket for instant proctor intervention pop-ups & broadcast
+  useEffect(() => {
+    if (!sittingId && !attemptId) return;
+    const socket = getRealtimeSocket();
+    if (!socket) return;
+
+    if (sittingId) socket.emit("join_sitting", sittingId);
+
+    const handleRealtimeEvent = (payload: any) => {
+      if (payload?.type === "attempt.intervene") {
+        if (payload?.attemptId === attemptId || (candidateStudentId && payload?.studentId === candidateStudentId)) {
+          if (payload?.action === "MESSAGE" && payload?.extra?.message) {
+            setProctorMessage(String(payload.extra.message));
+          } else if (payload?.action === "PAUSE") {
+            setIsPausedByProctor(true);
+          } else if (payload?.action === "RESUME") {
+            setIsPausedByProctor(false);
+          } else if (payload?.action === "SUBMIT" || payload?.action === "TERMINATE") {
+            router.replace(`/student/exam/${sittingId}/done`);
+          }
+        }
+      } else if (payload?.type === "sitting.broadcast") {
+        if (payload?.sittingId === sittingId && payload?.message) {
+          setProctorMessage(String(payload.message));
+        }
+      }
+    };
+
+    socket.on("event", handleRealtimeEvent);
+    socket.on("attempt.intervene", handleRealtimeEvent);
+    socket.on("sitting.broadcast", handleRealtimeEvent);
+
+    return () => {
+      socket.off("event", handleRealtimeEvent);
+      socket.off("attempt.intervene", handleRealtimeEvent);
+      socket.off("sitting.broadcast", handleRealtimeEvent);
+    };
+  }, [sittingId, attemptId, candidateStudentId, router]);
+
   // Camera Acquisition & Stream Setup
   useEffect(() => {
     let mounted = true;
@@ -1584,6 +1623,35 @@ export default function ExamAttemptPage() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proctor Message Attention-Grabbing Modal Pop-up */}
+      {proctorMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border-2 border-blue-600 dark:border-blue-500 space-y-5 text-center">
+            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto border-2 border-blue-200 dark:border-blue-800 shadow-inner">
+              <Megaphone size={32} />
+            </div>
+            <div>
+              <span className="inline-block bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
+                Official Invigilator Notice
+              </span>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Message from Invigilator
+              </h3>
+              <div className="mt-3 p-4 rounded-2xl bg-blue-50/60 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed text-left whitespace-pre-wrap">
+                {proctorMessage}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setProctorMessage(null)}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 size={16} /> Acknowledge &amp; Resume Examination
+            </button>
           </div>
         </div>
       )}

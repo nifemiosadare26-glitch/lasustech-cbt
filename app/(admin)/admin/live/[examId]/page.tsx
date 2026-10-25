@@ -34,12 +34,15 @@ import {
   Camera,
   Video,
   VideoOff,
+  Printer,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient, apiDownload } from "@/lib/apiClient";
 import { getRealtimeSocket } from "@/lib/realtime";
 import { useApi } from "@/lib/useApi";
 import { fmtDateTime, timeAgo } from "@/lib/format";
+import { ExamAttendanceModal } from "@/components/admin/exam-attendance-modal";
 import {
   ConfirmModal,
   ErrorBanner,
@@ -214,6 +217,10 @@ export default function LiveCandidateGrid() {
   const [filter, setFilter] = React.useState<Filter>("all");
   const [search, setSearch] = React.useState("");
   const [view, setView] = React.useState<"grid" | "table">("grid");
+  const [gridDensity, setGridDensity] = React.useState<"compact" | "standard" | "large">("compact");
+  const [suspiciousOnly, setSuspiciousOnly] = React.useState(false);
+  const [attendanceModalOpen, setAttendanceModalOpen] = React.useState(false);
+  const [updatedAccessCode, setUpdatedAccessCode] = React.useState<string | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
 
   const [extendFor, setExtendFor] = React.useState<LiveStudent | null>(null);
@@ -263,6 +270,12 @@ export default function LiveCandidateGrid() {
     };
 
     socket.on("candidate_camera_frame", handleCameraFrame);
+    socket.on("sitting.access_code_updated", (payload: any) => {
+      if (payload?.accessCode) {
+        setUpdatedAccessCode(payload.accessCode);
+        toast.show("Access code regenerated mid-exam: " + payload.accessCode, "ok");
+      }
+    });
     socket.on("event", handleLiveEvent);
     socket.on("attempt.intervene", handleLiveEvent);
     socket.on("sitting.broadcast", handleLiveEvent);
@@ -270,6 +283,7 @@ export default function LiveCandidateGrid() {
 
     return () => {
       socket.off("candidate_camera_frame", handleCameraFrame);
+      socket.off("sitting.access_code_updated");
       socket.off("event", handleLiveEvent);
       socket.off("attempt.intervene", handleLiveEvent);
       socket.off("sitting.broadcast", handleLiveEvent);
@@ -304,6 +318,7 @@ export default function LiveCandidateGrid() {
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     return students.filter((s) => {
+      if (suspiciousOnly && s.flags === 0) return false;
       if (filter === "active" && !(s.state === "ACTIVE" || s.state === "PAUSED")) return false;
       if (filter === "flagged" && s.flags === 0) return false;
       if (filter === "offline" && s.state !== "OFFLINE") return false;
@@ -320,8 +335,8 @@ export default function LiveCandidateGrid() {
         (s.matricNo ?? "").toLowerCase().includes(q) ||
         (s.seat ?? "").toLowerCase().includes(q)
       );
-    });
-  }, [students, filter, search]);
+        }).sort((a, b) => (b.flags !== a.flags ? b.flags - a.flags : 0));
+  }, [students, filter, search, suspiciousOnly]);
 
   const selected = students.find((s) => s.studentId === selectedId) ?? null;
 
@@ -438,8 +453,8 @@ export default function LiveCandidateGrid() {
           <Button variant="outline" onClick={refresh} isLoading={refreshing}>
             {!refreshing && <RefreshCw size={16} className="mr-2" />} Refresh
           </Button>
-          <Button variant="secondary" onClick={exportLog} isLoading={exporting}>
-            {!exporting && <Download size={16} className="mr-2" />} Proctor log
+          <Button variant="secondary" onClick={() => setAttendanceModalOpen(true)}>
+            <Printer size={16} className="mr-2" /> Print Attendance
           </Button>
           <Button variant="secondary" onClick={() => setBroadcastOpen(true)}>
             <Megaphone size={16} className="mr-2" /> Broadcast
@@ -450,6 +465,32 @@ export default function LiveCandidateGrid() {
         </div>
       </div>
 
+      {updatedAccessCode && (
+        <div className="bg-amber-50 border-2 border-amber-300 text-amber-900 px-4 py-3 rounded-xl flex items-center justify-between shadow-xs mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-200/80 text-amber-800">
+              <KeyRound size={20} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-amber-950 flex items-center gap-2">
+                Access Code Regenerated During Examination:
+                <span className="font-mono text-sm bg-white px-2.5 py-0.5 rounded border border-amber-300 font-black text-amber-900 tracking-wider">
+                  {updatedAccessCode}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                Active candidates in progress continue uninterrupted without re-authenticating. Provide this new code only to authorized latecoming students.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setUpdatedAccessCode(null)}
+            className="text-xs text-amber-800 hover:text-amber-950 font-bold px-2.5 py-1 rounded-md hover:bg-amber-100 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {error && <ErrorBanner error={error} onRetry={reload} />}
 
       {/* KPI strip */}
@@ -489,7 +530,70 @@ export default function LiveCandidateGrid() {
                   {label} <span className={filter === key ? "text-gray-300" : "text-gray-400"}>{count}</span>
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setSuspiciousOnly(!suspiciousOnly)}
+                title="Filter down to candidates with suspicious flags"
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  suspiciousOnly
+                    ? "bg-red-600 text-white shadow-md ring-2 ring-red-400 font-extrabold"
+                    : "bg-white text-red-700 border border-red-200 hover:bg-red-50"
+                }`}
+              >
+                <ShieldAlert size={14} className={suspiciousOnly ? "text-white" : "text-red-600"} />
+                Suspicious Focus
+                {counts.flagged > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                      suspiciousOnly ? "bg-red-800 text-white" : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {counts.flagged}
+                  </span>
+                )}
+              </button>
             </div>
+
+            {view === "grid" && (
+              <div className="flex items-center rounded-lg border border-gray-200 bg-white p-0.5 text-xs shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setGridDensity("compact")}
+                  title="Dense View: Small video thumbnails allowing simultaneous monitoring of large candidate rosters"
+                  className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                    gridDensity === "compact"
+                      ? "bg-slate-900 text-white font-bold"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium"
+                  }`}
+                >
+                  Dense (Small Video)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGridDensity("standard")}
+                  title="Standard View"
+                  className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                    gridDensity === "standard"
+                      ? "bg-slate-900 text-white font-bold"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium"
+                  }`}
+                >
+                  Standard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGridDensity("large")}
+                  title="Large View: Prominent video frames for close inspection"
+                  className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                    gridDensity === "large"
+                      ? "bg-slate-900 text-white font-bold"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium"
+                  }`}
+                >
+                  Large Focus
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center rounded-lg border border-gray-200 bg-white p-0.5">
               <button
@@ -520,12 +624,22 @@ export default function LiveCandidateGrid() {
               No candidates match this view.
             </div>
           ) : view === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+            <div
+              className={cn(
+                "grid gap-2.5",
+                gridDensity === "compact"
+                  ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10"
+                  : gridDensity === "large"
+                    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5"
+                    : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5"
+              )}
+            >
               {filtered.map((s) => (
                 <CandidateCard
                   key={s.studentId}
                   student={s}
                   frame={candidateFrames[s.studentId] || (s.attemptId ? candidateFrames[s.attemptId] : undefined) || (s.matricNo ? candidateFrames[s.matricNo] : undefined)}
+                  density={gridDensity}
                   now={now}
                   busy={busyKey === s.studentId}
                   onInspect={() => setSelectedId(s.studentId)}
@@ -835,6 +949,25 @@ export default function LiveCandidateGrid() {
         />
       )}
 
+      {attendanceModalOpen && (
+
+
+        <ExamAttendanceModal
+
+
+          sittingId={examId}
+
+
+          onClose={() => setAttendanceModalOpen(false)}
+
+
+        />
+
+
+      )}
+
+
+
       {confirmState && (
         <ConfirmModal
           title={confirmState.title}
@@ -910,9 +1043,11 @@ function CandidateCard({
   frame,
   now,
   busy,
+  density = "standard",
   onInspect,
   onPauseResume,
 }: {
+  density?: "compact" | "standard" | "large";
   student: LiveStudent;
   frame?: string;
   now: number;
@@ -929,13 +1064,13 @@ function CandidateCard({
           : student.state === "PAUSED"
             ? "border-amber-200"
             : student.flags > 0
-              ? "border-amber-200"
+              ? "border-2 border-red-500 bg-red-50/20 ring-2 ring-red-400 shadow-md shadow-red-500/10"
               : "border-gray-200"
       }`}
     >
       {/* Live Video / Snapshot Preview Thumbnail */}
       <div
-        className="relative w-full h-28 rounded-lg overflow-hidden bg-slate-950 mb-2.5 border border-slate-800 flex items-center justify-center group cursor-pointer"
+        className={cn("relative w-full rounded-lg overflow-hidden bg-slate-950 mb-2.5 border border-slate-800 flex items-center justify-center group cursor-pointer", density === "compact" ? "h-20" : density === "large" ? "h-56" : "h-28")}
         onClick={onInspect}
       >
         {frame ? (
@@ -967,7 +1102,7 @@ function CandidateCard({
         </div>
         {student.flags > 0 && (
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0">
-            <Flag size={11} /> {student.flags}
+            <Flag size={11} className="fill-red-600 text-red-600" /> SUSPICIOUS ({student.flags})
           </span>
         )}
       </div>

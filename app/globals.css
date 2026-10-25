@@ -235,13 +235,23 @@ body {
 .dark .fill-amber-600 { fill: #FBBF24; }
 .dark .fill-amber-700 { fill: #FCD34D; }
 
+/* Make all slide bars (scrollbars) invisible globally while preserving scrolling capability */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.scrollbar-clean {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
 .scrollbar-clean::-webkit-scrollbar {
-  width: 8px;
-}
-.scrollbar-clean::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scrollbar-clean::-webkit-scrollbar-thumb {
-  background-color: var(--color-gray-300);
-  border-radius: 20px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

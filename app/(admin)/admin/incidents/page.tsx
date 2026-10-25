@@ -640,7 +640,7 @@ function IncidentDetail({
 
         {incident.status !== "RESOLVED" && (
           <div className="pt-2">
-            <h4 className="text-[12px] font-bold text-gray-700 uppercase tracking-wider mb-2">Update Docket Status</h4>
+            <h4 className="text-[12px] font-bold text-gray-700 uppercase tracking-wider mb-2">Immediate Decision</h4>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
@@ -653,12 +653,12 @@ function IncidentDetail({
               </Button>
               <Button
                 size="sm"
-                variant={incident.status === "ESCALATED" ? "danger" : "secondary"}
-                disabled={busy || incident.status === "ESCALATED"}
-                onClick={() => onStatus("ESCALATED")}
+                variant="danger"
+                disabled={busy}
+                onClick={onResolve}
                 className="text-[12px]"
               >
-                <ShieldAlert size={14} className="mr-1.5" /> Escalate to Chief Examiner
+                <ShieldAlert size={14} className="mr-1.5" /> Make Decision &amp; Resolve
               </Button>
             </div>
           </div>
@@ -688,6 +688,9 @@ function ResolveIncidentModal({
 }) {
   const [note, setNote] = React.useState("");
   const [actionTaken, setActionTaken] = React.useState(incident.actionTaken ?? "");
+  const [decision, setDecision] = React.useState<"EXONERATE" | "HOLD_MALPRACTICE" | "CANCEL_ATTEMPT">(
+    incident.category === "MALPRACTICE" ? "HOLD_MALPRACTICE" : "EXONERATE"
+  );
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -695,11 +698,19 @@ function ResolveIncidentModal({
     setPending(true);
     setError(null);
     try {
+      const holdResult = decision === "HOLD_MALPRACTICE";
       await apiClient(`/admin/incidents/${incident.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           status: "RESOLVED",
-          resolutionNote: note.trim(),
+          resolutionNote: `[${
+            decision === "HOLD_MALPRACTICE"
+              ? "MALPRACTICE CONFIRMED — RESULT WITHHELD"
+              : decision === "CANCEL_ATTEMPT"
+                ? "ATTEMPT VOIDED"
+                : "EXONERATED / CLEARED"
+          }] ${note.trim()}`,
+          holdResult,
           ...(actionTaken.trim() ? { actionTaken: actionTaken.trim() } : {}),
         }),
       });
@@ -721,29 +732,114 @@ function ResolveIncidentModal({
           <Button variant="secondary" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button onClick={submit} isLoading={pending} disabled={note.trim().length < 3}>
-            Close docket
+          <Button
+            variant={decision === "HOLD_MALPRACTICE" ? "danger" : "primary"}
+            onClick={submit}
+            isLoading={pending}
+            disabled={note.trim().length < 3}
+          >
+            {decision === "HOLD_MALPRACTICE" ? "Hold Result & Close" : "Save Decision"}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
+        {/* Single Reviewer Decision Selector */}
+        <div>
+          <label className="text-[13px] font-bold text-gray-800 block mb-2">
+            Examiner Final Decision
+          </label>
+          <div className="grid grid-cols-1 gap-2">
+            <label
+              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                decision === "HOLD_MALPRACTICE"
+                  ? "border-rose-400 bg-rose-50/70"
+                  : "border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="decision"
+                checked={decision === "HOLD_MALPRACTICE"}
+                onChange={() => setDecision("HOLD_MALPRACTICE")}
+                className="mt-1 text-rose-600 focus:ring-rose-500"
+              />
+              <div>
+                <span className="text-xs font-bold text-rose-950 block">
+                  Hold Result (Malpractice Confirmed)
+                </span>
+                <span className="text-[11px] text-rose-800">
+                  Immediately withholds the student&apos;s result on the student portal and locks script review.
+                </span>
+              </div>
+            </label>
+
+            <label
+              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                decision === "EXONERATE"
+                  ? "border-emerald-400 bg-emerald-50/70"
+                  : "border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="decision"
+                checked={decision === "EXONERATE"}
+                onChange={() => setDecision("EXONERATE")}
+                className="mt-1 text-emerald-600 focus:ring-emerald-500"
+              />
+              <div>
+                <span className="text-xs font-bold text-emerald-950 block">
+                  Exonerate / Clear (Result Valid)
+                </span>
+                <span className="text-[11px] text-emerald-800">
+                  Candidate cleared of infraction; result remains valid and accessible according to institutional release rules.
+                </span>
+              </div>
+            </label>
+
+            <label
+              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                decision === "CANCEL_ATTEMPT"
+                  ? "border-amber-400 bg-amber-50/70"
+                  : "border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="decision"
+                checked={decision === "CANCEL_ATTEMPT"}
+                onChange={() => setDecision("CANCEL_ATTEMPT")}
+                className="mt-1 text-amber-600 focus:ring-amber-500"
+              />
+              <div>
+                <span className="text-xs font-bold text-amber-950 block">
+                  Void Attempt (Technical or Procedural)
+                </span>
+                <span className="text-[11px] text-amber-800">
+                  Candidate attempt is voided without malpractice prejudice.
+                </span>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <div>
           <label className="text-[13px] font-medium text-gray-700 block mb-1">Action enforced</label>
           <textarea
             className="w-full min-h-20 rounded-md border border-gray-300 bg-white px-3 py-2 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={actionTaken}
             onChange={(e) => setActionTaken(e.target.value)}
-            placeholder="What was done at the hall?"
+            placeholder="What was done at the workstation or hall?"
           />
         </div>
         <div>
-          <label className="text-[13px] font-medium text-gray-700 block mb-1">Resolution note</label>
+          <label className="text-[13px] font-medium text-gray-700 block mb-1">Decision reasoning / note</label>
           <textarea
             className="w-full min-h-24 rounded-md border border-gray-300 bg-white px-3 py-2 text-[14px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Explain the decision for the audit record..."
+            placeholder="Document examiner findings and justification..."
           />
         </div>
         {error && (

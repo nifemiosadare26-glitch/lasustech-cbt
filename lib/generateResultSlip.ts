@@ -17,7 +17,7 @@ export type SlipCourse = {
   maxScore?: number;
   percent?: number;
   scoreLabel?: string;
-  remark?: "Pass" | "Fail";
+  remark?: "Pass" | "Fail" | "Withheld";
   semester: string;
   session: string;
 };
@@ -102,7 +102,7 @@ function scoreText(r: SlipCourse) {
   return r.scoreLabel ?? `${r.examScore} / 100`;
 }
 
-function remarkOf(r: SlipCourse): "Pass" | "Fail" {
+function remarkOf(r: SlipCourse): "Pass" | "Fail" | "Withheld" {
   return r.remark ?? (r.examScore < 40 ? "Fail" : "Pass");
 }
 
