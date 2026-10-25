@@ -194,6 +194,23 @@ export default function UsersAndRoles() {
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [importDefaultDept, setImportDefaultDept] = useState<string>("");
+  const [importDefaultLevel, setImportDefaultLevel] = useState<number>(100);
+  const [importSummary, setImportSummary] = useState<{
+    total: number;
+    created: number;
+    failed: { row: number; reason: string }[];
+  } | null>(null);
+
+  const handleDownloadTemplate = () => {
+    const csvContent = toCsv([
+      ["Full Name", "Role", "Matric No", "Staff ID", "Email", "Department", "Level", "Password"],
+      ["Ogunleye Adewale Samuel", "STUDENT", "CSC/2022/001", "", "adewale@lasustech.edu.ng", "Computer Science", "100", ""],
+      ["Dr. Babatunde Fashola", "LECTURER", "", "STF/CSC/012", "babatunde@lasustech.edu.ng", "Computer Science", "", ""],
+      ["Bello Kemi Victoria", "STUDENT", "CSC/2022/002", "", "kemi@lasustech.edu.ng", "Computer Science", "100", ""],
+    ]);
+    downloadText("LASUSTECH_Users_Import_Template.csv", csvContent);
+  };
 
   // Selection helpers.
   const isAllCurrentSelected =
@@ -441,10 +458,12 @@ export default function UsersAndRoles() {
     e.target.value = "";
     if (!file) return;
     setImporting(true);
+    setImportSummary(null);
     try {
-      const rows = parseCsv(await file.text());
+      const rawRows = parseCsv(await file.text());
+      const rows = rawRows.filter((r) => r.some((c) => c && c.trim()));
       if (rows.length < 2) throw new Error("The file has no data rows.");
-      const headers = rows[0].map((h) => h.trim().toLowerCase().replace(/[\s_]+/g, ""));
+      const headers = rows[0].map((h) => h.trim().toLowerCase().replace(/[\s_.-]+/g, ""));
       const index = (...names: string[]) => {
         for (const n of names) {
           const i = headers.indexOf(n);
@@ -452,32 +471,50 @@ export default function UsersAndRoles() {
         }
         return -1;
       };
-      const iName = index("name", "names", "fullname");
-      const iRole = index("role", "roles");
-      const iMatric = index("matricno", "matric", "matricnumber");
-      const iStaff = index("staffid", "staff", "staffnumber");
+      const iName = index("name", "names", "fullname", "studentname", "staffname");
+      const iRole = index("role", "roles", "usertype", "accounttype");
+      const iMatric = index("matricno", "matric", "matricnumber", "studentno", "regno", "registrationno");
+      const iStaff = index("staffid", "staff", "staffnumber", "staffno", "employeeno");
       const iEmail = index("email", "emailaddress");
-      const iDept = index("department", "dept");
+      const iPhone = index("phone", "phonenumber", "mobile", "tel");
+      const iDept = index("department", "dept", "programme", "courseofstudy", "departmentcode");
+      const iLevel = index("level", "academiclevel", "classlevel", "year");
       const iPassword = index("password");
-      if (iName < 0 || iRole < 0) throw new Error("CSV needs at least Name and Role columns.");
+      if (iName < 0) throw new Error("CSV needs at least a 'Name' or 'Full Name' column.");
 
-      const body = rows.slice(1).map((r) => ({
-        names: r[iName]?.trim(),
-        role: r[iRole]?.trim(),
-        matricNo: iMatric >= 0 ? r[iMatric]?.trim() : undefined,
-        staffId: iStaff >= 0 ? r[iStaff]?.trim() : undefined,
-        email: iEmail >= 0 ? r[iEmail]?.trim() : undefined,
-        department: iDept >= 0 ? r[iDept]?.trim() : undefined,
-        password: iPassword >= 0 ? r[iPassword]?.trim() : undefined,
-      }));
+      const body = rows.slice(1).map((r) => {
+        const rawRole = iRole >= 0 ? r[iRole]?.trim() : undefined;
+        const matric = iMatric >= 0 ? r[iMatric]?.trim() : undefined;
+        const staff = iStaff >= 0 ? r[iStaff]?.trim() : undefined;
+        const effectiveRole = rawRole || (matric ? "STUDENT" : staff ? "LECTURER" : "STUDENT");
+        const rawLevel = iLevel >= 0 ? Number(r[iLevel]?.replace(/\D/g, "")) : undefined;
+        return {
+          names: r[iName]?.trim(),
+          role: effectiveRole,
+          matricNo: matric,
+          staffId: staff,
+          email: iEmail >= 0 ? r[iEmail]?.trim() : undefined,
+          phone: iPhone >= 0 ? r[iPhone]?.trim() : undefined,
+          department: iDept >= 0 ? r[iDept]?.trim() : undefined,
+          level: rawLevel && !isNaN(rawLevel) ? rawLevel : undefined,
+          password: iPassword >= 0 ? r[iPassword]?.trim() : undefined,
+        };
+      }).filter((u) => u.names);
+
+      if (body.length === 0) throw new Error("No valid user records found in the CSV file.");
 
       const result = await action.run<
         { total: number; created: number; failed: { row: number; reason: string }[] },
         { credentials?: { id: string; names: string; identifier: string; temporaryPassword: string }[] }
       >("/admin/users/import", {
         method: "POST",
-        body: JSON.stringify({ rows: body, dryRun: false }),
-        success: "Import finished",
+        body: JSON.stringify({
+          rows: body,
+          dryRun: false,
+          defaultDepartmentId: importDefaultDept || undefined,
+          defaultLevel: importDefaultLevel || undefined,
+        }),
+        success: "Import completed",
         onSuccess: (data, meta) => {
           if (meta?.credentials?.length) {
             downloadText(
@@ -488,14 +525,18 @@ export default function UsersAndRoles() {
               ]),
             );
           }
+          setImportSummary({
+            total: data.total,
+            created: data.created,
+            failed: data.failed || [],
+          });
           toast({
             title: `${data.created} of ${data.total} users created`,
             description: data.failed.length
-              ? `${data.failed.length} row(s) failed — first: line ${data.failed[0].row}, ${data.failed[0].reason}`
-              : "All rows imported.",
+              ? `${data.failed.length} row(s) failed or were skipped.`
+              : "All rows imported successfully.",
             variant: data.failed.length ? "error" : "success",
           });
-          setIsImportOpen(false);
           void reload();
         },
       });
@@ -1122,38 +1163,192 @@ export default function UsersAndRoles() {
       {/* MODAL 3: IMPORT CSV */}
       {isImportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-md w-full overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-blue-50 text-blue-600"><Upload size={18} /></div>
                 <div>
-                  <h3 className="text-[17px] font-semibold text-gray-900">Import CSV</h3>
-                  <p className="text-[12px] text-gray-500">Bulk create users from a spreadsheet</p>
+                  <h3 className="text-[17px] font-semibold text-gray-900">Import Users CSV</h3>
+                  <p className="text-[12px] text-gray-500">Bulk create student rosters and staff accounts</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setIsImportOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
-            </div>
-
-            <div className="p-5 space-y-4">
               <button
                 type="button"
-                onClick={() => importInputRef.current?.click()}
-                disabled={importing || action.pending}
-                className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors bg-gray-50/50 cursor-pointer disabled:opacity-60"
+                onClick={() => {
+                  setIsImportOpen(false);
+                  setImportSummary(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
               >
-                {importing ? <Loader2 size={28} className="mx-auto text-blue-600 mb-2 animate-spin" /> : <Upload size={28} className="mx-auto text-blue-600 mb-2" />}
-                <p className="text-[14px] font-medium text-gray-900">Click to choose a CSV file</p>
-                <p className="text-[12px] text-gray-500 mt-1">Columns: Name, Role, Matric No, Staff ID, Email, Department, Password</p>
+                <X size={18} />
               </button>
-              <p className="text-[12px] text-gray-500">
-                Name and Role are required. Students need a Matric No; staff need a Staff ID or Email.
-                Download the current directory with Export to see the expected columns.
-              </p>
-              <input ref={importInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => void handleImportFile(e)} />
+            </div>
 
-              <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <Button type="button" variant="secondary" onClick={() => setIsImportOpen(false)}>Close</Button>
-              </div>
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {importSummary ? (
+                <div className="space-y-4">
+                  <div className="rounded-lg p-4 bg-emerald-50 border border-emerald-200">
+                    <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
+                      <Check size={18} className="text-emerald-600" />
+                      Import complete
+                    </div>
+                    <p className="text-xs text-emerald-700 mt-1">
+                      <span className="font-bold text-emerald-900">{importSummary.created}</span> of{" "}
+                      <span className="font-bold text-emerald-900">{importSummary.total}</span> users were successfully created and activated.
+                    </p>
+                  </div>
+
+                  {importSummary.failed.length > 0 && (
+                    <div className="border border-amber-200 bg-amber-50/60 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                          <AlertCircle size={14} className="text-amber-600" />
+                          {importSummary.failed.length} Row(s) Skipped or Failed
+                        </span>
+                        <span className="text-[11px] text-amber-700">Check CSV line numbers</span>
+                      </div>
+                      <div className="max-h-44 overflow-y-auto border border-amber-200/80 rounded bg-white text-xs divide-y divide-amber-100">
+                        {importSummary.failed.map((f, idx) => (
+                          <div key={idx} className="p-2 flex items-start gap-2 text-gray-700">
+                            <span className="shrink-0 font-mono font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded text-[10px]">
+                              Line {f.row}
+                            </span>
+                            <span className="text-[11px] text-gray-600 break-words">{f.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setImportSummary(null)}
+                      className="text-xs"
+                    >
+                      Import another file
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setIsImportOpen(false);
+                        setImportSummary(null);
+                      }}
+                      className="text-xs bg-blue-600 hover:bg-blue-700"
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                    <span className="text-xs text-gray-600 font-medium">Need a starting format?</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleDownloadTemplate}
+                      className="text-xs h-8 border-gray-300 text-blue-700 hover:bg-blue-50"
+                    >
+                      <Download size={13} className="mr-1.5" /> Download CSV template
+                    </Button>
+                  </div>
+
+                  {/* Optional Defaults */}
+                  <div className="bg-gray-50/70 border border-gray-200 rounded-lg p-3 space-y-3">
+                    <span className="text-[11px] font-semibold text-gray-700 uppercase tracking-wider block">
+                      Batch Defaults (used if column is missing in CSV)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[11px] font-medium text-gray-600 block mb-1">Default Department</label>
+                        <select
+                          value={importDefaultDept}
+                          onChange={(e) => setImportDefaultDept(e.target.value)}
+                          className="w-full h-8.5 rounded border border-gray-300 bg-white px-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">Auto-detect from CSV / Matric Prefix</option>
+                          {departments.map((d) => (
+                            <option key={d.id} value={d.id} disabled={!d.active}>
+                              {d.name} ({d.code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-medium text-gray-600 block mb-1">Default Student Level</label>
+                        <select
+                          value={importDefaultLevel}
+                          onChange={(e) => setImportDefaultLevel(Number(e.target.value))}
+                          className="w-full h-8.5 rounded border border-gray-300 bg-white px-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value={100}>100 Level</option>
+                          <option value={200}>200 Level</option>
+                          <option value={300}>300 Level</option>
+                          <option value={400}>400 Level</option>
+                          <option value={500}>500 Level</option>
+                          <option value={600}>600 Level</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Upload Box */}
+                  <button
+                    type="button"
+                    onClick={() => importInputRef.current?.click()}
+                    disabled={importing || action.pending}
+                    className="w-full border-2 border-dashed border-blue-200 hover:border-blue-500 rounded-lg p-6 text-center transition-colors bg-blue-50/20 hover:bg-blue-50/40 cursor-pointer disabled:opacity-60 flex flex-col items-center justify-center gap-1.5"
+                  >
+                    {importing ? (
+                      <Loader2 size={30} className="text-blue-600 mb-1 animate-spin" />
+                    ) : (
+                      <Upload size={30} className="text-blue-600 mb-1" />
+                    )}
+                    <p className="text-[14px] font-semibold text-gray-900">
+                      {importing ? "Parsing and importing users..." : "Click to select a CSV file"}
+                    </p>
+                    <p className="text-[12px] text-gray-500 max-w-sm">
+                      Supports up to 2,000 records per upload with auto-enrollment in active courses.
+                    </p>
+                  </button>
+
+                  <div className="text-[11px] text-gray-500 space-y-1 bg-gray-50 p-2.5 rounded border border-gray-100">
+                    <p className="font-semibold text-gray-700">Supported columns:</p>
+                    <p>
+                      <code className="text-blue-700 bg-white px-1 py-0.5 rounded border border-gray-200 font-mono">Full Name</code>,{" "}
+                      <code className="text-blue-700 bg-white px-1 py-0.5 rounded border border-gray-200 font-mono">Role</code>,{" "}
+                      <code className="text-blue-700 bg-white px-1 py-0.5 rounded border border-gray-200 font-mono">Matric No</code>,{" "}
+                      <code className="text-blue-700 bg-white px-1 py-0.5 rounded border border-gray-200 font-mono">Staff ID</code>,{" "}
+                      <code className="text-blue-700 bg-white px-1 py-0.5 rounded border border-gray-200 font-mono">Email</code>,{" "}
+                      <code className="text-blue-700 bg-white px-1 py-0.5 rounded border border-gray-200 font-mono">Department</code>,{" "}
+                      <code className="text-blue-700 bg-white px-1 py-0.5 rounded border border-gray-200 font-mono">Level</code>
+                    </p>
+                  </div>
+
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(e) => void handleImportFile(e)}
+                  />
+
+                  <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setIsImportOpen(false);
+                        setImportSummary(null);
+                      }}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
