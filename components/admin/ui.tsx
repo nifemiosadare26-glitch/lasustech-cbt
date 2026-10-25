@@ -36,7 +36,7 @@ export function useToast() {
       <span className="text-[14px] font-medium">{msg.text}</span>
     </div>
   ) : null;
-  return { show, node };
+  return React.useMemo(() => ({ show, node }), [show, node]);
 }
 
 // ---------- modal ----------

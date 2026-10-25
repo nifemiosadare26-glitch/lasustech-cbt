@@ -20,8 +20,9 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
+import { useApi, useDebounced } from "@/lib/useApi";
 import { fmtDateTime } from "@/lib/format";
-import { Modal, useToast } from "@/components/admin/ui";
+import { Modal, useToast, ErrorBanner } from "@/components/admin/ui";
 
 interface SupportTicket {
   id: string;
@@ -43,9 +44,8 @@ interface SupportTicket {
 
 export default function AdminSupportPage() {
   const toast = useToast();
-  const [tickets, setTickets] = React.useState<SupportTicket[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
+  const debouncedSearch = useDebounced(search, 300);
   const [statusFilter, setStatusFilter] = React.useState("ALL");
   const [categoryFilter, setCategoryFilter] = React.useState("ALL");
 
@@ -55,26 +55,23 @@ export default function AdminSupportPage() {
   const [replyStatus, setReplyStatus] = React.useState<"OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED">("RESOLVED");
   const [isSendingReply, setIsSendingReply] = React.useState(false);
 
-  const fetchTickets = React.useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (statusFilter !== "ALL") params.append("status", statusFilter);
-      if (categoryFilter !== "ALL") params.append("category", categoryFilter);
-      if (search.trim()) params.append("search", search.trim());
+  const query = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "ALL") params.append("status", statusFilter);
+    if (categoryFilter !== "ALL") params.append("category", categoryFilter);
+    if (debouncedSearch.trim()) params.append("search", debouncedSearch.trim());
+    const q = params.toString();
+    return q ? `?${q}` : "";
+  }, [statusFilter, categoryFilter, debouncedSearch]);
 
-      const res = await apiClient<{ data: SupportTicket[] }>(`/admin/support?${params.toString()}`);
-      setTickets(res.data || []);
-    } catch (err: any) {
-      toast.show(err.message || "Could not retrieve support docket.", "err");
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, categoryFilter, search, toast]);
+  const {
+    data,
+    loading,
+    error,
+    reload: fetchTickets,
+  } = useApi<SupportTicket[]>(`/admin/support${query}`, { keepPrevious: true });
 
-  React.useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+  const tickets = React.useMemo(() => data ?? [], [data]);
 
   const openReplyModal = (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
@@ -96,7 +93,7 @@ export default function AdminSupportPage() {
 
       toast.show(`Official reply logged for #${selectedTicket.referenceNo}.`, "ok");
       setSelectedTicket(null);
-      fetchTickets();
+      await fetchTickets();
     } catch (err: any) {
       toast.show(err.message || "Could not log reply.", "err");
     } finally {
@@ -115,6 +112,7 @@ export default function AdminSupportPage() {
   return (
     <div className="space-y-6">
       {toast.node}
+      {error && <ErrorBanner error={error} onRetry={fetchTickets} />}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
@@ -130,7 +128,7 @@ export default function AdminSupportPage() {
 
         <Button
           variant="outline"
-          onClick={fetchTickets}
+          onClick={() => void fetchTickets()}
           disabled={loading}
           className="gap-2 shrink-0 bg-white dark:bg-slate-900"
         >
@@ -201,7 +199,7 @@ export default function AdminSupportPage() {
 
       {/* Ticket List */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-        {loading ? (
+        {loading && tickets.length === 0 ? (
           <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
             <Loader2 className="animate-spin text-blue-600" size={28} />
             <p className="text-sm">Loading support tickets...</p>
@@ -213,7 +211,7 @@ export default function AdminSupportPage() {
             <p className="text-xs text-slate-400">All student issues and helpdesk requests are up to date.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={`overflow-x-auto ${loading ? "opacity-60 transition-opacity" : ""}`}>
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
                 <tr>
@@ -238,7 +236,7 @@ export default function AdminSupportPage() {
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                        {t.category.replace(/_/g, " ")}
+                        {t.category ? t.category.replace(/_/g, " ") : "GENERAL"}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
@@ -324,7 +322,7 @@ export default function AdminSupportPage() {
               <div className="flex items-center gap-2">
                 <ShieldCheck size={14} className="text-slate-400" />
                 <span className="text-slate-500">Category:</span>
-                <span className="font-semibold">{selectedTicket.category.replace(/_/g, " ")}</span>
+                <span className="font-semibold">{selectedTicket.category ? selectedTicket.category.replace(/_/g, " ") : "General"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock size={14} className="text-slate-400" />
