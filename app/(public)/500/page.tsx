@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { RefreshCw, AlertTriangle } from "lucide-react";
+import { RefreshCw, AlertTriangle, Home } from "lucide-react";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
@@ -9,65 +9,62 @@ const inter = Inter({ subsets: ["latin"], display: "swap" });
 export default function ServerErrorPage() {
   return (
     <main
-      className={`${inter.className} min-h-dvh relative flex items-center justify-center bg-[#081229] overflow-hidden px-4 py-8 text-center`}
+      className={`${inter.className} min-h-dvh relative flex items-center justify-center bg-slate-950 overflow-hidden px-4 py-12 text-center selection:bg-rose-500 selection:text-white`}
     >
-      {/* Same blue glow as login, 403 and 404 */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_#14285a_0%,_#081229_60%)]"
+        className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,_rgba(225,29,72,0.25)_0%,_rgba(2,6,23,0.95)_75%)]"
       />
 
-      {/* Decorative ghost number, hidden from screen readers */}
-      <div
-        aria-hidden="true"
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 select-none pointer-events-none font-extrabold tracking-tighter leading-none text-[11rem] sm:text-[17rem] md:text-[22rem] text-white/[0.04]"
-      >
-        500
-      </div>
+      <div className="relative z-10 w-full max-w-[500px]">
+        <div className="rounded-3xl border-2 border-slate-700 bg-slate-900/95 p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+          <div className="mb-6 flex items-center justify-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              LASUSTECH CBT Portal
+            </span>
+          </div>
 
-      <div className="relative z-10 w-full max-w-[460px]">
-        {/* Institutional emblem */}
-        <div className="mx-auto mb-6 flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-rose-500/20 to-amber-400/10 border border-rose-400/30 shadow-[0_0_40px_rgba(251,113,133,0.25)] backdrop-blur-md">
-          <AlertTriangle className="h-12 w-12 sm:h-14 sm:w-14 text-rose-400 drop-shadow-[0_0_12px_rgba(251,113,133,0.5)]" />
+          <div className="mx-auto mb-6 flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-rose-500/15 border-2 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.35)]">
+            <AlertTriangle className="h-12 w-12 sm:h-14 sm:w-14 text-rose-300 drop-shadow-[0_2px_8px_rgba(244,63,94,0.6)]" />
+          </div>
+
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-950/60 px-3.5 py-1 text-xs font-bold text-rose-300">
+            <span className="h-2 w-2 rounded-full bg-rose-400" />
+            Server Error (500)
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3 text-balance">
+            Internal Server Error
+          </h1>
+
+          <p className="text-base sm:text-lg font-medium text-slate-200 mb-6 leading-relaxed">
+            The server encountered a temporary issue while fulfilling your request. All user sessions and exam data are preserved.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center gap-2 min-h-12 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-bold px-6 text-sm shadow-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+            >
+              <RefreshCw size={17} className="stroke-[2.5]" aria-hidden="true" />
+              Reload Page
+            </button>
+
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-2 min-h-12 rounded-xl bg-slate-800 hover:bg-slate-750 text-white font-semibold border-2 border-slate-600 px-6 text-sm transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+            >
+              <Home size={17} aria-hidden="true" />
+              Back to Home
+            </Link>
+          </div>
         </div>
 
-        
-
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-3 text-balance">
-          Something went wrong
-        </h1>
-
-        {/* Only promise what is true. Add "our team has been notified"
-            only if you really have error logging/alerts set up. */}
-        <p className="mx-auto max-w-[400px] text-base sm:text-lg text-slate-300 mb-9 leading-relaxed text-pretty">
-          We hit an unexpected problem on our side. Please try again in a moment.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center gap-2 min-h-12 rounded-full bg-white px-7 text-base font-semibold text-[#081229] shadow-[0_6px_20px_rgba(255,255,255,0.15)] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#081229]"
-          >
-            <RefreshCw size={18} aria-hidden="true" />
-            Try again
-          </button>
-
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center min-h-12 rounded-full border border-white/30 bg-white/5 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#081229]"
-          >
-            Back to homepage
-          </Link>
-        </div>
-
-        <p className="mt-8 text-sm text-slate-300">
-          Still happening?{" "}
-          <Link
-            href="/support"
-            className="text-sky-300 underline underline-offset-4 hover:text-white rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-          >
-            Contact ICT Support
+        <p className="mt-6 text-xs font-medium text-slate-500">
+          Still encountering this issue?{" "}
+          <Link href="/support" className="text-blue-400 hover:text-blue-300 underline font-semibold">
+            Contact ICT Support Desk
           </Link>
         </p>
       </div>

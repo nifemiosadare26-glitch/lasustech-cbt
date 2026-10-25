@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { generateResultSlip } from "@/lib/generateResultSlip";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 import { useUser } from "@/components/auth/user-context";
 
 interface ResultCourse {
@@ -41,16 +41,43 @@ type ResultsPayload = {
     college: { name: string };
   };
   results: ResultCourse[];
+  availableSessions?: string[];
+  currentSession?: string;
 };
 
 export default function StudentResultsPage() {
   const { data, loading, error, reload } = useApi<ResultsPayload>("/student/results");
   const user = useUser();
 
-  const [selectedSession, setSelectedSession] = useState("2026/2027");
+  const allResults = React.useMemo(() => data?.results ?? [], [data?.results]);
+
+  // Dynamically derive existing academic sessions from the API or from released results.
+  // Never hardcode or display unreleased / non-existent sessions.
+  const availableSessions = React.useMemo(() => {
+    if (data?.availableSessions && data.availableSessions.length > 0) {
+      return data.availableSessions;
+    }
+    const fromResults = Array.from(
+      new Set(allResults.map((r) => r.session).filter(Boolean)),
+    );
+    return fromResults;
+  }, [data?.availableSessions, allResults]);
+
+  const [selectedSession, setSelectedSession] = useState<string>("");
   const [selectedSemester, setSelectedSemester] = useState("All");
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  // Synchronize initial session selection once data is loaded
+  React.useEffect(() => {
+    if (!selectedSession && availableSessions.length > 0) {
+      const defaultSess =
+        data?.currentSession && availableSessions.includes(data.currentSession)
+          ? data.currentSession
+          : availableSessions[0];
+      setSelectedSession(defaultSess);
+    }
+  }, [availableSessions, data?.currentSession, selectedSession]);
 
   if (loading && !data) {
     return (
@@ -90,12 +117,9 @@ export default function StudentResultsPage() {
     department: { name: "Academic Department" },
     college: { name: "LASUSTECH" },
   };
-  const allResults = data?.results ?? [];
-
   const filteredResults = allResults.filter((r) => {
     const semMatches = selectedSemester === "All" || r.semester.includes(selectedSemester);
-    const sessionMatches =
-      !r.session || r.session.includes(selectedSession) || selectedSession === "2026/2027";
+    const sessionMatches = !selectedSession || r.session === selectedSession;
     return semMatches && sessionMatches;
   });
 
@@ -132,7 +156,7 @@ export default function StudentResultsPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <ThemeToggle className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl" />
+
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
@@ -172,7 +196,9 @@ export default function StudentResultsPage() {
               <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/30 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-blue-200 backdrop-blur-sm">
                 <GraduationCap size={14} /> Undergrad Record
               </span>
-              <span className="text-xs text-blue-200 font-medium">Session {selectedSession}</span>
+              {selectedSession && (
+                <span className="text-xs text-blue-200 font-medium">Session {selectedSession}</span>
+              )}
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               {student.names}
@@ -227,18 +253,22 @@ export default function StudentResultsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <span className="text-xs text-slate-500 font-medium">Academic Session:</span>
-          <select
-            value={selectedSession}
-            onChange={(e) => setSelectedSession(e.target.value)}
-            className="text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
-          >
-            <option value="2026/2027">2026/2027 (Current)</option>
-            <option value="2025/2026">2025/2026</option>
-            <option value="2024/2025">2024/2025</option>
-          </select>
-        </div>
+        {availableSessions.length > 0 && (
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <span className="text-xs text-slate-500 font-medium">Academic Session:</span>
+            <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+            >
+              {availableSessions.map((sess) => (
+                <option key={sess} value={sess}>
+                  {sess} {sess === data?.currentSession ? "(Current)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Course Results Table */}

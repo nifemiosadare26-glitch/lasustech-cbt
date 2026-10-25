@@ -1,76 +1,81 @@
 "use client";
 
 import Link from "next/link";
-import { Wrench } from "lucide-react";
-import { RefreshCw } from "lucide-react";
+import { Wrench, RefreshCw, LifeBuoy } from "lucide-react";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
-/*
- * OPTIONAL: set this when you know the real time, e.g. "Saturday, 10 Oct, 6:00 PM".
- * Leave it empty and the page shows no time (never promise a time you can't keep).
- */
-const EXPECTED_BACK = "";
-
 export default function MaintenancePage() {
   return (
     <main
-      className={`${inter.className} min-h-dvh relative flex items-center justify-center bg-[#081229] overflow-hidden px-4 py-8 text-center`}
+      className={`${inter.className} min-h-dvh relative flex items-center justify-center bg-slate-950 overflow-hidden px-4 py-12 text-center selection:bg-amber-500 selection:text-black`}
     >
-      {/* Same blue glow as login, 403, 404 and 500 */}
+      {/* High-contrast ambient background glow */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_#14285a_0%,_#081229_60%)]"
+        className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,_rgba(30,58,138,0.35)_0%,_rgba(2,6,23,0.95)_75%)]"
       />
 
-      <div className="relative z-10 w-full max-w-[460px]">
-        {/* Institutional emblem */}
-        <div className="mx-auto mb-6 flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-500/20 to-sky-400/10 border border-amber-400/30 shadow-[0_0_40px_rgba(245,158,11,0.25)] backdrop-blur-md">
-          <Wrench className="h-12 w-12 sm:h-14 sm:w-14 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
-        </div>
+      <div className="relative z-10 w-full max-w-[500px]">
+        {/* High-contrast card container */}
+        <div className="rounded-3xl border-2 border-slate-700 bg-slate-900/95 p-8 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+          {/* Institution Header Tag */}
+          <div className="mb-6 flex items-center justify-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              LASUSTECH CBT Portal
+            </span>
+          </div>
 
-        {/* Amber badge: planned work, not a failure */}
-        <p className="inline-flex items-center rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-1 text-sm font-medium text-amber-200 mb-4">
-          Scheduled maintenance
-        </p>
+          {/* Institutional Maintenance Emblem */}
+          <div className="mx-auto mb-6 flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-amber-500/15 border-2 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.35)]">
+            <Wrench className="h-12 w-12 sm:h-14 sm:w-14 text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.6)]" />
+          </div>
 
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-3 text-balance">
-          We&apos;ll be back soon
-        </h1>
+          {/* Status Badge */}
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-950/60 px-3.5 py-1 text-xs font-bold text-amber-300">
+            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            System Maintenance in Progress
+          </div>
 
-        <p className="mx-auto max-w-[400px] text-base sm:text-lg text-slate-300 mb-4 leading-relaxed text-pretty">
-          The LASUSTECH CBT platform is down for maintenance and improvements. Thank you for your
-          patience.
-        </p>
+          {/* Heading */}
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3 text-balance">
+            We&apos;ll be back shortly
+          </h1>
 
-        {EXPECTED_BACK && (
-          <p className="mx-auto max-w-[400px] text-base text-sky-200 mb-4">
-            Expected back: <span className="font-semibold text-white">{EXPECTED_BACK}</span>
+          {/* Description with crisp contrast */}
+          <p className="text-base sm:text-lg font-medium text-slate-200 mb-4 leading-relaxed">
+            The Computer-Based Testing portal is temporarily offline for scheduled system optimization and upgrades.
           </p>
-        )}
 
-        <p className="mx-auto max-w-[400px] text-sm sm:text-base text-slate-300 mb-9">
-          Have an exam scheduled? Contact ICT Support so they can guide you.
-        </p>
+          <p className="text-sm font-medium text-slate-400 mb-8">
+            All submitted candidate answers and exam records are securely preserved.
+          </p>
 
-        <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center gap-2 min-h-12 rounded-full bg-white px-7 text-base font-semibold text-[#081229] shadow-[0_6px_20px_rgba(255,255,255,0.15)] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#081229]"
-          >
-            <RefreshCw size={18} aria-hidden="true" />
-            Check again
-          </button>
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-stretch justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center gap-2 min-h-12 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-bold px-6 text-sm shadow-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <RefreshCw size={17} className="stroke-[2.5]" aria-hidden="true" />
+              Check Status Again
+            </button>
 
-          <Link
-            href="/support"
-            className="inline-flex items-center justify-center min-h-12 rounded-full border border-white/30 bg-white/5 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#081229]"
-          >
-            Contact ICT Support
-          </Link>
+            <Link
+              href="/support"
+              className="inline-flex items-center justify-center gap-2 min-h-12 rounded-xl bg-slate-800 hover:bg-slate-750 text-white font-semibold border-2 border-slate-600 px-6 text-sm transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <LifeBuoy size={17} aria-hidden="true" />
+              Contact ICT Support
+            </Link>
+          </div>
         </div>
+
+        <p className="mt-6 text-xs font-medium text-slate-500">
+          Lagos State University of Science and Technology • Academic Computing Services
+        </p>
       </div>
     </main>
   );

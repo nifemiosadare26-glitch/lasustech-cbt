@@ -559,7 +559,6 @@ export default function SupportPage() {
                       <option value="EXAM_ACCESS">Exam Schedule / Missing Paper</option>
                       <option value="COURSE_ENROLLMENT">Course Assignment / Enrollment</option>
                       <option value="LOGIN_AUTH">Login / Password Issue</option>
-                      <option value="RESULT_APPEAL">Result / Grade Dispute</option>
                       <option value="TECHNICAL">Computer / Technical Glitch</option>
                     </select>
                   </div>
