@@ -329,8 +329,21 @@ export default function ResultsProcessing() {
                             <CheckCircle2 size={14} className="mr-2" /> Approve
                           </Button>
                         ) : row.status === "APPROVED" ? (
-                          <Button size="sm" className="h-8" onClick={() => setReleasing(row)}>
-                            <Send size={14} className="mr-2" /> Publish
+                          <Button
+                            size="sm"
+                            className="h-8"
+                            disabled={row.sittingStatus !== "CLOSED" && Boolean(row.endsAt && new Date() < new Date(row.endsAt))}
+                            onClick={() => setReleasing(row)}
+                            title={
+                              row.sittingStatus !== "CLOSED" && Boolean(row.endsAt && new Date() < new Date(row.endsAt))
+                                ? `Examination is currently ongoing until ${fmtDateTime(row.endsAt)}. Results can only be released after the exam concludes.`
+                                : undefined
+                            }
+                          >
+                            <Send size={14} className="mr-2" />
+                            {row.sittingStatus !== "CLOSED" && Boolean(row.endsAt && new Date() < new Date(row.endsAt))
+                              ? "Exam Ongoing"
+                              : "Publish"}
                           </Button>
                         ) : (
                           <Button
@@ -366,22 +379,50 @@ export default function ResultsProcessing() {
 
       {releasing && (
         <ConfirmModal
-          title={`Publish ${releasing.courseCode} results?`}
-          body={
-            <>
-              <p>
-                This releases <strong>{releasing.scripts}</strong> scripts to student portals. Students will be able to
-                view their scores immediately.
-              </p>
-              {releasing.flags > 0 && (
-                <p className="mt-2 text-amber-700 text-[13px]">
-                  {releasing.flags} malpractice flag(s) are still attached to this sitting.
-                </p>
-              )}
-            </>
+          title={
+            releasing.sittingStatus !== "CLOSED" && Boolean(releasing.endsAt && new Date() < new Date(releasing.endsAt))
+              ? `Cannot Publish ${releasing.courseCode} Results`
+              : `Publish ${releasing.courseCode} results?`
           }
-          confirmLabel="Publish results"
-          onConfirm={release}
+          body={
+            releasing.sittingStatus !== "CLOSED" && Boolean(releasing.endsAt && new Date() < new Date(releasing.endsAt)) ? (
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[13px] leading-relaxed flex items-start gap-2.5">
+                  <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold mb-1">Examination In Progress:</strong>
+                    This examination sitting is scheduled until{" "}
+                    <strong>{fmtDateTime(releasing.endsAt)}</strong>. Results cannot be published to student portals while the exam is still active.
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Please wait until the examination window has officially elapsed before releasing results.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p>
+                  This releases <strong>{releasing.scripts}</strong> scripts to student portals. Students will be able to
+                  view their scores immediately.
+                </p>
+                {releasing.flags > 0 && (
+                  <p className="mt-2 text-amber-700 text-[13px]">
+                    {releasing.flags} malpractice flag(s) are still attached to this sitting.
+                  </p>
+                )}
+              </>
+            )
+          }
+          confirmLabel={
+            releasing.sittingStatus !== "CLOSED" && Boolean(releasing.endsAt && new Date() < new Date(releasing.endsAt))
+              ? "Close"
+              : "Publish results"
+          }
+          onConfirm={
+            releasing.sittingStatus !== "CLOSED" && Boolean(releasing.endsAt && new Date() < new Date(releasing.endsAt))
+              ? () => setReleasing(null)
+              : release
+          }
           onClose={() => setReleasing(null)}
         />
       )}

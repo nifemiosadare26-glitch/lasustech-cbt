@@ -27,7 +27,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { apiClient, mediaSrc } from "@/lib/apiClient";
 import { getRealtimeSocket } from "@/lib/realtime";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 import { DiagramRenderer } from "@/components/question/diagram-renderer";
 import { MathText } from "@/components/question/math-text";
 
@@ -579,16 +579,25 @@ export default function ExamAttemptPage() {
       return;
     }
     if (btn === "π") {
-      setCalcExpr((prev) => prev + "π");
+      setCalcExpr((prev) => {
+        const needsMult = prev && /[0-9\)]$/.test(prev);
+        return `${prev}${needsMult ? "×" : ""}π`;
+      });
       return;
     }
     if (btn === "e") {
-      setCalcExpr((prev) => prev + "e");
+      setCalcExpr((prev) => {
+        const needsMult = prev && /[0-9\)]$/.test(prev);
+        return `${prev}${needsMult ? "×" : ""}e`;
+      });
       return;
     }
     if (btn === "Ans") {
       if (calcResult && calcResult !== "Error") {
-        setCalcExpr((prev) => prev + calcResult);
+        setCalcExpr((prev) => {
+          const needsMult = prev && /[0-9\)]$/.test(prev);
+          return `${prev}${needsMult ? "×" : ""}${calcResult}`;
+        });
       }
       return;
     }
@@ -609,34 +618,105 @@ export default function ExamAttemptPage() {
       return;
     }
     if (["sin", "cos", "tan", "log", "ln", "√"].includes(btn)) {
-      // Check if expression ends with an active number
-      const matchNumber = calcExpr.match(/(\d+(\.\d+)?)$/);
-      if (matchNumber && !calcExpr.endsWith(")")) {
-        const num = matchNumber[0];
-        const prefix = calcExpr.slice(0, -num.length);
-        const newExpr = `${prefix}${btn}(${num})`;
-        setCalcExpr(newExpr);
-        // Calculate immediately for convenience
-        try {
-          const val = Number(num);
-          let res = 0;
-          if (btn === "sin") res = Math.sin((val * Math.PI) / 180);
-          else if (btn === "cos") res = Math.cos((val * Math.PI) / 180);
-          else if (btn === "tan") res = Math.tan((val * Math.PI) / 180);
-          else if (btn === "log") res = Math.log10(val);
-          else if (btn === "ln") res = Math.log(val);
-          else if (btn === "√") res = Math.sqrt(val);
-          setCalcResult(String(Math.round(res * 100000) / 100000));
-        } catch {}
-      } else {
-        // Appends function opener so student can type the angle value, e.g. "sin(" -> "30" -> "=" yields 0.5!
-        setCalcExpr((prev) => prev + `${btn}(`);
-      }
+      // Auto-insert bracket immediately, e.g. "sin(", "cos(", "tan("
+      // If previous token is a number or closing paren, insert implicit multiplication "×"
+      setCalcExpr((prev) => {
+        const needsMult = prev && /[0-9πe\)]$/.test(prev);
+        return `${prev}${needsMult ? "×" : ""}${btn}(`;
+      });
       return;
     }
 
     setCalcExpr((prev) => prev + btn);
   };
+
+  // Global & Active Calculator Keyboard Handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Global shortcut Alt+C to toggle calculator
+      if (e.altKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        setActiveTool((prev) => (prev === "calc" ? null : "calc"));
+        return;
+      }
+
+      // If calculator is not active, do not intercept keystrokes
+      if (activeTool !== "calc") return;
+
+      // Do not intercept if user is typing in an input or textarea
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+
+      const key = e.key;
+
+      if (key >= "0" && key <= "9") {
+        e.preventDefault();
+        handleCalcInput(key);
+      } else if (key === ".") {
+        e.preventDefault();
+        handleCalcInput(".");
+      } else if (key === "+") {
+        e.preventDefault();
+        handleCalcInput("+");
+      } else if (key === "-") {
+        e.preventDefault();
+        handleCalcInput("-");
+      } else if (key === "*" || key === "x" || key === "X") {
+        e.preventDefault();
+        handleCalcInput("×");
+      } else if (key === "/") {
+        e.preventDefault();
+        handleCalcInput("÷");
+      } else if (key === "%") {
+        e.preventDefault();
+        handleCalcInput("%");
+      } else if (key === "^") {
+        e.preventDefault();
+        handleCalcInput("^");
+      } else if (key === "(" || key === ")") {
+        e.preventDefault();
+        handleCalcInput(key);
+      } else if (key === "Enter" || key === "=") {
+        e.preventDefault();
+        handleCalcInput("=");
+      } else if (key === "Backspace") {
+        e.preventDefault();
+        handleCalcInput("DEL");
+      } else if (key === "Escape") {
+        e.preventDefault();
+        handleCalcInput("AC");
+      } else if (key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleCalcInput("sin");
+      } else if (key.toLowerCase() === "c" && !e.altKey && !e.ctrlKey) {
+        e.preventDefault();
+        handleCalcInput("cos");
+      } else if (key.toLowerCase() === "t") {
+        e.preventDefault();
+        handleCalcInput("tan");
+      } else if (key.toLowerCase() === "l") {
+        e.preventDefault();
+        handleCalcInput("log");
+      } else if (key.toLowerCase() === "n") {
+        e.preventDefault();
+        handleCalcInput("ln");
+      } else if (key.toLowerCase() === "r" || key.toLowerCase() === "q") {
+        e.preventDefault();
+        handleCalcInput("√");
+      } else if (key.toLowerCase() === "p") {
+        e.preventDefault();
+        handleCalcInput("π");
+      } else if (key.toLowerCase() === "e" && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        handleCalcInput("e");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTool, calcExpr, calcResult]);
 
   // Save answer to server with debounced coalescing for high concurrency
   const saveAnswerToServer = useCallback(
@@ -958,19 +1038,43 @@ export default function ExamAttemptPage() {
                   {/* Scientific 5-Column Button Grid */}
                   <div className="grid grid-cols-5 gap-1.5">
                     {[
-                      { label: "sin", type: "fn" }, { label: "cos", type: "fn" }, { label: "tan", type: "fn" }, { label: "log", type: "fn" }, { label: "ln", type: "fn" },
-                      { label: "√", type: "fn" }, { label: "x²", type: "fn" }, { label: "^", type: "op" }, { label: "(", type: "op" }, { label: ")", type: "op" },
-                      { label: "π", type: "const" }, { label: "e", type: "const" }, { label: "DEL", type: "del" }, { label: "AC", type: "clear" }, { label: "÷", type: "op" },
-                      { label: "7", type: "num" }, { label: "8", type: "num" }, { label: "9", type: "num" }, { label: "×", type: "op" }, { label: "%", type: "op" },
-                      { label: "4", type: "num" }, { label: "5", type: "num" }, { label: "6", type: "num" }, { label: "-", type: "op" }, { label: "±", type: "fn" },
-                      { label: "1", type: "num" }, { label: "2", type: "num" }, { label: "3", type: "num" }, { label: "+", type: "op" }, { label: "Ans", type: "fn" },
+                      { label: "sin", shortcut: "s", type: "fn" },
+                      { label: "cos", shortcut: "c", type: "fn" },
+                      { label: "tan", shortcut: "t", type: "fn" },
+                      { label: "log", shortcut: "l", type: "fn" },
+                      { label: "ln", shortcut: "n", type: "fn" },
+                      { label: "√", shortcut: "r", type: "fn" },
+                      { label: "x²", type: "fn" },
+                      { label: "^", type: "op" },
+                      { label: "(", type: "op" },
+                      { label: ")", type: "op" },
+                      { label: "π", shortcut: "p", type: "const" },
+                      { label: "e", shortcut: "e", type: "const" },
+                      { label: "DEL", shortcut: "⌫", type: "del" },
+                      { label: "AC", shortcut: "Esc", type: "clear" },
+                      { label: "÷", shortcut: "/", type: "op" },
+                      { label: "7", type: "num" },
+                      { label: "8", type: "num" },
+                      { label: "9", type: "num" },
+                      { label: "×", shortcut: "*", type: "op" },
+                      { label: "%", type: "op" },
+                      { label: "4", type: "num" },
+                      { label: "5", type: "num" },
+                      { label: "6", type: "num" },
+                      { label: "-", shortcut: "-", type: "op" },
+                      { label: "±", type: "fn" },
+                      { label: "1", type: "num" },
+                      { label: "2", type: "num" },
+                      { label: "3", type: "num" },
+                      { label: "+", shortcut: "+", type: "op" },
+                      { label: "Ans", type: "fn" },
                     ].map((item, i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => handleCalcInput(item.label)}
                         className={cn(
-                          "h-10 rounded-lg text-sm font-semibold transition-all border cursor-pointer active:scale-95",
+                          "h-10 rounded-lg text-sm font-semibold transition-all border cursor-pointer active:scale-95 flex flex-col items-center justify-center relative",
                           item.type === "clear"
                             ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 hover:bg-rose-100"
                             : item.type === "del"
@@ -981,8 +1085,14 @@ export default function ExamAttemptPage() {
                             ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900 hover:bg-blue-100"
                             : "bg-white text-gray-800 border-gray-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 hover:bg-gray-50 shadow-2xs font-bold"
                         )}
+                        title={item.shortcut ? `Press ${item.shortcut} on keyboard` : undefined}
                       >
-                        {item.label}
+                        <span>{item.label}</span>
+                        {item.shortcut && (
+                          <span className="text-[9px] text-gray-400 dark:text-slate-500 font-mono leading-none -mt-0.5">
+                            {item.shortcut}
+                          </span>
+                        )}
                       </button>
                     ))}
                     {/* Bottom Row */}
@@ -1004,9 +1114,21 @@ export default function ExamAttemptPage() {
                       type="button"
                       onClick={() => handleCalcInput("=")}
                       className="col-span-2 h-10 rounded-lg text-sm font-bold bg-blue-600 text-white border border-blue-700 hover:bg-blue-700 shadow-md cursor-pointer active:scale-95"
+                      title="Press Enter or = on keyboard"
                     >
-                      =
+                      = <span className="text-[10px] opacity-80 font-mono">(Enter)</span>
                     </button>
+                  </div>
+
+                  {/* Calculator Keyboard Helper */}
+                  <div className="pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 font-medium">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Keyboard input active
+                    </span>
+                    <span className="font-mono text-[10px] bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                      Alt+C to toggle
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1034,7 +1156,7 @@ export default function ExamAttemptPage() {
             )}
           </span>
 
-          <ThemeToggle className="text-white hover:text-blue-200 p-1.5 rounded-lg bg-blue-800/60 dark:bg-slate-800 border border-blue-700/50 dark:border-slate-700" />
+
 
           <div
             className={cn(
@@ -1186,7 +1308,47 @@ export default function ExamAttemptPage() {
 
         {/* Right: Palette */}
         <aside className="w-[320px] shrink-0 border-l border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 flex flex-col overflow-y-auto hidden lg:flex shadow-[-4px_0_15px_rgba(0,0,0,0.03)] z-10">
-          <div className="flex items-center justify-between mb-6">
+          {/* Candidate Live Proctor Camera Feed (Docked cleanly in sidebar - NEVER overlaps Submit Exam) */}
+          <div className="mb-6 rounded-2xl bg-slate-950 border border-emerald-500/60 overflow-hidden shadow-xs">
+            <div className="relative aspect-4/3 w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+              {cameraActive ? (
+                <video
+                  ref={(el) => {
+                    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                      el.srcObject = streamRef.current;
+                      el.play().catch(() => {});
+                    }
+                  }}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover transform -scale-x-100"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-4 text-center text-slate-400">
+                  <Camera size={26} className="text-amber-400 mb-2 animate-pulse" />
+                  <span className="text-[12px] font-semibold text-slate-200">Connecting Camera...</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">Invigilator live feed active</span>
+                </div>
+              )}
+              {/* Overlay badges */}
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/80 backdrop-blur-xs px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                LIVE PROCTOR
+              </div>
+              <div className="absolute bottom-1.5 right-2 text-[10px] text-white/95 font-mono bg-black/80 px-2 py-0.5 rounded backdrop-blur-xs border border-white/10 font-bold">
+                {candidateMatric || "STUDENT"}
+              </div>
+            </div>
+            <div className="px-3 py-1.5 bg-slate-900 text-[10px] text-emerald-400 font-semibold flex items-center justify-between border-t border-slate-800">
+              <span className="flex items-center gap-1.5">
+                <ShieldAlert size={12} className="text-emerald-400" /> Proctoring Monitored
+              </span>
+              <span className="text-slate-400 font-mono text-[9px]">ACTIVE</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-[16px] text-gray-900 dark:text-slate-100">Question Palette</h3>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
               {answeredCount}/{questions.length} answered
@@ -1457,8 +1619,8 @@ export default function ExamAttemptPage() {
         className="fixed bottom-0 right-0 w-1 h-1 opacity-[0.01] pointer-events-none z-[-1]"
       />
 
-      {/* Floating Picture-in-Picture Candidate Webcam Preview */}
-      <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end pointer-events-auto select-none">
+      {/* Floating Picture-in-Picture Candidate Webcam Preview (Mobile/Tablet only - safe bottom-24 clearance above nav bar, never overlaps Submit Exam) */}
+      <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end pointer-events-auto select-none lg:hidden">
         {isCamCollapsed ? (
           <button
             type="button"

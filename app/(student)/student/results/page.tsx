@@ -9,15 +9,18 @@ import {
   GraduationCap,
   Loader2,
   AlertCircle,
+  FileText,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { generateResultSlip } from "@/lib/generateResultSlip";
+import { CandidateScriptModal } from "@/components/exam/candidate-script-modal";
 
 import { useUser } from "@/components/auth/user-context";
 
 interface ResultCourse {
   code: string;
   title: string;
+  attemptId?: string;
   examScore: number;
   rawScore?: number;
   maxScore?: number;
@@ -65,6 +68,7 @@ export default function StudentResultsPage() {
 
   const [selectedSession, setSelectedSession] = useState<string>("");
   const [selectedSemester, setSelectedSemester] = useState("All");
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -341,15 +345,26 @@ export default function StudentResultsPage() {
                         </span>
                       </td>
                       <td className="py-4 px-4 sm:px-6 text-right">
-                        {isFail ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 border border-rose-200">
-                            <AlertCircle size={13} className="text-rose-600" /> Fail
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 size={13} className="text-emerald-600" /> Pass
-                          </span>
-                        )}
+                        <div className="flex items-center justify-end gap-2.5">
+                          {isFail ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 border border-rose-200">
+                              <AlertCircle size={13} className="text-rose-600" /> Fail
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 size={13} className="text-emerald-600" /> Pass
+                            </span>
+                          )}
+                          {r.attemptId && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAttemptId(r.attemptId!)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-semibold text-blue-700 shadow-2xs transition-colors cursor-pointer"
+                            >
+                              <FileText size={12} /> Review Script
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -367,6 +382,14 @@ export default function StudentResultsPage() {
           <div className="font-semibold text-slate-800">LASUSTECH Academic Registry</div>
         </div>
       </div>
+
+      {selectedAttemptId && (
+        <CandidateScriptModal
+          attemptId={selectedAttemptId}
+          role="STUDENT"
+          onClose={() => setSelectedAttemptId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -93,7 +93,7 @@ export interface AttemptScriptPayload {
 
 interface CandidateScriptModalProps {
   attemptId: string;
-  role: "ADMIN" | "LECTURER";
+  role: "ADMIN" | "LECTURER" | "STUDENT";
   onClose: () => void;
   onScoreUpdated?: () => void;
 }
@@ -126,7 +126,9 @@ export function CandidateScriptModal({
       const endpoint =
         role === "ADMIN"
           ? `/admin/results/attempts/${attemptId}/script`
-          : `/lecturer/results/attempts/${attemptId}/script`;
+          : role === "LECTURER"
+          ? `/lecturer/results/attempts/${attemptId}/script`
+          : `/student/attempts/${attemptId}/script`;
 
       const res = await apiClient<{ data: AttemptScriptPayload }>(endpoint);
       setData(res.data);
@@ -327,6 +329,14 @@ export function CandidateScriptModal({
                       with university examination integrity regulations, direct score overrides
                       are restricted to CBT Administrators / Senate Examinations Office. If an
                       error in keying was found, submit an adjustment request to the admin.
+                    </div>
+                  </div>
+                ) : role === "STUDENT" ? (
+                  <div className="rounded-lg bg-indigo-50/70 border border-indigo-200 p-2.5 text-[12px] text-indigo-900 flex items-start gap-2">
+                    <BookOpen size={16} className="text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong>Official Candidate Examination Script:</strong> Review your
+                      submitted responses, correct answers, and question solutions for this examination.
                     </div>
                   </div>
                 ) : (

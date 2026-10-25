@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 import { useUser } from "@/components/auth/user-context";
 
 /* -------------------------------------------------------------------------- */
@@ -246,7 +246,7 @@ export default function StudentDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl" />
+          
           <Link
             href="/student/results"
             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-2xs transition-colors hover:bg-slate-800 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700"
