@@ -24,6 +24,7 @@ import {
   Copy,
   Check,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
@@ -37,6 +38,10 @@ interface SavedTicket {
   email?: string;
   phone?: string;
   submittedAt: string;
+  status?: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  adminReply?: string | null;
+  repliedAt?: string | null;
+  repliedBy?: string | null;
 }
 
 export default function SupportPage() {
@@ -57,16 +62,53 @@ export default function SupportPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [myTickets, setMyTickets] = useState<SavedTicket[]>([]);
+  const [isSyncingTickets, setIsSyncingTickets] = useState(false);
 
-  // Load ticket history from localStorage
+  const syncTicketStatuses = React.useCallback(async (ticketsToSync: SavedTicket[]) => {
+    if (!ticketsToSync.length) return;
+    setIsSyncingTickets(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+      const updated = await Promise.all(
+        ticketsToSync.map(async (t) => {
+          try {
+            const res = await fetch(`${baseUrl}/support/${encodeURIComponent(t.ref)}`);
+            if (!res.ok) return t;
+            const json = await res.json();
+            const live = json.data;
+            if (live) {
+              return {
+                ...t,
+                status: live.status,
+                adminReply: live.adminReply,
+                repliedAt: live.repliedAt,
+                repliedBy: live.repliedBy,
+              };
+            }
+          } catch {}
+          return t;
+        })
+      );
+      setMyTickets(updated);
+      try {
+        localStorage.setItem("lasustech_cbt_support_tickets", JSON.stringify(updated));
+      } catch {}
+    } finally {
+      setIsSyncingTickets(false);
+    }
+  }, []);
+
+  // Load ticket history from localStorage and sync live status
   React.useEffect(() => {
     try {
       const stored = localStorage.getItem("lasustech_cbt_support_tickets");
       if (stored) {
-        setMyTickets(JSON.parse(stored));
+        const parsed: SavedTicket[] = JSON.parse(stored);
+        setMyTickets(parsed);
+        void syncTicketStatuses(parsed);
       }
     } catch {}
-  }, []);
+  }, [syncTicketStatuses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,7 +327,18 @@ export default function SupportPage() {
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pb-1">
-                      <span>Saved reports ({myTickets.length})</span>
+                      <div className="flex items-center gap-2">
+                        <span>Saved reports ({myTickets.length})</span>
+                        <button
+                          type="button"
+                          onClick={() => void syncTicketStatuses(myTickets)}
+                          disabled={isSyncingTickets}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw size={11} className={isSyncingTickets ? "animate-spin" : ""} />
+                          Refresh Status
+                        </button>
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
@@ -299,48 +352,90 @@ export default function SupportPage() {
                         <Trash2 size={12} /> Clear history
                       </button>
                     </div>
-                    {myTickets.map((t) => (
-                      <div
-                        key={t.ref}
-                        className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono font-bold text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                            {t.ref}
-                          </span>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {new Date(t.submittedAt).toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                    {myTickets.map((t) => {
+                      const isSolved = t.status === "RESOLVED" || t.status === "CLOSED";
+                      const isInProgress = t.status === "IN_PROGRESS";
+
+                      return (
+                        <div
+                          key={t.ref}
+                          className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5 transition-all"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono font-bold text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                              {t.ref}
+                            </span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {new Date(t.submittedAt).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <div className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                            {t.name} &bull; {t.identifier}
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                            {t.message}
+                          </p>
+
+                          {/* Admin Resolution Note if Solved/Replied */}
+                          {t.adminReply && (
+                            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
+                              <div className="flex items-center justify-between font-bold text-emerald-800 dark:text-emerald-300">
+                                <span className="flex items-center gap-1.5">
+                                  <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
+                                  Official ICT Resolution ({t.repliedBy || "Admin"})
+                                </span>
+                                {t.repliedAt && (
+                                  <span className="text-[10px] font-normal text-emerald-600 dark:text-emerald-400">
+                                    {new Date(t.repliedAt).toLocaleDateString("en-GB", {
+                                      day: "numeric",
+                                      month: "short",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                {t.adminReply}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                            {isSolved ? (
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/70 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
+                                <CheckCircle2 size={12} /> Solved
+                              </span>
+                            ) : isInProgress ? (
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/70 px-2.5 py-0.5 rounded-full border border-blue-300 dark:border-blue-700">
+                                <Clock size={12} /> In Progress
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/70 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                                <Clock size={12} /> Under Review
+                              </span>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(t.ref);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
+                              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Copy size={12} /> Copy Ref
+                            </button>
+                          </div>
                         </div>
-                        <div className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                          {t.name} &bull; {t.identifier}
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
-                          {t.message}
-                        </p>
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                            {t.priority === "URGENT" ? "Urgent &bull; Transmitted" : "Logged &bull; Under Review"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(t.ref);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
-                            }}
-                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            <Copy size={12} /> Copy Ref
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
