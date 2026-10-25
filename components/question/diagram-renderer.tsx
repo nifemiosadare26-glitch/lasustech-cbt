@@ -9,7 +9,7 @@ import { MathText } from "./math-text";
  * Sanitizes SVG markup to protect candidates and staff from Stored XSS
  * while allowing full SVG diagram geometry (lines, paths, rects, circles, text, defs, markers).
  */
-function sanitizeSvgMarkup(svg: string): string {
+export function sanitizeSvgMarkup(svg: string): string {
   if (!svg) return "";
   let clean = svg;
   // 1. Remove executable scripts, embedded frames, and foreign objects
@@ -29,6 +29,41 @@ function sanitizeSvgMarkup(svg: string): string {
   clean = clean.replace(/(href|xlink:href)\s*=\s*("[^"]*data:(?!image\/(?:png|jpeg|jpg|webp))[^"]*"|'[^']*data:(?!image\/(?:png|jpeg|jpg|webp))[^']*')/gi, '$1=""');
 
   return clean;
+}
+
+export function extractSvgFromText(text?: string | null): { cleanText: string; svgMarkup: string | null } {
+  if (!text) return { cleanText: "", svgMarkup: null };
+
+  let raw = String(text);
+
+  // Match <svg ...>...</svg> blocks
+  const svgRegex = /<svg[\s\S]*?<\/svg>/i;
+  const match = raw.match(svgRegex);
+  let extractedSvg: string | null = null;
+
+  if (match) {
+    extractedSvg = match[0];
+    raw = raw.replace(svgRegex, "").trim();
+  } else {
+    // Check for markdown code-fenced svg: ```xml\n<svg... / ```svg\n<svg...
+    const fencedSvgRegex = /```(?:svg|xml|html)?\s*(<svg[\s\S]*?<\/svg>)\s*```/i;
+    const fencedMatch = raw.match(fencedSvgRegex);
+    if (fencedMatch) {
+      extractedSvg = fencedMatch[1];
+      raw = raw.replace(fencedSvgRegex, "").trim();
+    }
+  }
+
+  // Strip trailing/leading <br> remnants from the text
+  const cleaned = raw
+    .replace(/^(\s*<br\s*\/?>)+/gi, "")
+    .replace(/(\s*<br\s*\/?>)+$/gi, "")
+    .trim();
+
+  return {
+    cleanText: cleaned,
+    svgMarkup: extractedSvg ? sanitizeSvgMarkup(extractedSvg) : null,
+  };
 }
 
 interface DiagramRendererProps {
@@ -52,40 +87,7 @@ export function DiagramRenderer({
   imageClassName,
   diagramClassName,
 }: DiagramRendererProps) {
-  const { cleanText, svgMarkup } = useMemo(() => {
-    if (!text) return { cleanText: "", svgMarkup: null };
-
-    let raw = String(text);
-
-    // Match <svg ...>...</svg> blocks
-    const svgRegex = /<svg[\s\S]*?<\/svg>/i;
-    let match = raw.match(svgRegex);
-    let extractedSvg: string | null = null;
-
-    if (match) {
-      extractedSvg = match[0];
-      raw = raw.replace(svgRegex, "").trim();
-    } else {
-      // Check for markdown code-fenced svg: ```xml\n<svg... / ```svg\n<svg...
-      const fencedSvgRegex = /```(?:svg|xml|html)?\s*(<svg[\s\S]*?<\/svg>)\s*```/i;
-      const fencedMatch = raw.match(fencedSvgRegex);
-      if (fencedMatch) {
-        extractedSvg = fencedMatch[1];
-        raw = raw.replace(fencedSvgRegex, "").trim();
-      }
-    }
-
-    // Strip trailing/leading <br> remnants from the text
-    const cleaned = raw
-      .replace(/^(\s*<br\s*\/?>)+/gi, "")
-      .replace(/(\s*<br\s*\/?>)+$/gi, "")
-      .trim();
-
-    return {
-      cleanText: cleaned,
-      svgMarkup: extractedSvg ? sanitizeSvgMarkup(extractedSvg) : null,
-    };
-  }, [text]);
+  const { cleanText, svgMarkup } = useMemo(() => extractSvgFromText(text), [text]);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -100,12 +102,12 @@ export function DiagramRenderer({
       {svgMarkup && (
         <div
           className={cn(
-            "my-4 flex items-center justify-center p-4 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-2xs overflow-x-auto",
+            "my-4 flex items-center justify-center p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-white shadow-xs overflow-x-auto text-slate-900",
             diagramClassName
           )}
         >
           <div
-            className="w-full max-w-xl max-h-96 flex items-center justify-center [&_svg]:max-h-80 [&_svg]:w-auto [&_svg]:max-w-full [&_svg]:h-auto text-slate-900 dark:text-slate-100"
+            className="w-full max-w-2xl max-h-[420px] flex items-center justify-center [&_svg]:max-h-[380px] [&_svg]:w-full [&_svg]:max-w-full [&_svg]:h-auto text-slate-900"
             dangerouslySetInnerHTML={{ __html: svgMarkup }}
           />
         </div>

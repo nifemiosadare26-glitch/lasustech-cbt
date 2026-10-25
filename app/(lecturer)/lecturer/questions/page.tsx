@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, MoreHorizontal, Image as ImageIcon, CheckCircle2, Loader2, Sparkles, X, Trash2, Edit,
+  Search, Plus, MoreHorizontal, Image as ImageIcon, CheckCircle2, Loader2, Sparkles, X, Trash2, Edit, Eye,
 } from "lucide-react";
 import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
 import { mediaSrc, apiClient } from "@/lib/apiClient";
 import { ConfirmModal, ErrorBanner, Pagination, selectCls, useToast } from "@/components/admin/ui";
 import { MathText, cleanQuestionStem } from "@/components/question/math-text";
+import { DiagramRenderer, extractSvgFromText } from "@/components/question/diagram-renderer";
 
 interface Course {
   id: string;
@@ -46,7 +47,13 @@ interface QuestionVersion {
   answerSource: string;
   explanation: string | null;
   topic: { id: string; name: string } | null;
-  options: { id: string; position: number; isCorrect: boolean }[];
+  options: {
+    id: string;
+    position: number;
+    isCorrect: boolean;
+    body?: { text?: string } | null;
+    mediaUrl?: string | null;
+  }[];
 }
 
 interface QuestionRow {
@@ -94,6 +101,7 @@ export default function QuestionBank() {
   const [togglingId, setTogglingId] = React.useState<string | null>(null);
   const [deletingQuestion, setDeletingQuestion] = React.useState<QuestionRow | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [previewingRow, setPreviewingRow] = React.useState<QuestionRow | null>(null);
   const debounced = useDebounced(search, 300);
 
   const courses = useApi<Course[]>("/lecturer/courses");
@@ -351,8 +359,7 @@ export default function QuestionBank() {
                 rows.map((row) => {
                   const version = row.version;
                   const rawStem = version?.stem?.text ?? "";
-                  const hasDiagram = /<svg[\s\S]*?<\/svg>/i.test(rawStem);
-                  const stem = rawStem.replace(/<svg[\s\S]*?<\/svg>/gi, "").trim() || rawStem;
+                  const { cleanText: stem, svgMarkup } = extractSvgFromText(rawStem);
                   const thumb = version?.stemMediaUrl ?? null;
                   const hasOptions = (version?.options.length ?? 0) >= 2;
                   return (
@@ -363,12 +370,17 @@ export default function QuestionBank() {
                           <img
                             src={mediaSrc(thumb) ?? ""}
                             alt={version?.stemMedia?.altText ?? "Question figure"}
-                            className="h-10 w-10 rounded border border-gray-200 bg-gray-50 object-cover"
+                            className="h-10 w-10 rounded border border-gray-200 bg-gray-50 object-cover cursor-pointer hover:ring-2 hover:ring-blue-400"
+                            onClick={() => setPreviewingRow(row)}
+                            title="Click to preview figure"
                           />
-                        ) : hasDiagram ? (
-                          <div className="h-10 w-10 rounded border border-blue-200 bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-[10px]" title="Contains SVG diagram">
-                            SVG
-                          </div>
+                        ) : svgMarkup ? (
+                          <div
+                            className="h-10 w-10 rounded border border-blue-200 bg-white p-0.5 overflow-hidden flex items-center justify-center [&_svg]:max-h-full [&_svg]:max-w-full [&_svg]:w-auto [&_svg]:h-auto shadow-2xs cursor-pointer hover:ring-2 hover:ring-blue-400 group-hover:border-blue-400"
+                            title="Click to preview vector diagram"
+                            onClick={() => setPreviewingRow(row)}
+                            dangerouslySetInnerHTML={{ __html: svgMarkup }}
+                          />
                         ) : (
                           <div className="h-10 w-10 rounded border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400">
                             <ImageIcon size={15} />
@@ -382,7 +394,7 @@ export default function QuestionBank() {
                           </span>
                         </Link>
                         <div className="flex items-center gap-2 mt-1">
-                          {hasDiagram && (
+                          {svgMarkup && (
                             <span className="text-[11px] font-medium text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
                               Diagram
                             </span>
@@ -427,8 +439,8 @@ export default function QuestionBank() {
                               disabled={togglingId === row.id}
                               className={`text-[11px] font-medium px-2 py-0.5 rounded transition-colors cursor-pointer border ${
                                 version.status === "APPROVED"
-                                  ? "border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100"
-                                  : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                                    ? "border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100"
+                                    : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                               } disabled:opacity-50`}
                               title={
                                 version.status === "APPROVED"
@@ -449,6 +461,13 @@ export default function QuestionBank() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setPreviewingRow(row)}
+                            className="text-gray-400 hover:text-blue-700 rounded p-1 cursor-pointer transition-colors"
+                            title="Quick preview question"
+                          >
+                            <Eye size={16} />
+                          </button>
                           <button
                             onClick={() => router.push(`/lecturer/questions/${row.id}`)}
                             className="text-gray-400 hover:text-blue-700 rounded p-1 cursor-pointer transition-colors"
@@ -498,6 +517,104 @@ export default function QuestionBank() {
           onConfirm={handleDeleteQuestion}
           onClose={() => setDeletingQuestion(null)}
         />
+      )}
+
+      {previewingRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <Badge variant={DIFFICULTY_VARIANT[previewingRow.version?.difficulty ?? ""] ?? "gray-tint"}>
+                  {(previewingRow.version?.difficulty ?? "medium").toLowerCase()}
+                </Badge>
+                <Badge variant={STATUS_VARIANT[previewingRow.version?.status ?? ""] ?? "gray-tint"}>
+                  {(previewingRow.version?.status ?? "draft").toLowerCase()}
+                </Badge>
+                <span className="text-[12px] text-gray-500 font-mono">
+                  {previewingRow.version?.marks ?? 1} mark(s)
+                </span>
+              </div>
+              <button
+                onClick={() => setPreviewingRow(null)}
+                className="text-gray-400 hover:text-gray-600 rounded-lg p-1.5 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div className="text-[15px] text-gray-900 leading-relaxed font-medium">
+                <DiagramRenderer
+                  text={previewingRow.version?.stem?.text ?? ""}
+                  mediaUrl={previewingRow.version?.stemMediaUrl}
+                />
+              </div>
+
+              {previewingRow.version?.options && previewingRow.version.options.length > 0 && (
+                <div className="space-y-2.5">
+                  <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">
+                    Answer Options
+                  </p>
+                  {previewingRow.version.options.map((opt, idx) => (
+                    <div
+                      key={opt.id}
+                      className={`p-3 rounded-xl border flex items-start gap-3 text-[14px] ${
+                        opt.isCorrect
+                          ? "border-emerald-200 bg-emerald-50/70 text-emerald-950 font-medium"
+                          : "border-gray-200 bg-white text-gray-800"
+                      }`}
+                    >
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold ${
+                        opt.isCorrect
+                          ? "bg-emerald-600 text-white"
+                          : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <div className="flex-1">
+                        <MathText text={opt.body?.text || (opt as any).text || "Option"} />
+                      </div>
+                      {opt.isCorrect && (
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                          Correct
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {previewingRow.version?.explanation && (
+                <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                  <p className="text-[11px] font-bold text-blue-900 uppercase tracking-wider mb-1">
+                    Verified Explanation
+                  </p>
+                  <p className="text-[13px] text-blue-950 leading-relaxed">
+                    {previewingRow.version.explanation}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3">
+              <span className="text-[12px] text-gray-500 truncate max-w-xs">
+                {previewingRow.ownerLabel} · {previewingRow.version?.topic?.name ?? "General"}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => router.push(`/lecturer/questions/${previewingRow.id}`)}
+                >
+                  <Edit size={14} className="mr-1.5" /> Edit in editor
+                </Button>
+                <Button size="sm" onClick={() => setPreviewingRow(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
     </>

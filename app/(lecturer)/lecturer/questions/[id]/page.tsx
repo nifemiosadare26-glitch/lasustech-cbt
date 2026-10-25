@@ -13,7 +13,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useApi } from "@/lib/useApi";
 import { ErrorBanner, ConfirmModal, errMessage, selectCls, useToast } from "@/components/admin/ui";
 import { MediaUpload, type MediaRef } from "@/components/lecturer/media-upload";
-import { DiagramRenderer } from "@/components/question/diagram-renderer";
+import { DiagramRenderer, extractSvgFromText } from "@/components/question/diagram-renderer";
 import { MathText } from "@/components/question/math-text";
 
 interface Course {
@@ -86,6 +86,8 @@ export default function QuestionEditor() {
   const [scope, setScope] = React.useState("");
   const [topicId, setTopicId] = React.useState("");
   const [stemText, setStemText] = React.useState("");
+  const [svgDiagram, setSvgDiagram] = React.useState<string | null>(null);
+  const [showSvgEditor, setShowSvgEditor] = React.useState(false);
   const [stemMedia, setStemMedia] = React.useState<MediaRef | null>(null);
   const [answerFormat, setAnswerFormat] = React.useState<"MCQ_SINGLE" | "MCQ_MULTI">("MCQ_SINGLE");
   const [difficulty, setDifficulty] = React.useState("MEDIUM");
@@ -103,7 +105,9 @@ export default function QuestionEditor() {
       existing.courseId ? `course:${existing.courseId}` : existing.subjectId ? `subject:${existing.subjectId}` : "",
     );
     setTopicId(existing.version.topic?.id ?? "");
-    setStemText(existing.version.stem?.text ?? "");
+    const { cleanText: initialStem, svgMarkup: initialSvg } = extractSvgFromText(existing.version.stem?.text);
+    setStemText(initialStem);
+    setSvgDiagram(initialSvg);
     setStemMedia(existing.version.stemMedia ?? null);
     setAnswerFormat(existing.answerFormat === "MCQ_MULTI" ? "MCQ_MULTI" : "MCQ_SINGLE");
     setDifficulty(existing.version.difficulty ?? "MEDIUM");
@@ -190,16 +194,21 @@ export default function QuestionEditor() {
 
     setSaving(status === "DRAFT" ? "draft" : "save");
     try {
+      const combinedStem = svgDiagram?.trim()
+        ? `${stemText.trim()}\n\n${svgDiagram.trim()}`
+        : stemText.trim();
+      const hasMath = /\$|\\\(|\\\[|<svg/i.test(combinedStem);
+
       const payload = {
         ...(scopeType === "course" ? { courseId: scopeId } : { subjectId: scopeId }),
         topicId: topicId || undefined,
         answerFormat,
         difficulty,
         marks: Number(marks) || 1,
-        stem: { text: stemText.trim() },
+        stem: { text: combinedStem },
         stemMediaId: stemMedia?.id ?? null,
         explanation: explanation.trim() || undefined,
-        hasMath: false,
+        hasMath,
         options: usable.map((option, index) => ({
           position: index,
           body: { text: option.text.trim() },
@@ -317,18 +326,107 @@ export default function QuestionEditor() {
           <div className="md:col-span-2 space-y-6">
             <Card title="Question">
               <div className="space-y-4">
-                <textarea
-                  className="w-full h-32 resize-none rounded-md border border-gray-300 p-3 text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Type the question here..."
-                  value={stemText}
-                  onChange={(e) => setStemText(e.target.value)}
-                />
-                {(/<svg[\s\S]*?<\/svg>/i.test(stemText) || /\$|\\\(|\\\[/.test(stemText)) && (
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
+                    Question prompt
+                  </label>
+                  <textarea
+                    className="w-full h-28 resize-none rounded-md border border-gray-300 p-3 text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Type the question text here..."
+                    value={stemText}
+                    onChange={(e) => setStemText(e.target.value)}
+                  />
+                </div>
+
+                {/\$|\\\(|\\\[/.test(stemText) && (
                   <div className="rounded-lg border border-blue-100 bg-blue-50/30 p-3">
-                    <p className="text-[12px] font-semibold text-blue-900 mb-2">Math & Diagram Live Preview:</p>
-                    <DiagramRenderer text={stemText} />
+                    <p className="text-[12px] font-semibold text-blue-900 mb-2">Math Live Preview:</p>
+                    <MathText text={stemText} />
                   </div>
                 )}
+
+                {/* Vector Diagram / Chart (SVG) section */}
+                <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-gray-900">
+                        Vector Diagram / Chart (SVG)
+                      </span>
+                      {svgDiagram && (
+                        <Badge variant="blue-tint" className="text-[11px]">
+                          Attached
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {svgDiagram ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="text-[12px] h-7 px-2.5"
+                            onClick={() => setShowSvgEditor(!showSvgEditor)}
+                          >
+                            {showSvgEditor ? "Hide SVG Code" : "Edit SVG Code"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger-outline"
+                            size="sm"
+                            className="text-[12px] h-7 px-2"
+                            onClick={() => {
+                              setSvgDiagram(null);
+                              setShowSvgEditor(false);
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="text-[12px] h-7"
+                          onClick={() => {
+                            setSvgDiagram('<svg viewBox="0 0 600 320" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff;border-radius:10px;border:1px solid #e2e8f0;">\n  <!-- Add your SVG elements here -->\n</svg>');
+                            setShowSvgEditor(true);
+                          }}
+                        >
+                          + Add Diagram (SVG)
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {svgDiagram && (
+                    <div className="space-y-3">
+                      <div className="border border-gray-200 bg-white rounded-lg p-2 overflow-hidden shadow-2xs">
+                        <DiagramRenderer text={svgDiagram} />
+                      </div>
+                      {showSvgEditor && (
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-mono text-gray-500 uppercase">
+                            Raw SVG Markup (Advanced)
+                          </label>
+                          <textarea
+                            className="w-full h-40 font-mono text-[12px] rounded-md border border-gray-300 p-2.5 text-gray-800 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={svgDiagram}
+                            onChange={(e) => setSvgDiagram(e.target.value)}
+                            placeholder="<svg viewBox='0 0 600 320' ...>...</svg>"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!svgDiagram && (
+                    <p className="text-[12px] text-gray-500">
+                      No vector diagram attached. Histograms, line graphs, bar charts, and geometry figures generated by AI or added as SVG will appear here.
+                    </p>
+                  )}
+                </div>
+
                 <MediaUpload
                   value={stemMedia}
                   onChange={setStemMedia}
