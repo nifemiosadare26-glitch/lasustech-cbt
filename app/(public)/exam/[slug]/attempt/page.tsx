@@ -17,9 +17,17 @@ import {
   Calculator,
   X,
   Lock,
+  Camera,
+  Video,
+  VideoOff,
+  ShieldAlert,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mediaSrc } from "@/lib/apiClient";
+import { getRealtimeSocket } from "@/lib/realtime";
 import {
   clearAttemptSession,
   publicApi,
@@ -57,13 +65,22 @@ function clock(seconds: number) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+const CALC_BUTTONS = [
+  ["sin", "cos", "tan", "(", ")"],
+  ["log", "ln", "√", "^", "AC"],
+  ["7", "8", "9", "÷", "DEL"],
+  ["4", "5", "6", "×", "π"],
+  ["1", "2", "3", "-", "e"],
+  ["0", ".", "=", "+", "±"],
+];
+
 export default function PublicExamAttempt() {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug ?? "";
   const router = useRouter();
 
   const [attempt, setAttempt] = React.useState<PublicAttempt | null>(null);
-  const [session, setSession] = React.useState<{ attemptId: string; token: string } | null>(null);
+  const [session, setSession] = React.useState<{ attemptId: string; token: string; name?: string } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
@@ -78,7 +95,20 @@ export default function PublicExamAttempt() {
   const [result, setResult] = React.useState<SubmitResult | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
 
-  // Tools state (Calculator & Protractor)
+  // Camera & Live Proctor Stream State
+  const [cameraActive, setCameraActive] = React.useState<boolean>(false);
+  const [cameraError, setCameraError] = React.useState<string | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+
+  // Anti-cheat tab switch monitoring state
+  const [tabSwitches, setTabSwitches] = React.useState(0);
+  const [tabWarningModal, setTabWarningModal] = React.useState<number | null>(null);
+  const tabSwitchLimit = 3;
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  // Tools state (Scientific Calculator)
   const [activeTool, setActiveTool] = React.useState<"calc" | "prot" | null>(null);
   const [calcExpr, setCalcExpr] = React.useState("");
   const [calcResult, setCalcResult] = React.useState("0");
@@ -122,29 +152,18 @@ export default function PublicExamAttempt() {
     if (btn === "AC") {
       setCalcExpr("");
       setCalcResult("0");
+    } else if (btn === "DEL") {
+      setCalcExpr((prev) => prev.slice(0, -1));
     } else if (btn === "=") {
       handleCalcEval();
+    } else if (btn === "±") {
+      setCalcExpr((prev) => {
+        if (!prev) return "-";
+        if (prev.startsWith("-")) return prev.slice(1);
+        return `-${prev}`;
+      });
     } else if (["sin", "cos", "tan", "log", "ln", "√"].includes(btn)) {
-      const matchNumber = calcExpr.match(/(\d+(\.\d+)?)$/);
-      if (matchNumber && !calcExpr.endsWith(")")) {
-        const num = matchNumber[0];
-        const prefix = calcExpr.slice(0, -num.length);
-        const newExpr = `${prefix}${btn}(${num})`;
-        setCalcExpr(newExpr);
-        try {
-          const val = Number(num);
-          let res = 0;
-          if (btn === "sin") res = Math.sin((val * Math.PI) / 180);
-          else if (btn === "cos") res = Math.cos((val * Math.PI) / 180);
-          else if (btn === "tan") res = Math.tan((val * Math.PI) / 180);
-          else if (btn === "log") res = Math.log10(val);
-          else if (btn === "ln") res = Math.log(val);
-          else if (btn === "√") res = Math.sqrt(val);
-          setCalcResult(String(Math.round(res * 100000) / 100000));
-        } catch {}
-      } else {
-        setCalcExpr((prev) => prev + `${btn}(`);
-      }
+      setCalcExpr((prev) => prev + `${btn}(`);
     } else {
       setCalcExpr((prev) => prev + btn);
     }
@@ -323,6 +342,11 @@ export default function PublicExamAttempt() {
         body: JSON.stringify({ autoSubmitted: auto }),
       });
       clearAttemptSession(slug);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      setCameraActive(false);
       setResult(res.data);
     } catch (error) {
       setNotice(publicErrorMessage(error));
@@ -330,6 +354,269 @@ export default function PublicExamAttempt() {
       submittingRef.current = false;
     }
   };
+
+  // --- Camera Acquisition & Stream Setup ------------------------------------
+  React.useEffect(() => {
+    if (!attempt || !attempt.requireWebcam || result) return;
+
+    let unmounted = false;
+
+    async function setupCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: "user" },
+          audio: false,
+        });
+        if (unmounted) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        setCameraActive(true);
+        setCameraError(null);
+      } catch (err: any) {
+        console.warn("[Public Proctor Camera] Webcam permission denied or unavailable:", err?.message);
+        setCameraError(err?.message || "Webcam access required for proctored examination");
+      }
+    }
+
+    void setupCamera();
+
+    return () => {
+      unmounted = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      setCameraActive(false);
+    };
+  }, [attempt?.requireWebcam, result]);
+
+  // --- Real-time Proctor WebSocket & Periodic Snapshot Frames ---------------
+  React.useEffect(() => {
+    if (!attempt?.sittingId || !cameraActive || !session || result) return;
+
+    const socket = getRealtimeSocket();
+    if (!socket) return;
+
+    socket.emit("join_sitting", attempt.sittingId);
+
+    const frameInterval = setInterval(() => {
+      if (!videoRef.current || !canvasRef.current) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      canvas.width = 160;
+      canvas.height = 120;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, 160, 120);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+
+      socket.emit("camera_frame", {
+        sittingId: attempt.sittingId,
+        attemptId: session.attemptId,
+        studentId: session.name || "Guest Candidate",
+        studentName: session.name || "Guest Candidate",
+        matricNo: "EXT-" + session.attemptId.slice(0, 6).toUpperCase(),
+        image: dataUrl,
+      });
+    }, 15000);
+
+    return () => {
+      clearInterval(frameInterval);
+      socket.emit("leave_sitting", attempt.sittingId);
+    };
+  }, [attempt?.sittingId, cameraActive, session, result]);
+
+  // --- Anti-cheat Tab Switch Detection & Violation Reporting ----------------
+  React.useEffect(() => {
+    if (!attempt || !attempt.antiCheatEnabled || submitting || result || loading) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setTabSwitches((prev) => {
+          const nextCount = prev + 1;
+
+          if (session) {
+            void publicApi(`/public/attempts/${session.attemptId}/events`, {
+              method: "POST",
+              token: session.token,
+              body: JSON.stringify({ type: "TAB_SWITCH", count: nextCount }),
+            }).catch(() => {});
+          }
+
+          if (nextCount < tabSwitchLimit) {
+            setTabWarningModal(nextCount);
+          } else {
+            setTabWarningModal(tabSwitchLimit);
+            setTimeout(() => {
+              void submit(true);
+            }, 1800);
+          }
+          return nextCount;
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [attempt?.antiCheatEnabled, submitting, result, loading, session]);
+
+  // --- Security: Block contextmenu, copy/paste, cut, and devtools combos ----
+  React.useEffect(() => {
+    if (result) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    const handleCopyCutPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+    };
+
+    const handleSecurityKeys = (e: KeyboardEvent) => {
+      if (
+        e.key === "F12" ||
+        ((e.ctrlKey || e.metaKey) && ["u", "U", "s", "S", "p", "P"].includes(e.key)) ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && ["I", "i", "J", "j", "C", "c"].includes(e.key))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("copy", handleCopyCutPaste);
+    document.addEventListener("cut", handleCopyCutPaste);
+    document.addEventListener("paste", handleCopyCutPaste);
+    document.addEventListener("keydown", handleSecurityKeys);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopyCutPaste);
+      document.removeEventListener("cut", handleCopyCutPaste);
+      document.removeEventListener("paste", handleCopyCutPaste);
+      document.removeEventListener("keydown", handleSecurityKeys);
+    };
+  }, [result]);
+
+  // --- Fullscreen Toggle & Listener -----------------------------------------
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  React.useEffect(() => {
+    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  // --- Physical Keyboard listener: Calculator + Exam Navigation -------------
+  React.useEffect(() => {
+    if (result) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // Alt+C toggles calculator
+      if (e.altKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        setActiveTool((prev) => (prev === "calc" ? null : "calc"));
+        return;
+      }
+
+      // If calculator is active, route keyboard input to calculator
+      if (activeTool === "calc") {
+        if (e.key >= "0" && e.key <= "9") {
+          e.preventDefault();
+          handleCalcInput(e.key);
+        } else if (e.key === "+" || e.key === "-" || e.key === "(" || e.key === ")" || e.key === "." || e.key === "^") {
+          e.preventDefault();
+          handleCalcInput(e.key);
+        } else if (e.key === "*") {
+          e.preventDefault();
+          handleCalcInput("×");
+        } else if (e.key === "/") {
+          e.preventDefault();
+          handleCalcInput("÷");
+        } else if (e.key === "Enter" || e.key === "=") {
+          e.preventDefault();
+          handleCalcEval();
+        } else if (e.key === "Backspace") {
+          e.preventDefault();
+          handleCalcInput("DEL");
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          setActiveTool(null);
+        } else if (e.key === "s" || e.key === "S") {
+          e.preventDefault();
+          handleCalcInput("sin");
+        } else if (e.key === "c" || e.key === "C") {
+          e.preventDefault();
+          handleCalcInput("cos");
+        } else if (e.key === "t" || e.key === "T") {
+          e.preventDefault();
+          handleCalcInput("tan");
+        } else if (e.key === "l" || e.key === "L") {
+          e.preventDefault();
+          handleCalcInput("log");
+        } else if (e.key === "r" || e.key === "R") {
+          e.preventDefault();
+          handleCalcInput("√");
+        }
+        return;
+      }
+
+      // When calculator is closed: navigate and answer questions
+      if (!attempt || !attempt.questions.length) return;
+      const q = attempt.questions[current];
+
+      if (e.key === "ArrowLeft" || e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        setCurrent((prev) => Math.max(0, prev - 1));
+      } else if (e.key === "ArrowRight" || e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setCurrent((prev) => Math.min(attempt.questions.length - 1, prev + 1));
+      } else if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        if (q) toggleFlag(q);
+      } else if (q && q.options) {
+        const optionKeys = ["a", "b", "c", "d", "e", "1", "2", "3", "4", "5"];
+        const keyLower = e.key.toLowerCase();
+        const keyIndex = optionKeys.indexOf(keyLower);
+        if (keyIndex !== -1) {
+          const targetIndex = keyIndex >= 5 ? keyIndex - 5 : keyIndex;
+          if (targetIndex < q.options.length) {
+            e.preventDefault();
+            choose(q, q.options[targetIndex].position);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTool, attempt, current, result, calcExpr]);
 
   if (loading) {
     return (
@@ -380,13 +667,13 @@ export default function PublicExamAttempt() {
       <div className="flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-slate-950 select-none">
         {/* 1. Header Bar matching internal exam layout */}
         <header className="h-[56px] bg-blue-900 dark:bg-slate-950 text-white px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-30 relative border-b border-blue-950/40 dark:border-slate-800">
-          <div className="flex items-center gap-4">
-            <div className="font-bold text-[15px] truncate max-w-[280px] sm:max-w-md">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="font-bold text-[15px] truncate max-w-[180px] sm:max-w-xs md:max-w-md">
               {attempt.exam.title}
             </div>
 
             {/* LIVE badge */}
-            <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-red-500/20 rounded text-red-100 text-xs font-bold tracking-wider">
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 rounded text-red-100 text-xs font-bold tracking-wider border border-red-500/30">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
@@ -394,8 +681,32 @@ export default function PublicExamAttempt() {
               LIVE
             </div>
 
-            {/* Tools (Calculator & Protractor) */}
-            <div className="hidden md:flex items-center gap-2">
+            {/* Live Proctor Monitored Indicator Badge */}
+            {attempt.requireWebcam ? (
+              <div
+                className={cn(
+                  "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold tracking-wide border shadow-2xs transition-colors",
+                  cameraActive
+                    ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/40"
+                    : "bg-amber-500/20 text-amber-200 border-amber-500/40"
+                )}
+                title={cameraActive ? "Webcam monitored live by invigilator" : "Connecting candidate camera..."}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75", cameraActive ? "animate-ping bg-emerald-400" : "bg-amber-400")} />
+                  <span className={cn("relative inline-flex rounded-full h-2 w-2", cameraActive ? "bg-emerald-400" : "bg-amber-400")} />
+                </span>
+                <Camera size={13} className={cameraActive ? "text-emerald-300" : "text-amber-300"} />
+                <span>{cameraActive ? "Camera Monitored (Live)" : "Activating Camera..."}</span>
+              </div>
+            ) : (
+              <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800/60 text-slate-300 border border-slate-700">
+                <VideoOff size={12} /> Unproctored
+              </div>
+            )}
+
+            {/* Tools (Scientific Calculator & Fullscreen) */}
+            <div className="flex items-center gap-2">
               <div className="relative">
                 <button
                   type="button"
@@ -406,40 +717,56 @@ export default function PublicExamAttempt() {
                       : "bg-blue-800 hover:bg-blue-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                   )}
                   onClick={() => setActiveTool(activeTool === "calc" ? null : "calc")}
+                  title="Toggle Scientific Calculator (Alt+C)"
                 >
-                  <Calculator size={16} /> Calculator
+                  <Calculator size={16} />
+                  <span className="hidden sm:inline">Calculator</span>
                 </button>
 
                 {activeTool === "calc" && (
-                  <div className="absolute top-[48px] left-0 w-[360px] sm:w-[420px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 overflow-hidden z-50">
+                  <div className="absolute top-[48px] left-0 w-[340px] sm:w-[410px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
                     <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <Calculator size={16} className="text-blue-600 dark:text-blue-400" />
                         <span className="font-bold text-[13px] text-slate-800 dark:text-slate-100">Scientific Calculator</span>
+                        <span className="text-[10px] text-slate-500 hidden sm:inline">(Keyboard enabled)</span>
                       </div>
-                      <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1 rounded-lg">
+                      <button
+                        onClick={() => setActiveTool(null)}
+                        className="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1 rounded-lg"
+                      >
                         <X size={16} />
                       </button>
                     </div>
-                    <div className="p-4 space-y-3">
-                      <div className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-end justify-center font-mono min-h-[68px]">
+
+                    <div className="p-3.5 space-y-2.5">
+                      {/* LCD Display */}
+                      <div className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-end justify-center font-mono min-h-[64px]">
                         <span className="text-xs text-gray-500 dark:text-slate-400 h-5 truncate max-w-full">{calcExpr || "0"}</span>
                         <span className="text-2xl font-bold text-gray-900 dark:text-white truncate max-w-full">{calcResult}</span>
                       </div>
-                      <div className="grid grid-cols-4 gap-1.5 text-xs">
-                        {["sin", "cos", "tan", "AC", "7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "-", "0", ".", "=", "+"].map((btn, i) => (
+
+                      {/* 5-Column Button Grid */}
+                      <div className="grid grid-cols-5 gap-1.5 text-xs">
+                        {CALC_BUTTONS.flat().map((btn, i) => (
                           <button
                             key={i}
                             type="button"
                             onClick={() => handleCalcInput(btn)}
                             className={cn(
-                              "h-9 rounded-lg font-bold transition-all border cursor-pointer active:scale-95",
+                              "h-9 rounded-lg font-bold transition-all border cursor-pointer active:scale-95 text-[12px]",
                               btn === "AC"
                                 ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 hover:bg-rose-100"
+                                : btn === "DEL"
+                                ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900 hover:bg-amber-100"
                                 : btn === "="
-                                ? "bg-blue-600 text-white border-blue-700 hover:bg-blue-700"
-                                : ["÷", "×", "-", "+"].includes(btn)
-                                ? "bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-gray-200"
+                                ? "bg-blue-600 text-white border-blue-700 hover:bg-blue-700 font-extrabold"
+                                : ["sin", "cos", "tan", "log", "ln", "√"].includes(btn)
+                                ? "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900 hover:bg-blue-100"
+                                : ["÷", "×", "-", "+", "^"].includes(btn)
+                                ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900 hover:bg-indigo-100"
+                                : ["(", ")", "π", "e", "±"].includes(btn)
+                                ? "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-200"
                                 : "bg-white text-gray-800 border-gray-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 hover:bg-gray-50 shadow-2xs"
                             )}
                           >
@@ -447,10 +774,25 @@ export default function PublicExamAttempt() {
                           </button>
                         ))}
                       </div>
+
+                      <div className="text-[10px] text-slate-500 text-center pt-1 border-t border-slate-200 dark:border-slate-800">
+                        Type numbers (0-9), operators (+, -, *, /), or trig (s, c, t). Enter to compute.
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Fullscreen Button */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="hidden sm:flex items-center gap-1.5 h-9 px-2.5 rounded-md text-[13px] font-medium bg-blue-800 hover:bg-blue-700 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors text-white cursor-pointer"
+                title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
+              >
+                {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                <span className="hidden lg:inline">{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+              </button>
             </div>
           </div>
 
@@ -618,12 +960,51 @@ export default function PublicExamAttempt() {
           </div>
 
           {/* Right Column: Question Palette Sidebar matching Student CBT */}
-          <div className="w-80 border-l border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 overflow-y-auto">
-            <div className="p-5 border-b border-gray-100 dark:border-slate-800">
-              <h3 className="font-bold text-sm text-gray-900 dark:text-slate-100 mb-2">
+          <div className="w-80 border-l border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 h-full overflow-hidden">
+            {/* Candidate Live Proctor Camera Feed (Docked cleanly in sidebar - NEVER overlaps Submit Exam) */}
+            {attempt.requireWebcam && (
+              <div className="p-3 border-b border-gray-100 dark:border-slate-800 bg-slate-900 shrink-0">
+                <div className="relative w-full h-36 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 shadow-inner flex items-center justify-center">
+                  {cameraActive ? (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover transform -scale-x-100"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-3 text-center">
+                      <Camera size={26} className="text-amber-400 mb-1.5 animate-pulse" />
+                      <span className="text-[11px] font-semibold text-slate-200">
+                        {cameraError ? "Camera Error: " + cameraError : "Connecting Camera..."}
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Please allow webcam access</span>
+                    </div>
+                  )}
+                  {/* Live Proctor Indicator Overlay */}
+                  <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-xs text-[10px] font-bold text-white border border-white/10">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span className="tracking-wider">LIVE PROCTOR</span>
+                  </div>
+                  {/* Candidate Name Badge */}
+                  <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-xs text-[10px] text-slate-300 font-mono">
+                    {session?.name || "Candidate"}
+                  </div>
+                  {/* Hidden snapshot canvas */}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 border-b border-gray-100 dark:border-slate-800 shrink-0">
+              <h3 className="font-bold text-sm text-gray-900 dark:text-slate-100 mb-1.5">
                 Question Palette
               </h3>
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mb-2 font-medium">
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mb-1.5 font-medium">
                 <span>Progress</span>
                 <span>{answeredCount} of {questions.length} Answered</span>
               </div>
@@ -635,8 +1016,8 @@ export default function PublicExamAttempt() {
               </div>
             </div>
 
-            {/* Numbers Palette Grid */}
-            <div className="p-4 flex-1">
+            {/* Numbers Palette Grid (Scrollable) */}
+            <div className="p-4 flex-1 overflow-y-auto min-h-0">
               <div className="grid grid-cols-5 gap-2">
                 {questions.map((q, idx) => {
                   const isAns = (answers[q.questionVersionId] ?? []).length > 0;
@@ -668,7 +1049,7 @@ export default function PublicExamAttempt() {
             </div>
 
             {/* Palette Legend */}
-            <div className="p-4 border-t border-gray-100 dark:border-slate-800 space-y-2 text-xs text-gray-500 dark:text-slate-400">
+            <div className="p-3 border-t border-gray-100 dark:border-slate-800 space-y-1.5 text-xs text-gray-500 dark:text-slate-400 shrink-0">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-800" />
@@ -692,13 +1073,13 @@ export default function PublicExamAttempt() {
               </div>
             </div>
 
-            {/* Quick Submit CTA */}
-            <div className="p-4 border-t border-gray-100 dark:border-slate-800">
+            {/* Quick Submit CTA (Pinned cleanly at the bottom - NEVER overlaps webcam feed) */}
+            <div className="p-4 border-t border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
               <button
                 type="button"
                 onClick={() => setConfirmOpen(true)}
                 disabled={submitting}
-                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <Send size={14} /> Submit Final Script
               </button>
@@ -761,6 +1142,63 @@ export default function PublicExamAttempt() {
                   {submitting && <Loader2 size={14} className="animate-spin" />}
                   Confirm Submission
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. Tab Switch Warning Modal (Infractions 1, 2, and 3) */}
+        {tabWarningModal !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 select-none">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border-2 border-red-500 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 text-red-600 flex items-center justify-center shrink-0">
+                  <ShieldAlert size={28} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-gray-900 dark:text-slate-100">
+                    {tabWarningModal >= tabSwitchLimit
+                      ? "Exam Terminated (Infraction 3 of 3)"
+                      : tabWarningModal === 2
+                      ? "Final Warning (Infraction 2 of 3)"
+                      : "Tab Switch Warning (Infraction 1 of 3)"}
+                  </h3>
+                  <p className="text-xs text-red-600 dark:text-red-400 font-semibold mt-0.5">
+                    Anti-Cheat Focus Violation Detected
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-red-50 dark:bg-red-950/40 p-4 rounded-2xl border border-red-200 dark:border-red-900/60 text-xs text-red-900 dark:text-red-200 leading-relaxed">
+                {tabWarningModal >= tabSwitchLimit ? (
+                  <p>
+                    You have exceeded the maximum tab-switch allowance (3 infractions). Your examination has been automatically submitted for grading and your session has ended.
+                  </p>
+                ) : tabWarningModal === 2 ? (
+                  <p>
+                    <strong>FINAL WARNING:</strong> You navigated away from the exam window. On your next infraction (3 of 3), your examination will be <strong>immediately terminated and submitted</strong>.
+                  </p>
+                ) : (
+                  <p>
+                    You have navigated away from the examination window or switched browser tabs. This incident has been logged and transmitted to the invigilation team.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-1">
+                {tabWarningModal < tabSwitchLimit ? (
+                  <button
+                    type="button"
+                    onClick={() => setTabWarningModal(null)}
+                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                  >
+                    I Understand, Resume Exam
+                  </button>
+                ) : (
+                  <div className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+                    <Loader2 size={15} className="animate-spin" /> Submitting examination...
+                  </div>
+                )}
               </div>
             </div>
           </div>

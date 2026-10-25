@@ -169,6 +169,7 @@ export interface PublicScore {
 
 export interface PublicAttempt {
   attemptId: string;
+  sittingId?: string;
   token: string;
   status: string;
   startedAt: string;
@@ -176,6 +177,8 @@ export interface PublicAttempt {
   remainingSec: number | null;
   questionCount: number;
   totalMarks: number;
+  requireWebcam?: boolean;
+  antiCheatEnabled?: boolean;
   exam: PublicExamMeta;
   questions: PublicQuestion[];
   result: { rawScore: number; maxScore: number; percent: number; grade: string } | null;

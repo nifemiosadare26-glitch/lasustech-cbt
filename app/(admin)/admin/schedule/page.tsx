@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2,
+  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { apiClient } from "@/lib/apiClient";
@@ -31,6 +31,7 @@ interface Sitting {
   endsAt: string;
   durationMin: number;
   venue: string | null;
+  requireWebcam: boolean;
   status: SittingStatus;
   registered: number;
   attempts: number;
@@ -46,6 +47,8 @@ interface ExamOption {
   title: string;
   kind: string;
   status: string;
+  audience: string;
+  durationMin?: number | null;
   courseId: string | null;
   courseCode: string | null;
   courseTitle: string | null;
@@ -292,13 +295,24 @@ export default function AdminExamSchedule() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <div className="flex items-center gap-1.5 text-[13px] text-gray-700 font-medium">
                             <Monitor size={14} className="text-gray-400" /> {slot.venue ?? "Online examination"}
                           </div>
                           <div className="flex items-center gap-1.5 text-[13px] text-gray-500">
                             <User size={14} className="text-gray-400" />
                             {slot.registered} registered candidates
+                          </div>
+                          <div className="pt-0.5">
+                            {slot.requireWebcam ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <Video size={11} /> Proctored (Webcam)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                <VideoOff size={11} /> Unproctored
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -557,7 +571,7 @@ function SchedulePanel({
   const [date, setDate] = React.useState(sitting ? lagosDate(sitting.startsAt) : lagosDate(new Date().toISOString()));
   const [time, setTime] = React.useState(sitting ? lagosTime(sitting.startsAt) : "09:00");
   const [endTime, setEndTime] = React.useState(sitting ? lagosTime(sitting.endsAt) : "");
-  const [durationMin, setDurationMin] = React.useState(String(sitting?.durationMin ?? 60));
+  const [requireWebcam, setRequireWebcam] = React.useState(sitting?.requireWebcam ?? true);
   const [invigilatorIds, setInvigilatorIds] = React.useState<string[]>(
     sitting?.invigilators.map((i) => i.id) ?? [],
   );
@@ -565,6 +579,7 @@ function SchedulePanel({
   const [error, setError] = React.useState<string | null>(null);
 
   const exam = exams.find((e) => e.id === examId);
+  const candidateDuration = exam?.durationMin ?? sitting?.durationMin ?? 60;
 
   React.useEffect(() => {
     if (!examId && exams.length) setExamId(exams[0].id);
@@ -590,7 +605,8 @@ function SchedulePanel({
             examId,
             startsAt,
             ...(endsAt ? { endsAt } : {}),
-            durationMin: Number(durationMin),
+            durationMin: Number(candidateDuration),
+            requireWebcam,
             invigilatorIds,
           }),
         });
@@ -601,7 +617,8 @@ function SchedulePanel({
           body: JSON.stringify({
             startsAt,
             ...(endsAt ? { endsAt } : {}),
-            durationMin: Number(durationMin),
+            durationMin: Number(candidateDuration),
+            requireWebcam,
             invigilatorIds,
           }),
         });
@@ -686,14 +703,21 @@ function SchedulePanel({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Candidate Time (mins)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center justify-between">
+                      <span>Candidate Time</span>
+                      <span className="text-[11px] font-medium text-amber-700 flex items-center gap-1">
+                        <Lock size={11} /> Lecturer Fixed
+                      </span>
+                    </label>
                     <Input
                       type="number"
-                      min={5}
-                      max={600}
-                      value={durationMin}
-                      onChange={(e) => setDurationMin(e.target.value)}
+                      value={candidateDuration}
+                      disabled
+                      className="bg-slate-100 text-slate-700 cursor-not-allowed font-semibold"
                     />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Duration is fixed by lecturer at {candidateDuration} mins.
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Window Closes (Optional)</label>
@@ -703,10 +727,50 @@ function SchedulePanel({
                       placeholder="Leave blank for exact duration"
                       onChange={(e) => setEndTime(e.target.value)}
                     />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Exam window end time (WAT UTC+1).
+                    </p>
                   </div>
                 </div>
+
+                {/* Proctoring ON/OFF Decision for Internal & External Exams */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="pr-3">
+                      <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                        <ShieldCheck size={16} className={requireWebcam ? "text-emerald-600" : "text-slate-400"} />
+                        Live Webcam Proctoring &amp; Anti-Cheat
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Controls webcam camera feed, periodic frame captures, and 3-strike tab switch auto-submission for internal and public exams.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={requireWebcam}
+                        onChange={(e) => setRequireWebcam(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+                  <div className="text-[11px] font-medium pt-1.5 border-t border-slate-200/70 flex items-center justify-between">
+                    <span className="text-slate-500">Security Mode:</span>
+                    {requireWebcam ? (
+                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                        <Video size={12} /> Proctoring ON (Webcam &amp; Strict Anti-Cheat)
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 font-medium flex items-center gap-1">
+                        <VideoOff size={12} /> Proctoring OFF (Unproctored)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 <p className="text-[12px] text-gray-500">
-                  Admins schedule the availability window. Candidates have their allotted duration to complete the exam before the window closes (WAT UTC+1).
+                  Admins schedule the availability window and proctoring policy. The lecturer sets the question paper and duration.
                 </p>
               </div>
             </div>
