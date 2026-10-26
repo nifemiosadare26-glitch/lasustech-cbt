@@ -64,6 +64,13 @@ body {
   font-family: var(--font-sans);
 }
 
+html.dark,
+html.dark body {
+  background-color: #0B1220 !important;
+  color: #F8FAFC !important;
+  color-scheme: dark;
+}
+
 /* Force Light Mode for Public Pages (legacy) */
 .force-light {
   --theme-white: #ffffff !important;
@@ -105,11 +112,95 @@ body {
    surface role, so the text role is lifted here. Plain rules are enough — no
    `text-slate-NN/opacity` form exists anywhere in the codebase. Values follow the
    gray ramp, which is this app's text ramp. */
-.dark .text-slate-900 { color: #F2F5FA; }
-.dark .text-slate-800 { color: #DDE4EE; }
+.dark .text-slate-900,
+:where(.dark, .dark *) .text-slate-900 { color: #F8FAFC !important; }
+.dark .text-slate-800,
+:where(.dark, .dark *) .text-slate-800 { color: #E2E8F0 !important; }
 .dark .text-slate-700,
-.dark .text-slate-600 { color: #C7D0E0; }
-.dark .hover\:text-slate-900:hover { color: #F2F5FA; }
+:where(.dark, .dark *) .text-slate-700 { color: #CBD5E1 !important; }
+.dark .text-slate-600,
+:where(.dark, .dark *) .text-slate-600 { color: #94A3B8 !important; }
+.dark .text-slate-500,
+:where(.dark, .dark *) .text-slate-500 { color: #94A3B8 !important; }
+.dark .text-slate-400,
+:where(.dark, .dark *) .text-slate-400 { color: #8FA0B8 !important; }
+.dark .hover\:text-slate-900:hover,
+:where(.dark, .dark *) .hover\:text-slate-900:hover { color: #FFFFFF !important; }
+.dark .hover\:text-slate-800:hover,
+:where(.dark, .dark *) .hover\:text-slate-800:hover { color: #F8FAFC !important; }
+.dark .hover\:text-slate-700:hover,
+:where(.dark, .dark *) .hover\:text-slate-700:hover { color: #E2E8F0 !important; }
+
+/* Gray text utilities in dark mode — ensures crisp, readable text on all cards and surfaces */
+.dark .text-gray-900,
+:where(.dark, .dark *) .text-gray-900 { color: #F8FAFC !important; }
+.dark .text-gray-800,
+:where(.dark, .dark *) .text-gray-800 { color: #E2E8F0 !important; }
+.dark .text-gray-700,
+:where(.dark, .dark *) .text-gray-700 { color: #CBD5E1 !important; }
+.dark .text-gray-600,
+:where(.dark, .dark *) .text-gray-600 { color: #94A3B8 !important; }
+.dark .text-gray-500,
+:where(.dark, .dark *) .text-gray-500 { color: #94A3B8 !important; }
+.dark .hover\:text-gray-900:hover,
+:where(.dark, .dark *) .hover\:text-gray-900:hover { color: #FFFFFF !important; }
+.dark .hover\:text-gray-800:hover,
+:where(.dark, .dark *) .hover\:text-gray-800:hover { color: #F8FAFC !important; }
+.dark .hover\:text-gray-700:hover,
+:where(.dark, .dark *) .hover\:text-gray-700:hover { color: #E2E8F0 !important; }
+
+/* Literal black/near-black rescues */
+.dark .text-black,
+.dark .text-\[\#1B2330\],
+.dark .text-\[\#111827\],
+.dark .text-\[\#0f172a\] {
+  color: #F8FAFC !important;
+}
+
+/* Inverted utility rescues: components using Tailwind's standard dark: convention */
+.dark .dark\:text-gray-100,
+:where(.dark, .dark *) .dark\:text-gray-100 { color: #FFFFFF !important; }
+.dark .dark\:text-gray-200,
+:where(.dark, .dark *) .dark\:text-gray-200 { color: #F1F5F9 !important; }
+.dark .dark\:text-gray-300,
+:where(.dark, .dark *) .dark\:text-gray-300 { color: #E2E8F0 !important; }
+.dark .dark\:text-gray-400,
+:where(.dark, .dark *) .dark\:text-gray-400 { color: #CBD5E1 !important; }
+
+.dark .dark\:text-slate-100,
+:where(.dark, .dark *) .dark\:text-slate-100 { color: #FFFFFF !important; }
+.dark .dark\:text-slate-200,
+:where(.dark, .dark *) .dark\:text-slate-200 { color: #F1F5F9 !important; }
+.dark .dark\:text-slate-300,
+:where(.dark, .dark *) .dark\:text-slate-300 { color: #E2E8F0 !important; }
+.dark .dark\:text-slate-400,
+:where(.dark, .dark *) .dark\:text-slate-400 { color: #CBD5E1 !important; }
+
+.dark .dark\:bg-gray-800,
+:where(.dark, .dark *) .dark\:bg-gray-800 { background-color: #141C2E !important; }
+.dark .dark\:bg-gray-700,
+:where(.dark, .dark *) .dark\:bg-gray-700 { background-color: #1A2436 !important; }
+.dark .dark\:bg-gray-900,
+:where(.dark, .dark *) .dark\:bg-gray-900 { background-color: #0B1220 !important; }
+
+.dark .dark\:bg-slate-900,
+:where(.dark, .dark *) .dark\:bg-slate-900 { background-color: #141C2E !important; }
+.dark .dark\:bg-slate-950,
+:where(.dark, .dark *) .dark\:bg-slate-950 { background-color: #0B1220 !important; }
+.dark .dark\:bg-slate-800,
+:where(.dark, .dark *) .dark\:bg-slate-800 { background-color: #1A2436 !important; }
+
+.dark .dark\:border-gray-700,
+:where(.dark, .dark *) .dark\:border-gray-700 { border-color: #263349 !important; }
+.dark .dark\:border-gray-800,
+:where(.dark, .dark *) .dark\:border-gray-800 { border-color: #1E293B !important; }
+.dark .dark\:border-gray-600,
+:where(.dark, .dark *) .dark\:border-gray-600 { border-color: #38465F !important; }
+
+.dark .dark\:border-slate-800,
+:where(.dark, .dark *) .dark\:border-slate-800 { border-color: #263349 !important; }
+.dark .dark\:border-slate-700,
+:where(.dark, .dark *) .dark\:border-slate-700 { border-color: #38465F !important; }
 
 /* blue-900/950 are large dark-navy surfaces (the lecturer's save bar) *and*
    small dark-on-light text (tab labels, notification headings). Surfaces read
@@ -154,6 +245,55 @@ body {
    would paint white on near-white, so the fill is restored here. Same value as
    bg-gray-300 above, where the surface needed exactly this treatment. */
 .dark .bg-gray-700 { background-color: #38465F; }
+
+/* Tables in Dark Mode */
+.dark table thead tr,
+.dark table thead th {
+  background-color: #141C2E !important;
+  color: #F8FAFC !important;
+  border-color: #263349 !important;
+}
+.dark table tbody tr {
+  border-color: #1E293B !important;
+}
+.dark table tbody tr:hover {
+  background-color: #1A2436 !important;
+}
+.dark table tbody td {
+  color: #CBD5E1;
+}
+
+/* Form Inputs, Native Selects & Dropdowns in Dark Mode */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark select,
+.dark textarea {
+  background-color: #141C2E !important;
+  border-color: #2E3E56 !important;
+  color: #F8FAFC !important;
+}
+.dark select option {
+  background-color: #141C2E !important;
+  color: #F8FAFC !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748B !important;
+}
+
+/* Modals & Dialog Boxes */
+.dark .fixed .bg-white {
+  background-color: #141C2E !important;
+  border-color: #263349 !important;
+  color: #F8FAFC !important;
+}
+
+/* Recharts Dark Theme Contrast */
+.dark .recharts-cartesian-grid line {
+  stroke: #263349 !important;
+}
+.dark .recharts-text {
+  fill: #8A99B3 !important;
+}
 
 /* ── Status families: the ink and the dual-role fills ────────────────────────
    The 50/100/200 tints are remapped as tokens in styles/tokens.css's `.dark`

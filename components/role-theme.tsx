@@ -111,13 +111,35 @@ export function RoleThemeProvider({
   const [theme, setThemeState] = React.useState<RoleTheme | null>(null);
 
   React.useEffect(() => {
-    setThemeState(readStoredTheme(keys));
+    const initialTheme = readStoredTheme(keys);
+    setThemeState(initialTheme);
+
+    // Synchronize HTML element class and color-scheme
+    if (typeof document !== "undefined") {
+      if (initialTheme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.style.colorScheme = "dark";
+      } else {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.style.colorScheme = "light";
+      }
+    }
 
     // When the same scope is open in another tab — the student portal beside the
     // admin dashboard — follow the change instead of waiting for a reload.
     const onStorage = (event: StorageEvent) => {
       if (!event.key || !keys.includes(event.key)) return;
-      setThemeState(readStoredTheme(keys));
+      const nextTheme = readStoredTheme(keys);
+      setThemeState(nextTheme);
+      if (typeof document !== "undefined") {
+        if (nextTheme === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        } else {
+          document.documentElement.classList.remove("dark");
+          document.documentElement.style.colorScheme = "light";
+        }
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -126,6 +148,15 @@ export function RoleThemeProvider({
   const setTheme = React.useCallback(
     (next: RoleTheme) => {
       setThemeState(next);
+      if (typeof document !== "undefined") {
+        if (next === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        } else {
+          document.documentElement.classList.remove("dark");
+          document.documentElement.style.colorScheme = "light";
+        }
+      }
       try {
         window.localStorage.setItem(keys[0], next);
       } catch {
