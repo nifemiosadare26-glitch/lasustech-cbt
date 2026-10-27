@@ -192,8 +192,14 @@ html.dark body {
 
 .dark .dark\:border-gray-700,
 :where(.dark, .dark *) .dark\:border-gray-700 { border-color: #263349 !important; }
+/* Inverted Dark Utility Rescues:
+   When components specify raw `dark:bg-gray-800` or `dark:text-slate-100`,
+   Tailwind reads the inverted token ramp (where gray-800 is light and gray-100 is dark).
+   These rules normalize those utilities to genuine dark surfaces and light readable text. */
 .dark .dark\:border-gray-800,
 :where(.dark, .dark *) .dark\:border-gray-800 { border-color: #1E293B !important; }
+.dark .dark\:border-gray-700,
+:where(.dark, .dark *) .dark\:border-gray-700 { border-color: #263349 !important; }
 .dark .dark\:border-gray-600,
 :where(.dark, .dark *) .dark\:border-gray-600 { border-color: #38465F !important; }
 
@@ -201,6 +207,53 @@ html.dark body {
 :where(.dark, .dark *) .dark\:border-slate-800 { border-color: #263349 !important; }
 .dark .dark\:border-slate-700,
 :where(.dark, .dark *) .dark\:border-slate-700 { border-color: #38465F !important; }
+.dark .dark\:border-slate-600,
+:where(.dark, .dark *) .dark\:border-slate-600 { border-color: #38465F !important; }
+
+.dark .dark\:bg-gray-800,
+:where(.dark, .dark *) .dark\:bg-gray-800,
+.dark .dark\:bg-gray-850,
+:where(.dark, .dark *) .dark\:bg-gray-850,
+.dark .dark\:bg-slate-800,
+:where(.dark, .dark *) .dark\:bg-slate-800 { background-color: #141C2E !important; }
+
+.dark .dark\:bg-gray-900,
+:where(.dark, .dark *) .dark\:bg-gray-900,
+.dark .dark\:bg-slate-900,
+:where(.dark, .dark *) .dark\:bg-slate-900 { background-color: #0A1020 !important; }
+
+.dark .dark\:bg-gray-950,
+:where(.dark, .dark *) .dark\:bg-gray-950,
+.dark .dark\:bg-slate-950,
+:where(.dark, .dark *) .dark\:bg-slate-950 { background-color: #070C16 !important; }
+
+.dark .dark\:bg-gray-700,
+:where(.dark, .dark *) .dark\:bg-gray-700,
+.dark .dark\:bg-slate-700,
+:where(.dark, .dark *) .dark\:bg-slate-700 { background-color: #1A2436 !important; }
+
+.dark .dark\:text-gray-100,
+:where(.dark, .dark *) .dark\:text-gray-100,
+.dark .dark\:text-slate-100,
+:where(.dark, .dark *) .dark\:text-slate-100 { color: #F8FAFC !important; }
+
+.dark .dark\:text-gray-200,
+:where(.dark, .dark *) .dark\:text-gray-200,
+.dark .dark\:text-slate-200,
+:where(.dark, .dark *) .dark\:text-slate-200 { color: #E2E8F0 !important; }
+
+.dark .dark\:text-gray-300,
+:where(.dark, .dark *) .dark\:text-gray-300,
+.dark .dark\:text-slate-300,
+:where(.dark, .dark *) .dark\:text-slate-300 { color: #CBD5E1 !important; }
+
+.dark .dark\:text-gray-400,
+:where(.dark, .dark *) .dark\:text-gray-400,
+.dark .dark\:text-slate-400,
+:where(.dark, .dark *) .dark\:text-slate-400 { color: #94A3B8 !important; }
+
+.dark .dark\:text-gray-600,
+:where(.dark, .dark *) .dark\:text-gray-600 { color: #CBD5E1 !important; }
 
 /* blue-900/950 are large dark-navy surfaces (the lecturer's save bar) *and*
    small dark-on-light text (tab labels, notification headings). Surfaces read
@@ -281,10 +334,41 @@ html.dark body {
 }
 
 /* Modals & Dialog Boxes */
+.dark [role="dialog"],
+.dark [aria-modal="true"],
+.dark .modal,
 .dark .fixed .bg-white {
   background-color: #141C2E !important;
   border-color: #263349 !important;
   color: #F8FAFC !important;
+}
+
+.dark [data-modal-footer],
+.dark .modal-footer {
+  background-color: #141C2E !important;
+  border-top-color: #263349 !important;
+}
+
+.dark [role="dialog"] table thead tr,
+.dark [role="dialog"] table thead th {
+  background-color: #1A2436 !important;
+  color: #F8FAFC !important;
+  border-color: #263349 !important;
+}
+
+.dark [role="dialog"] table tbody tr {
+  border-color: #1E293B !important;
+}
+
+.dark [role="dialog"] table tbody td {
+  color: #CBD5E1 !important;
+  border-color: #263349 !important;
+}
+
+.dark [role="dialog"] code {
+  background-color: #1A2436 !important;
+  border-color: #263349 !important;
+  color: #7FB2FF !important;
 }
 
 /* Recharts Dark Theme Contrast */
@@ -307,17 +391,20 @@ html.dark body {
 .dark .text-red-700 { color: #FCA5A5; }
 .dark .text-red-800,
 .dark .text-red-900 { color: #FECACA; }
+.dark .text-red-950 { color: #FEE2E2 !important; }
 
 .dark .text-rose-600 { color: #FB7185; }
 .dark .text-rose-700 { color: #FDA4AF; }
 .dark .text-rose-800,
 .dark .text-rose-900 { color: #FECDD3; }
+.dark .text-rose-950 { color: #FECDD3 !important; }
 
 .dark .text-amber-500,
 .dark .text-amber-600 { color: #FBBF24; }
 .dark .text-amber-700 { color: #FCD34D; }
 .dark .text-amber-800,
 .dark .text-amber-900 { color: #FDE68A; }
+.dark .text-amber-950 { color: #FDE68A !important; }
 
 .dark .text-green-500,
 .dark .text-green-600,
@@ -327,7 +414,22 @@ html.dark body {
 
 .dark .text-emerald-600,
 .dark .text-emerald-700 { color: #6EE7B7; }
-.dark .text-emerald-800 { color: #A7F3D0; }
+.dark .text-emerald-800,
+.dark .text-emerald-900,
+.dark .text-emerald-950 { color: #A7F3D0 !important; }
+
+.dark .text-indigo-600 { color: #818CF8 !important; }
+.dark .text-indigo-700 { color: #A5B4FC !important; }
+.dark .text-indigo-800 { color: #C7D2FE !important; }
+.dark .text-indigo-900 { color: #E0E7FF !important; }
+.dark .text-indigo-950 { color: #EEF2FF !important; }
+
+.dark .text-violet-600 { color: #A78BFA !important; }
+.dark .text-violet-700 { color: #C4B5FD !important; }
+.dark .text-violet-800 { color: #DDD6FE !important; }
+.dark .text-violet-900 { color: #EDE9FE !important; }
+
+.dark .text-slate-950 { color: #F8FAFC !important; }
 
 .dark .text-orange-800 { color: #FDBA74; }
 
@@ -351,10 +453,21 @@ html.dark body {
    `group-hover:x` as `.group-hover\:x:is(:where(.group):hover *)`; writing the
    equivalent selector independently matches the same DOM without re-deriving
    its escaping, and wins on both layer order and specificity. */
-.dark .hover\:text-red-700:hover { color: #FCA5A5; }
-.dark .hover\:text-amber-700:hover { color: #FCD34D; }
+.dark .hover\:text-red-700:hover,
+.dark .hover\:text-red-950:hover { color: #FCA5A5; }
+.dark .hover\:text-rose-950:hover { color: #FECDD3; }
+.dark .hover\:text-amber-700:hover,
+.dark .hover\:text-amber-950:hover { color: #FCD34D; }
+.dark .hover\:text-emerald-900:hover,
+.dark .hover\:text-emerald-950:hover { color: #A7F3D0; }
+.dark .hover\:text-indigo-700:hover,
+.dark .hover\:text-indigo-900:hover { color: #E0E7FF; }
+.dark .hover\:text-blue-700:hover { color: #BFD7F7 !important; }
+.dark .hover\:border-blue-700:hover { border-color: #3B82F6 !important; }
 .dark .group:hover .group-hover\:text-emerald-700 { color: #6EE7B7; }
 .dark .group:hover .group-hover\:text-blue-700 { color: #BFD7F7; }
+.dark .group:hover .group-hover\:text-indigo-600,
+.dark .group:hover .group-hover\:text-indigo-700 { color: #C7D2FE; }
 
 /* red-100 and amber-200 are the two shades that back *both* a fill and text:
    the calculator's AC key and the exam header's live pill (red), the flag

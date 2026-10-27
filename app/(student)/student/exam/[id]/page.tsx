@@ -1641,7 +1641,7 @@ export default function ExamAttemptPage() {
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                 Message from Invigilator
               </h3>
-              <div className="mt-3 p-4 rounded-2xl bg-blue-50/60 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed text-left whitespace-pre-wrap">
+              <div className="mt-3 p-4 rounded-2xl bg-blue-50/60 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-sm font-medium text-gray-800 dark:text-slate-100 leading-relaxed text-left whitespace-pre-wrap">
                 {proctorMessage}
               </div>
             </div>

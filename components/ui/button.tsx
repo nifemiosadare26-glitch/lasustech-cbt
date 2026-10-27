@@ -16,8 +16,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const variants = {
       primary: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-900",
       default: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-900",
-      secondary: "border border-gray-300 bg-white text-gray-900 hover:border-blue-700 hover:text-blue-700",
-      outline: "border border-gray-300 bg-white text-gray-900 hover:border-blue-700 hover:text-blue-700",
+      secondary: "border border-gray-300 bg-white text-gray-900 hover:border-blue-700 hover:text-blue-700 dark:hover:border-blue-400 dark:hover:text-blue-300",
+      outline: "border border-gray-300 bg-white text-gray-900 hover:border-blue-700 hover:text-blue-700 dark:hover:border-blue-400 dark:hover:text-blue-300",
       tertiary: "bg-transparent text-gray-900 hover:bg-gray-100",
       danger: "bg-danger text-white hover:bg-danger-ink",
       "danger-outline": "border border-gray-300 bg-white text-danger hover:border-danger hover:text-danger-ink",

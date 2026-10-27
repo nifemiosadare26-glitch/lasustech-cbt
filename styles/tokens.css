@@ -213,9 +213,20 @@
   --color-slate-800: #E2E8F0;
   --color-slate-900: #0A1020;
 
+  --color-indigo-50: #1B234B;
   --color-indigo-100: #232A4D;
+  --color-indigo-200: #313B72;
   --color-indigo-800: #C7D2FE;
   --color-emerald-400: #4ADE80;
+
+  --color-sky-50: #10233D;
+  --color-sky-100: #162F52;
+  --color-sky-200: #1C3D6E;
+  --color-sky-300: #25508E;
+
+  --color-violet-50: #251B3D;
+  --color-violet-100: #322552;
+  --color-violet-200: #44326F;
 
   /* Status families (red/rose/amber/orange/green/emerald/purple). These are
      Tailwind's stock palette rather than design tokens, but the themed pages
@@ -238,13 +249,16 @@
      fill role is corrected per-utility in app/globals.css instead. */
   --color-red-50: #2A1416;
   --color-red-200: #4E2226;
+  --color-red-300: #602528;
 
   --color-rose-50: #2C1420;
   --color-rose-100: #3A1B2A;
   --color-rose-200: #522438;
+  --color-rose-300: #6B2844;
 
   --color-amber-50: #2A2210;
   --color-amber-100: #382D14;
+  --color-amber-300: #4A3814;
   --color-orange-100: #3A2413;
 
   --color-green-50: #12291B;
@@ -254,6 +268,7 @@
   --color-emerald-50: #0F2A1E;
   --color-emerald-100: #153826;
   --color-emerald-200: #1E4A32;
+  --color-emerald-300: #1E4D34;
 
   --color-purple-50: #241A38;
   --color-purple-200: #3A2A57;

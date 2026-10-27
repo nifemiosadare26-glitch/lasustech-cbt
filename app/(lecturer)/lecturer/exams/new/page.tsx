@@ -531,9 +531,9 @@ export default function ExamBuilder() {
                   </div>
 
                   <div>
-                    <label className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 block mb-1.5">Instructions</label>
+                    <label className="text-[13px] font-semibold text-gray-900 block mb-1.5">Instructions</label>
                     <textarea
-                      className="w-full h-28 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-850 p-3 text-[14px] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-2xs transition-colors"
+                      className="w-full h-28 rounded-lg border border-gray-300 bg-white p-3 text-[14px] text-gray-900 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-2xs transition-colors"
                       value={instructions}
                       onChange={(e) => setInstructions(e.target.value)}
                       placeholder="Shown to candidates before they start."
