@@ -38,10 +38,22 @@ type QuestionOption = {
   mediaUrl: string | null;
 };
 
+type ExamSectionMeta = {
+  id: string;
+  title: string;
+  position: number;
+  timerMode?: string;
+  minutes?: number | null;
+  weight?: number;
+  questionCount?: number;
+};
+
 type QuestionItem = {
   position: number;
   questionVersionId: string;
   sectionId: string;
+  sectionTitle?: string | null;
+  sectionPosition?: number | null;
   text: string;
   marks: number;
   hasMath: boolean;
@@ -71,6 +83,7 @@ type PaperPayload = {
   instructions?: Record<string, any> | null;
   remainingSec: number;
   totalQuestions: number;
+  sections?: ExamSectionMeta[];
   questions: QuestionItem[];
 };
 
@@ -85,6 +98,7 @@ export default function ExamAttemptPage() {
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [courseCode, setCourseCode] = useState<string>("");
   const [courseTitle, setCourseTitle] = useState<string>("CBT Examination");
+  const [sections, setSections] = useState<ExamSectionMeta[]>([]);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(1);
 
@@ -170,6 +184,9 @@ export default function ExamAttemptPage() {
         }
 
         setQuestions(paper.questions);
+        if (paper.sections && Array.isArray(paper.sections)) {
+          setSections(paper.sections);
+        }
 
         // Initialise answers and flags from server
         const initialAnswers: Record<number, number[]> = {};
@@ -972,6 +989,37 @@ export default function ExamAttemptPage() {
   const unansweredCount = questions.length - answeredCount;
   const flaggedCount = flags.size;
 
+  // Derived effective sections (ensuring robust fallback if legacy payload)
+  const effectiveSections = useMemo<ExamSectionMeta[]>(() => {
+    if (sections && sections.length > 0) return sections;
+    const map = new Map<string, { id: string; title: string; position: number; count: number }>();
+    let fallbackPos = 1;
+    for (const item of questions) {
+      const sId = item.sectionId || "default";
+      if (!map.has(sId)) {
+        map.set(sId, {
+          id: sId,
+          title: item.sectionTitle || `Section ${String.fromCharCode(64 + fallbackPos)}`,
+          position: item.sectionPosition ?? fallbackPos,
+          count: 0,
+        });
+        fallbackPos++;
+      }
+      map.get(sId)!.count++;
+    }
+    const derived = Array.from(map.values()).sort((a, b) => a.position - b.position);
+    return derived.length > 1 ? derived.map((s) => ({ ...s, questionCount: s.count })) : [];
+  }, [sections, questions]);
+
+  const hasMultipleSections = effectiveSections.length > 1;
+  const currentQuestionItem = questions[currentQuestion - 1];
+  const currentSectionId = currentQuestionItem?.sectionId;
+  const currentSection = effectiveSections.find((s) => s.id === currentSectionId) || (effectiveSections[0] ?? null);
+  const currentSectionQuestions = currentSection
+    ? questions.filter((item) => item.sectionId === currentSection.id)
+    : questions;
+  const questionIndexInSection = currentSectionQuestions.findIndex((item) => item.position === currentQuestion) + 1;
+
   if (loading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-gray-50 dark:bg-slate-950 space-y-4">
@@ -1010,7 +1058,15 @@ export default function ExamAttemptPage() {
       {/* 1. Top bar */}
       <header className="h-[56px] bg-blue-900 dark:bg-slate-950 text-white px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-30 relative border-b border-blue-950/40 dark:border-slate-800">
         <div className="flex items-center gap-4">
-          <div className="font-bold text-[15px]">{courseCode} | Section A</div>
+          <div className="font-bold text-[15px] flex items-center gap-2">
+            <span>{courseCode || "CBT Examination"}</span>
+            {currentSection && (
+              <>
+                <span className="text-blue-300 dark:text-slate-500 font-normal">|</span>
+                <span className="text-blue-100 dark:text-slate-300 font-semibold">{currentSection.title}</span>
+              </>
+            )}
+          </div>
 
           {/* LIVE status indicator - turns off when global sitting window ends unless invigilator adds time */}
           {isWindowLive ? (
@@ -1266,15 +1322,76 @@ export default function ExamAttemptPage() {
               </button>
             </div>
 
+            {/* Section Navigation Tabs (When exam has multiple sections) */}
+            {hasMultipleSections && (
+              <div className="mb-6 flex items-center gap-2 p-1.5 bg-gray-100/90 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-2xs">
+                {effectiveSections.map((sec, idx) => {
+                  const isActive = sec.id === currentSectionId;
+                  const secQuestions = questions.filter((item) => item.sectionId === sec.id);
+                  const secAnswered = secQuestions.filter((item) => (answers[item.position] || []).length > 0).length;
+                  const firstQ = secQuestions[0];
+
+                  return (
+                    <button
+                      key={sec.id}
+                      type="button"
+                      onClick={() => {
+                        if (firstQ) setCurrentQuestion(firstQ.position);
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer",
+                        isActive
+                          ? "bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs border border-gray-200/90 dark:border-slate-700"
+                          : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black",
+                          isActive
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
+                        )}
+                      >
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <span>{sec.title}</span>
+                      <span
+                        className={cn(
+                          "text-[11px] px-2 py-0.5 rounded-full font-medium",
+                          isActive
+                            ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                            : "bg-gray-200/70 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
+                        )}
+                      >
+                        {secAnswered}/{secQuestions.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Question header */}
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-[20px] sm:text-[22px] font-bold text-gray-900 dark:text-slate-100 flex items-center gap-3">
-                Question {currentQuestion} of {questions.length}
-                {isFlagged && <Flag size={20} className="text-amber-600 fill-amber-600" />}
-              </h2>
-              <span className="text-[14px] sm:text-[15px] font-medium text-gray-500 dark:text-slate-400">
-                {q.marks} {q.marks === 1 ? "mark" : "marks"}
-              </span>
+            <div className="flex flex-col gap-2 mb-8 pb-4 border-b border-gray-200 dark:border-slate-800">
+              {hasMultipleSections && currentSection && (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400" />
+                    {currentSection.title}
+                    {questionIndexInSection > 0 && ` • Question ${questionIndexInSection} of ${currentSectionQuestions.length}`}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <h2 className="text-[20px] sm:text-[22px] font-bold text-gray-900 dark:text-slate-100 flex items-center gap-3">
+                  Question {currentQuestion} of {questions.length}
+                  {isFlagged && <Flag size={20} className="text-amber-600 fill-amber-600" />}
+                </h2>
+                <span className="text-[14px] sm:text-[15px] font-medium text-gray-500 dark:text-slate-400">
+                  {q.marks} {q.marks === 1 ? "mark" : "marks"}
+                </span>
+              </div>
             </div>
 
             {/* Question Text & Diagram */}
@@ -1414,36 +1531,106 @@ export default function ExamAttemptPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-5 gap-2 mb-8">
-            {palette.map((p) => {
-              const isCurrent = p.num === currentQuestion;
+          {hasMultipleSections ? (
+            <div className="space-y-4 mb-8">
+              {effectiveSections.map((sec) => {
+                const secQuestions = questions.filter((item) => item.sectionId === sec.id);
+                const secAnswered = secQuestions.filter((item) => (answers[item.position] || []).length > 0).length;
+                const isCurrentSec = sec.id === currentSectionId;
 
-              let bg = "bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700";
-              if (isCurrent) {
-                bg = "bg-white dark:bg-slate-900 border-blue-900 dark:border-blue-500 text-blue-900 dark:text-blue-400 font-bold ring-2 ring-blue-900 dark:ring-blue-500 ring-inset";
-              } else if (p.isAnswered) {
-                bg = "bg-blue-600 border-blue-600 text-white hover:bg-blue-700";
-              }
-
-              return (
-                <button
-                  key={p.num}
-                  onClick={() => setCurrentQuestion(p.num)}
-                  className={cn(
-                    "h-11 rounded-lg text-[14px] font-semibold transition-all relative flex items-center justify-center border cursor-pointer",
-                    bg
-                  )}
-                >
-                  {p.num}
-                  {p.isFlagged && (
-                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
-                      <Flag size={9} className="text-amber-600 fill-amber-600" />
+                return (
+                  <div
+                    key={sec.id}
+                    className={cn(
+                      "rounded-xl border p-3 transition-colors",
+                      isCurrentSec
+                        ? "border-blue-300 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20"
+                        : "border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/40"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-200/60 dark:border-slate-800">
+                      <span
+                        className={cn(
+                          "text-xs font-bold tracking-tight",
+                          isCurrentSec ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-slate-300"
+                        )}
+                      >
+                        {sec.title}
+                      </span>
+                      <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400">
+                        {secAnswered}/{secQuestions.length}
+                      </span>
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {secQuestions.map((item) => {
+                        const p = palette.find((x) => x.num === item.position);
+                        if (!p) return null;
+                        const isCurrent = p.num === currentQuestion;
+
+                        let bg = "bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700";
+                        if (isCurrent) {
+                          bg = "bg-white dark:bg-slate-900 border-blue-900 dark:border-blue-500 text-blue-900 dark:text-blue-400 font-bold ring-2 ring-blue-900 dark:ring-blue-500 ring-inset";
+                        } else if (p.isAnswered) {
+                          bg = "bg-blue-600 border-blue-600 text-white hover:bg-blue-700";
+                        }
+
+                        return (
+                          <button
+                            key={p.num}
+                            type="button"
+                            onClick={() => setCurrentQuestion(p.num)}
+                            className={cn(
+                              "h-10 rounded-lg text-[13px] font-semibold transition-all relative flex items-center justify-center border cursor-pointer",
+                              bg
+                            )}
+                          >
+                            {p.num}
+                            {p.isFlagged && (
+                              <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
+                                <Flag size={9} className="text-amber-600 fill-amber-600" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-5 gap-2 mb-8">
+              {palette.map((p) => {
+                const isCurrent = p.num === currentQuestion;
+
+                let bg = "bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700";
+                if (isCurrent) {
+                  bg = "bg-white dark:bg-slate-900 border-blue-900 dark:border-blue-500 text-blue-900 dark:text-blue-400 font-bold ring-2 ring-blue-900 dark:ring-blue-500 ring-inset";
+                } else if (p.isAnswered) {
+                  bg = "bg-blue-600 border-blue-600 text-white hover:bg-blue-700";
+                }
+
+                return (
+                  <button
+                    key={p.num}
+                    type="button"
+                    onClick={() => setCurrentQuestion(p.num)}
+                    className={cn(
+                      "h-11 rounded-lg text-[14px] font-semibold transition-all relative flex items-center justify-center border cursor-pointer",
+                      bg
+                    )}
+                  >
+                    {p.num}
+                    {p.isFlagged && (
+                      <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-xs border border-gray-100 dark:border-slate-700">
+                        <Flag size={9} className="text-amber-600 fill-amber-600" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="mt-auto pt-6 border-t border-gray-100 dark:border-slate-800">
             <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-[13px] font-medium text-gray-600 dark:text-slate-400 mb-8">

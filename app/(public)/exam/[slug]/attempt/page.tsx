@@ -664,14 +664,50 @@ export default function PublicExamAttempt() {
   const currentSelected = question ? answers[question.questionVersionId] ?? [] : [];
   const currentSaveStatus = question ? saveState[question.questionVersionId] : undefined;
 
+  // Derived effective sections
+  const effectiveSections = React.useMemo(() => {
+    if (attempt.sections && attempt.sections.length > 0) return attempt.sections;
+    const map = new Map<string, { id: string; title: string; position: number; count: number }>();
+    let fallbackPos = 1;
+    for (const item of questions) {
+      const sId = item.sectionId || "default";
+      if (!map.has(sId)) {
+        map.set(sId, {
+          id: sId,
+          title: item.sectionTitle || `Section ${String.fromCharCode(64 + fallbackPos)}`,
+          position: item.sectionPosition ?? fallbackPos,
+          count: 0,
+        });
+        fallbackPos++;
+      }
+      map.get(sId)!.count++;
+    }
+    const derived = Array.from(map.values()).sort((a, b) => a.position - b.position);
+    return derived.length > 1 ? derived.map((s) => ({ ...s, questionCount: s.count })) : [];
+  }, [attempt.sections, questions]);
+
+  const hasMultipleSections = effectiveSections.length > 1;
+  const currentSectionId = question?.sectionId;
+  const currentSection = effectiveSections.find((s) => s.id === currentSectionId) || (effectiveSections[0] ?? null);
+  const currentSectionQuestions = currentSection
+    ? questions.filter((item) => item.sectionId === currentSection.id)
+    : questions;
+  const questionIndexInSection = currentSectionQuestions.findIndex((item) => item.questionVersionId === question?.questionVersionId) + 1;
+
   return (
     <RoleThemeProvider role="student" className="h-full">
       <div className="flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-slate-950 select-none">
         {/* 1. Header Bar matching internal exam layout */}
         <header className="h-[56px] bg-blue-900 dark:bg-slate-950 text-white px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-30 relative border-b border-blue-950/40 dark:border-slate-800">
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className="font-bold text-[15px] truncate max-w-[180px] sm:max-w-xs md:max-w-md">
-              {attempt.exam.title}
+            <div className="font-bold text-[15px] truncate max-w-[180px] sm:max-w-xs md:max-w-md flex items-center gap-2">
+              <span>{attempt.exam.title}</span>
+              {currentSection && (
+                <>
+                  <span className="text-blue-300 dark:text-slate-500 font-normal">|</span>
+                  <span className="text-blue-100 dark:text-slate-300 font-semibold">{currentSection.title}</span>
+                </>
+              )}
             </div>
 
             {/* LIVE badge */}
@@ -852,28 +888,89 @@ export default function PublicExamAttempt() {
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-800 pb-4 mb-6">
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                      Question {current + 1} of {questions.length}
-                      {isCurrentFlagged && <Flag size={20} className="text-amber-600 fill-amber-600" />}
-                    </h2>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-slate-400">
-                        {question.marks} mark{Number(question.marks) === 1 ? "" : "s"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleFlag(question)}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer",
-                          isCurrentFlagged
-                            ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200"
-                            : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50"
-                        )}
-                      >
-                        <Flag size={13} />
-                        {isCurrentFlagged ? "Flagged" : "Flag"}
-                      </button>
+                  {/* Section Navigation Tabs (When exam has multiple sections) */}
+                  {hasMultipleSections && (
+                    <div className="mb-6 flex items-center gap-2 p-1.5 bg-gray-100/90 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-2xs">
+                      {effectiveSections.map((sec, idx) => {
+                        const isActive = sec.id === currentSectionId;
+                        const secQuestions = questions.filter((item) => item.sectionId === sec.id);
+                        const secAnswered = secQuestions.filter((item) => (answers[item.questionVersionId] ?? []).length > 0).length;
+                        const firstQIdx = questions.findIndex((item) => item.sectionId === sec.id);
+
+                        return (
+                          <button
+                            key={sec.id}
+                            type="button"
+                            onClick={() => {
+                              if (firstQIdx >= 0) setCurrent(firstQIdx);
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer",
+                              isActive
+                                ? "bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs border border-gray-200/90 dark:border-slate-700"
+                                : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black",
+                                isActive
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
+                              )}
+                            >
+                              {String.fromCharCode(65 + idx)}
+                            </span>
+                            <span>{sec.title}</span>
+                            <span
+                              className={cn(
+                                "text-[11px] px-2 py-0.5 rounded-full font-medium",
+                                isActive
+                                  ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                                  : "bg-gray-200/70 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
+                              )}
+                            >
+                              {secAnswered}/{secQuestions.length}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2 border-b border-gray-200 dark:border-slate-800 pb-4 mb-6">
+                    {hasMultipleSections && currentSection && (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                          <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400" />
+                          {currentSection.title}
+                          {questionIndexInSection > 0 && ` • Question ${questionIndexInSection} of ${currentSectionQuestions.length}`}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+                        Question {current + 1} of {questions.length}
+                        {isCurrentFlagged && <Flag size={20} className="text-amber-600 fill-amber-600" />}
+                      </h2>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-slate-400">
+                          {question.marks} mark{Number(question.marks) === 1 ? "" : "s"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleFlag(question)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer",
+                            isCurrentFlagged
+                              ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200"
+                              : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50"
+                          )}
+                        >
+                          <Flag size={13} />
+                          {isCurrentFlagged ? "Flagged" : "Flag"}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1020,34 +1117,99 @@ export default function PublicExamAttempt() {
 
             {/* Numbers Palette Grid (Scrollable) */}
             <div className="p-4 flex-1 overflow-y-auto min-h-0">
-              <div className="grid grid-cols-5 gap-2">
-                {questions.map((q, idx) => {
-                  const isAns = (answers[q.questionVersionId] ?? []).length > 0;
-                  const isFlg = flagged[q.questionVersionId];
-                  const isCur = idx === current;
+              {hasMultipleSections ? (
+                <div className="space-y-4">
+                  {effectiveSections.map((sec) => {
+                    const secQuestions = questions.filter((item) => item.sectionId === sec.id);
+                    const secAnswered = secQuestions.filter((item) => (answers[item.questionVersionId] ?? []).length > 0).length;
+                    const isCurrentSec = sec.id === currentSectionId;
 
-                  return (
-                    <button
-                      key={q.questionVersionId}
-                      type="button"
-                      onClick={() => setCurrent(idx)}
-                      className={cn(
-                        "h-10 rounded-xl text-xs font-bold transition-all flex items-center justify-center relative cursor-pointer",
-                        isCur
-                          ? "ring-2 ring-blue-600 bg-blue-600 text-white shadow-sm"
-                          : isAns
-                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900"
-                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-700 dark:text-slate-300 hover:bg-gray-200"
-                      )}
-                    >
-                      {idx + 1}
-                      {isFlg && (
-                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    return (
+                      <div
+                        key={sec.id}
+                        className={cn(
+                          "rounded-xl border p-3 transition-colors",
+                          isCurrentSec
+                            ? "border-blue-300 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20"
+                            : "border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/40"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-200/60 dark:border-slate-800">
+                          <span
+                            className={cn(
+                              "text-xs font-bold tracking-tight",
+                              isCurrentSec ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-slate-300"
+                            )}
+                          >
+                            {sec.title}
+                          </span>
+                          <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400">
+                            {secAnswered}/{secQuestions.length}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-2">
+                          {secQuestions.map((item) => {
+                            const idx = questions.findIndex((q) => q.questionVersionId === item.questionVersionId);
+                            const isAns = (answers[item.questionVersionId] ?? []).length > 0;
+                            const isFlg = flagged[item.questionVersionId];
+                            const isCur = idx === current;
+
+                            return (
+                              <button
+                                key={item.questionVersionId}
+                                type="button"
+                                onClick={() => setCurrent(idx)}
+                                className={cn(
+                                  "h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center relative cursor-pointer",
+                                  isCur
+                                    ? "ring-2 ring-blue-600 bg-blue-600 text-white shadow-xs"
+                                    : isAns
+                                    ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900"
+                                    : "bg-gray-100 dark:bg-slate-800/80 text-gray-700 dark:text-slate-300 hover:bg-gray-200"
+                                )}
+                              >
+                                {idx + 1}
+                                {isFlg && (
+                                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-5 gap-2">
+                  {questions.map((q, idx) => {
+                    const isAns = (answers[q.questionVersionId] ?? []).length > 0;
+                    const isFlg = flagged[q.questionVersionId];
+                    const isCur = idx === current;
+
+                    return (
+                      <button
+                        key={q.questionVersionId}
+                        type="button"
+                        onClick={() => setCurrent(idx)}
+                        className={cn(
+                          "h-10 rounded-xl text-xs font-bold transition-all flex items-center justify-center relative cursor-pointer",
+                          isCur
+                            ? "ring-2 ring-blue-600 bg-blue-600 text-white shadow-sm"
+                            : isAns
+                            ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900"
+                            : "bg-gray-100 dark:bg-slate-800/80 text-gray-700 dark:text-slate-300 hover:bg-gray-200"
+                        )}
+                      >
+                        {idx + 1}
+                        {isFlg && (
+                          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Palette Legend */}

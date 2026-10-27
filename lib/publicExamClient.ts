@@ -138,10 +138,22 @@ export interface PublicExamMeta {
   state: "NOT_OPEN" | "CLOSED" | "OPEN";
 }
 
+export interface PublicExamSection {
+  id: string;
+  title: string;
+  position: number;
+  timerMode?: string;
+  minutes?: number | null;
+  weight?: number;
+  questionCount?: number;
+}
+
 export interface PublicQuestion {
   questionVersionId: string;
   position: number;
   sectionId: string;
+  sectionTitle?: string | null;
+  sectionPosition?: number | null;
   marks: number;
   answerFormat: "MCQ_SINGLE" | "MCQ_MULTI" | "MATCHING";
   stem: { text?: string } | null;
@@ -179,6 +191,7 @@ export interface PublicAttempt {
   totalMarks: number;
   requireWebcam?: boolean;
   antiCheatEnabled?: boolean;
+  sections?: PublicExamSection[];
   exam: PublicExamMeta;
   questions: PublicQuestion[];
   result: { rawScore: number; maxScore: number; percent: number; grade: string } | null;
