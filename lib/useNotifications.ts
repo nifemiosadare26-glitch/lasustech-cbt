@@ -74,21 +74,28 @@ export function useNotifications() {
   useEffect(() => {
     void load();
 
+    const isVisible = () => {
+      const doc = document as any;
+      return (doc.visibilityState ?? doc.webkitVisibilityState ?? "visible") === "visible";
+    };
+
     const tick = () => {
-      if (document.visibilityState === "visible") void load(true);
+      if (isVisible()) void load(true);
     };
     const onFocus = () => void load(true);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") void load(true);
+      if (isVisible()) void load(true);
     };
 
     const timer = window.setInterval(tick, POLL_MS);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("webkitvisibilitychange", onVisibility);
     return () => {
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("webkitvisibilitychange", onVisibility);
     };
   }, [load]);
 

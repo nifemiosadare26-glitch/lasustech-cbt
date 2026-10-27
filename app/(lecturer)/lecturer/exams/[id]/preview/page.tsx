@@ -12,6 +12,7 @@ import { useApi } from "@/lib/useApi";
 import { mediaSrc } from "@/lib/apiClient";
 import { ErrorBanner, useToast } from "@/components/admin/ui";
 import { DiagramRenderer } from "@/components/question/diagram-renderer";
+import { copyToClipboard } from "@/lib/browser";
 
 interface MediaView {
   id: string;
@@ -114,10 +115,10 @@ export default function ExamPreview() {
 
   const copy = async () => {
     if (!exam?.publicUrl) return;
-    try {
-      await navigator.clipboard.writeText(exam.publicUrl);
+    const ok = await copyToClipboard(exam.publicUrl);
+    if (ok) {
       toast.show("Public exam link copied.");
-    } catch {
+    } else {
       toast.show("Could not copy the link.", "err");
     }
   };

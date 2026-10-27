@@ -12,6 +12,7 @@ import {
 import { apiClient } from "@/lib/apiClient";
 import { useApi } from "@/lib/useApi";
 import { ErrorBanner, FormModal, Modal, errMessage, selectCls, useToast } from "@/components/admin/ui";
+import { copyToClipboard } from "@/lib/browser";
 
 interface Course {
   id: string;
@@ -318,10 +319,10 @@ export default function ExamBuilder() {
 
   const copyLink = async () => {
     if (!created?.publicUrl) return;
-    try {
-      await navigator.clipboard.writeText(created.publicUrl);
+    const ok = await copyToClipboard(created.publicUrl);
+    if (ok) {
       toast.show("Public exam link copied.");
-    } catch {
+    } else {
       toast.show("Could not copy the link.", "err");
     }
   };

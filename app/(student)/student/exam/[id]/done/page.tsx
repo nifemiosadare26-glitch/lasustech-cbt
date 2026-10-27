@@ -6,6 +6,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useApi } from "@/lib/useApi";
 import { useUser } from "@/components/auth/user-context";
+import { exitFullscreen, copyToClipboard } from "@/lib/browser";
 
 function ExamDoneContent() {
   const router = useRouter();
@@ -45,9 +46,7 @@ function ExamDoneContent() {
 
   // Fullscreen exit & Time initialization
   useEffect(() => {
-    if (typeof document !== "undefined" && document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    }
+    exitFullscreen();
 
     // Replace history to prevent back navigation
     if (typeof window !== "undefined") {
@@ -84,9 +83,9 @@ function ExamDoneContent() {
     return () => clearInterval(int);
   }, [router]);
 
-  const handleCopy = () => {
-    if (typeof navigator !== "undefined") {
-      navigator.clipboard.writeText(refCode);
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(refCode);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

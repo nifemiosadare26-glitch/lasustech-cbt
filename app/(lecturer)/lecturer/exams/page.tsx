@@ -12,6 +12,7 @@ import {
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
 import { ErrorBanner, selectCls, useToast } from "@/components/admin/ui";
+import { copyToClipboard } from "@/lib/browser";
 
 type Audience = "INSTITUTIONAL" | "PUBLIC";
 
@@ -104,10 +105,10 @@ export default function ExamManagementList() {
 
   const copyLink = async (exam: ExamRow) => {
     if (!exam.publicUrl) return;
-    try {
-      await navigator.clipboard.writeText(exam.publicUrl);
+    const ok = await copyToClipboard(exam.publicUrl);
+    if (ok) {
       toast.show("Public exam link copied.");
-    } catch {
+    } else {
       toast.show("Could not copy the link — copy it from the exam preview.", "err");
     }
   };

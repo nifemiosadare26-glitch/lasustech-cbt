@@ -239,8 +239,14 @@ export default function ExamAttemptPage() {
   useEffect(() => {
     if (!antiCheatEnabled || isSubmitting || loading) return;
 
+    const isDocHidden = () => {
+      if (typeof document === "undefined") return false;
+      const doc = document as any;
+      return Boolean(doc.hidden || doc.webkitHidden || doc.mozHidden || doc.msHidden);
+    };
+
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (isDocHidden()) {
         setTabSwitches((prev) => {
           const nextCount = prev + 1;
 
@@ -266,9 +272,23 @@ export default function ExamAttemptPage() {
       }
     };
 
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    const handleCopyCutPaste = (e: ClipboardEvent) => e.preventDefault();
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("webkitvisibilitychange", handleVisibilityChange as any);
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("copy", handleCopyCutPaste);
+    document.addEventListener("cut", handleCopyCutPaste);
+    document.addEventListener("paste", handleCopyCutPaste);
+
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("webkitvisibilitychange", handleVisibilityChange as any);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopyCutPaste);
+      document.removeEventListener("cut", handleCopyCutPaste);
+      document.removeEventListener("paste", handleCopyCutPaste);
     };
   }, [antiCheatEnabled, isSubmitting, loading, attemptId, tabSwitchLimit]);
 

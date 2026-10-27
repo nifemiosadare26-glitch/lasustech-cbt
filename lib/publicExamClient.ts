@@ -1,3 +1,5 @@
+import { safeSessionStorage } from "./browser";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 /**
@@ -72,9 +74,8 @@ export interface PublicAttemptSession {
 const sessionKey = (slug: string) => `public-exam:${slug}`;
 
 export function readAttemptSession(slug: string): PublicAttemptSession | null {
-  if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(sessionKey(slug));
+    const raw = safeSessionStorage.getItem(sessionKey(slug));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PublicAttemptSession>;
     if (!parsed.attemptId || !parsed.token) return null;
@@ -86,16 +87,15 @@ export function readAttemptSession(slug: string): PublicAttemptSession | null {
 
 export function saveAttemptSession(slug: string, session: PublicAttemptSession) {
   try {
-    window.sessionStorage.setItem(sessionKey(slug), JSON.stringify(session));
+    safeSessionStorage.setItem(sessionKey(slug), JSON.stringify(session));
   } catch {
-    // Storage can be unavailable in private windows; the landing page then
-    // simply cannot resume after a reload.
+    // In-memory fallback in safeSessionStorage preserves it
   }
 }
 
 export function clearAttemptSession(slug: string) {
   try {
-    window.sessionStorage.removeItem(sessionKey(slug));
+    safeSessionStorage.removeItem(sessionKey(slug));
   } catch {
     // ignore
   }

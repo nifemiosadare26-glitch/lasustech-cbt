@@ -27,6 +27,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { copyToClipboard } from "@/lib/browser";
 
 interface SavedTicket {
   ref: string;
@@ -423,10 +424,12 @@ export default function SupportPage() {
 
                             <button
                               type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(t.ref);
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 2000);
+                              onClick={async () => {
+                                const ok = await copyToClipboard(t.ref);
+                                if (ok) {
+                                  setCopied(true);
+                                  setTimeout(() => setCopied(false), 2000);
+                                }
                               }}
                               className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                             >
@@ -456,10 +459,12 @@ export default function SupportPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(ticketRef);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
+                    onClick={async () => {
+                      const ok = await copyToClipboard(ticketRef);
+                      if (ok) {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }
                     }}
                     className="p-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                   >

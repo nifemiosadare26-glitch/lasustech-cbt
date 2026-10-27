@@ -9,6 +9,7 @@ import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
 import { apiClient, apiDownload } from "@/lib/apiClient";
 import { useToast } from "@/components/ui/toast";
 import { fmtDateTime, actionLabel } from "@/lib/format";
+import { copyToClipboard as browserCopy } from "@/lib/browser";
 import {
   Search,
   Download,
@@ -155,10 +156,10 @@ export default function AuditLogs() {
   };
 
   const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
+    const ok = await browserCopy(text);
+    if (ok) {
       toast({ title: "Request ID copied", variant: "success" });
-    } catch {
+    } else {
       toast({ title: "Copy failed", variant: "error" });
     }
   };

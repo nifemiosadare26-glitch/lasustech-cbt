@@ -1,3 +1,5 @@
+import { safeLocalStorage } from "./browser";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 /** API root without the versioned path, used to resolve /api/v1/media/:id. */
@@ -21,13 +23,13 @@ export type ApiError = {
   details?: unknown;
 };
 
-const getToken = () => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null);
+const getToken = () => safeLocalStorage.getItem("accessToken");
 
 let refreshing: Promise<string | null> | null = null;
 function refreshAccessToken(): Promise<string | null> {
   refreshing ??= (async () => {
     try {
-      const storedRefresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+      const storedRefresh = safeLocalStorage.getItem("refreshToken");
       const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: "POST",
         headers: {
@@ -42,15 +44,17 @@ function refreshAccessToken(): Promise<string | null> {
       const json = await res.json().catch(() => ({}));
       const token = json?.data?.accessToken as string | undefined;
       const nextRefresh = json?.data?.refreshToken as string | undefined;
-      if (token && typeof window !== "undefined") {
-        localStorage.setItem("accessToken", token);
-        if (nextRefresh) localStorage.setItem("refreshToken", nextRefresh);
+      if (token) {
+        safeLocalStorage.setItem("accessToken", token);
+        if (nextRefresh) safeLocalStorage.setItem("refreshToken", nextRefresh);
       }
       return token ?? null;
     } catch {
       return null;
     } finally {
-      setTimeout(() => { refreshing = null; }, 0);
+      setTimeout(() => {
+        refreshing = null;
+      }, 0);
     }
   })();
   return refreshing;
@@ -62,8 +66,8 @@ function endSession() {
   if (window.location.pathname.startsWith("/student/exam")) {
     return;
   }
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
+  safeLocalStorage.removeItem("accessToken");
+  safeLocalStorage.removeItem("refreshToken");
   if (!window.location.pathname.startsWith("/login")) window.location.assign("/session-ended");
 }
 
@@ -80,7 +84,7 @@ async function request(endpoint: string, options: RequestInit, canRetry = true):
 
   // Access token expired: refresh once, then retry. Never for /auth/* calls.
   if (res.status === 401 && canRetry && !endpoint.startsWith("/auth/")) {
-    // If another concurrent request already refreshed the token in localStorage, retry with it
+    // If another concurrent request already refreshed the token in safeLocalStorage, retry with it
     const currentToken = getToken();
     if (currentToken && currentToken !== token) {
       return request(endpoint, options, false);
@@ -105,16 +109,21 @@ export async function apiClient<T = any>(endpoint: string, options: RequestInit 
   return (await res.json().catch(() => ({}))) as T;
 }
 
-/** Fetches a file (CSV etc.) with auth and triggers a browser download. */
+/** Fetches a file (CSV etc.) with auth and triggers a cross-browser download. */
 export async function apiDownload(endpoint: string, filename: string) {
   const res = await request(endpoint, {});
   if (!res.ok) throw await toError(res);
-  const url = URL.createObjectURL(await res.blob());
+  const blob = await res.blob();
+  if (typeof window !== "undefined" && (window.navigator as any).msSaveBlob) {
+    (window.navigator as any).msSaveBlob(blob, filename);
+    return;
+  }
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

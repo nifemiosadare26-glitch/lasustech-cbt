@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
@@ -10,9 +10,31 @@ const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-sans",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B1220" },
+  ],
+};
+
 export const metadata: Metadata = {
   title: "LASUSTECH CBT",
   description: "Digital Exam Platform for LASUSTECH",
+  formatDetection: {
+    telephone: false,
+    date: false,
+    email: false,
+    address: false,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "LASUSTECH CBT",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -22,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // the lecturer has its own. Public pages get neither and stay light.
   return (
     <html lang="en" suppressHydrationWarning className={`h-full antialiased ${ibmPlexSans.variable}`}>
-      <body className="min-h-full flex flex-col transition-colors duration-300 font-sans">
+      <body suppressHydrationWarning className="min-h-full flex flex-col transition-colors duration-300 font-sans">
         <SystemWarmup />
         {children}
       </body>

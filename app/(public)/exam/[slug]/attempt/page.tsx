@@ -40,6 +40,7 @@ import { RoleThemeProvider } from "@/components/role-theme";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DiagramRenderer } from "@/components/question/diagram-renderer";
 import { MathText } from "@/components/question/math-text";
+import { isFullscreen as getIsFullscreen, requestFullscreen, exitFullscreen, onFullscreenChange } from "@/lib/browser";
 
 interface SubmitResult {
   submitted: boolean;
@@ -509,21 +510,22 @@ export default function PublicExamAttempt() {
     };
   }, [result]);
 
-  // --- Fullscreen Toggle & Listener -----------------------------------------
+  // --- Fullscreen Toggle & Multi-Vendor Listener ----------------------------
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
+    if (!getIsFullscreen()) {
+      requestFullscreen();
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen?.().catch(() => {});
+      exitFullscreen();
       setIsFullscreen(false);
     }
   };
 
   React.useEffect(() => {
-    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
+    setIsFullscreen(getIsFullscreen());
+    return onFullscreenChange((fsActive) => {
+      setIsFullscreen(fsActive);
+    });
   }, []);
 
   // --- Physical Keyboard listener: Calculator + Exam Navigation -------------

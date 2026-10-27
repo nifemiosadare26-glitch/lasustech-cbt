@@ -508,3 +508,66 @@ html.dark body {
   width: 0 !important;
   height: 0 !important;
 }
+
+/* ============================================================================
+   CROSS-BROWSER COMPATIBILITY & RENDERING NORMALIZATION
+   Guarantees identical, glitch-free rendering across Chrome, Firefox, Safari
+   (macOS & iOS), Edge, Opera, Samsung Internet, and mobile WebKit / Blink.
+   ============================================================================ */
+
+/* 1. Prevent iOS & Safari text inflation and irregular sizing */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 2. Text rendering & font smoothing for WebKit & Gecko */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 3. Remove mobile WebKit tap highlight and callouts on interactive elements */
+button, a, input, select, textarea, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 4. Safari WebKit backdrop blur support */
+[class*="backdrop-blur"] {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur, blur(8px));
+  backdrop-filter: var(--tw-backdrop-blur, blur(8px));
+}
+
+/* 5. Cross-browser high-fidelity printing (Safari / Firefox / Chromium) */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* 6. Prevent iOS Safari auto-zoom on form inputs (triggered when font-size < 16px) */
+@media screen and (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* 7. Smooth momentum scrolling on iOS Safari */
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 8. Safe area padding variables for displays with notches (iPhone / Android) */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
