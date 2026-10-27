@@ -389,8 +389,8 @@ export function CandidateScriptModal({
                     onClick={() => setFilter("ALL")}
                     className={`px-2.5 py-1 rounded-md font-medium transition ${
                       filter === "ALL"
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "bg-blue-600 text-white"
+                        : "border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5"
                     }`}
                   >
                     All Questions ({questions.length})
@@ -400,8 +400,8 @@ export function CandidateScriptModal({
                     onClick={() => setFilter("CORRECT")}
                     className={`px-2.5 py-1 rounded-md font-medium transition ${
                       filter === "CORRECT"
-                        ? "bg-emerald-700 text-white"
-                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                        ? "bg-emerald-600 text-white"
+                        : "border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30"
                     }`}
                   >
                     Correct ({correctCount})
@@ -411,8 +411,8 @@ export function CandidateScriptModal({
                     onClick={() => setFilter("INCORRECT")}
                     className={`px-2.5 py-1 rounded-md font-medium transition ${
                       filter === "INCORRECT"
-                        ? "bg-rose-700 text-white"
-                        : "bg-rose-50 text-rose-800 hover:bg-rose-100"
+                        ? "bg-rose-600 text-white"
+                        : "border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-950/30"
                     }`}
                   >
                     Incorrect ({incorrectCount})
@@ -423,8 +423,8 @@ export function CandidateScriptModal({
                       onClick={() => setFilter("UNANSWERED")}
                       className={`px-2.5 py-1 rounded-md font-medium transition ${
                         filter === "UNANSWERED"
-                          ? "bg-gray-600 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          ? "bg-gray-700 text-white"
+                          : "border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5"
                       }`}
                     >
                       Unanswered ({unansweredCount})
@@ -551,7 +551,7 @@ export function CandidateScriptModal({
 
                         {/* Explanation Note */}
                         {q.explanation && (
-                          <div className="rounded-lg bg-gray-50 border border-gray-200 p-2.5 text-[12px] text-gray-700 space-y-1">
+                          <div className="rounded-lg bg-gray-50/50 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-800 p-2.5 text-[12px] text-gray-700 dark:text-slate-300 space-y-1">
                             <span className="font-semibold text-gray-900 flex items-center gap-1">
                               <FileText size={12} className="text-gray-500" />
                               Explanation / Key Reference:
@@ -587,7 +587,7 @@ export function CandidateScriptModal({
               </div>
             )}
 
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-[13px] space-y-1">
+            <div className="bg-gray-50/50 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-800 rounded-lg p-3 text-[13px] space-y-1">
               <div>
                 <span className="text-gray-500">Exam: </span>
                 <span className="font-semibold text-gray-900">{data.exam.title}</span>

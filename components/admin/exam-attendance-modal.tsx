@@ -81,7 +81,7 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto print:p-0 print:bg-white print:static print:overflow-visible">
       <div className="relative w-full max-w-5xl rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         {/* Header - Screen only */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50 print:hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-transparent print:hidden">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Official Examination Attendance Sheet</h2>
             <p className="text-xs text-gray-500">
@@ -99,7 +99,7 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
             </Button>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition"
+              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
               aria-label="Close"
             >
               <X size={20} />
@@ -150,7 +150,7 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
               </div>
 
               {/* Exam Metadata Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 p-4 rounded-lg border border-gray-300 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/50 dark:bg-slate-800/40 p-4 rounded-lg border border-gray-200 dark:border-slate-800 text-xs">
                 <div>
                   <span className="text-gray-500 block font-medium">Course Code & Title:</span>
                   <span className="font-bold text-gray-900 text-sm">
@@ -242,7 +242,7 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
                           : "—";
 
                         return (
-                          <tr key={c.studentId} className="hover:bg-gray-50 print:hover:bg-transparent">
+                          <tr key={c.studentId} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors print:hover:bg-transparent">
                             <td className="py-2 px-2 border-r border-gray-300 text-center font-medium text-gray-600">
                               {c.sn}
                             </td>
@@ -276,7 +276,7 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
               </div>
 
               {/* Invigilation Certification Docket */}
-              <div className="border border-gray-400 rounded-sm p-4 bg-gray-50 print:bg-transparent text-xs space-y-4 break-inside-avoid">
+              <div className="border border-gray-300 dark:border-slate-800 rounded-sm p-4 bg-gray-50/50 dark:bg-slate-800/40 print:bg-transparent text-xs space-y-4 break-inside-avoid">
                 <div className="font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
                   Invigilator Certification & Handover
                 </div>

@@ -522,7 +522,7 @@ export default function QuestionBank() {
       {previewingRow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-gray-50/50">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between gap-3 bg-transparent">
               <div className="flex items-center gap-2">
                 <Badge variant={DIFFICULTY_VARIANT[previewingRow.version?.difficulty ?? ""] ?? "gray-tint"}>
                   {(previewingRow.version?.difficulty ?? "medium").toLowerCase()}
@@ -536,7 +536,7 @@ export default function QuestionBank() {
               </div>
               <button
                 onClick={() => setPreviewingRow(null)}
-                className="text-gray-400 hover:text-gray-600 rounded-lg p-1.5 hover:bg-gray-100 transition-colors cursor-pointer"
+                className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg p-1.5 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -596,7 +596,7 @@ export default function QuestionBank() {
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3">
+            <div data-modal-footer className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 bg-transparent flex items-center justify-between gap-3">
               <span className="text-[12px] text-gray-500 truncate max-w-xs">
                 {previewingRow.ownerLabel} · {previewingRow.version?.topic?.name ?? "General"}
               </span>

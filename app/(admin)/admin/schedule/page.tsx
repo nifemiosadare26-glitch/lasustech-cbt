@@ -656,7 +656,7 @@ function SchedulePanel({
               </div>
               <button
                 type="button"
-                className="rounded-md text-slate-400 hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
                 onClick={onClose}
               >
                 <X size={20} />
@@ -791,7 +791,7 @@ function SchedulePanel({
               </div>
             )}
 
-            <div className="border-t border-slate-200 px-6 py-4 bg-gray-50 flex justify-end gap-3 shrink-0">
+            <div data-modal-footer className="border-t border-slate-200 dark:border-slate-800 px-6 py-4 bg-transparent flex justify-end gap-3 shrink-0">
               <Button variant="outline" onClick={onClose} disabled={pending}>
                 Cancel
               </Button>

@@ -113,7 +113,7 @@ export function Modal({
             onClick={onClose}
             aria-label="Close"
             disabled={lockDismiss}
-            className="text-gray-400 hover:text-gray-600 p-1 rounded-md disabled:opacity-40 disabled:pointer-events-none"
+            className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
           >
             <X size={18} />
           </button>
@@ -122,7 +122,7 @@ export function Modal({
         {footer && (
           <div
             data-modal-footer
-            className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2 shrink-0"
+            className="p-4 bg-transparent border-t border-gray-100 flex justify-end gap-2 shrink-0"
           >
             {footer}
           </div>

@@ -412,7 +412,7 @@ export default function SessionsAndSemesters() {
                   <p className="text-[12px] text-gray-500">Define year calendar and exam cycle</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setIsCreateSessionOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
+              <button type="button" onClick={() => setIsCreateSessionOpen(false)} className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleCreateSession} className="p-5 space-y-4">
@@ -491,7 +491,7 @@ export default function SessionsAndSemesters() {
               </p>
             </div>
 
-            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+            <div data-modal-footer className="p-4 bg-transparent border-t border-gray-100 dark:border-slate-800 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setCloseTarget(null)}>Keep active</Button>
               <Button type="button" variant="danger" onClick={() => void handleConfirmClose()} disabled={action.pending}>
                 {action.pending && <Loader2 size={14} className="mr-2 animate-spin" />} Confirm &amp; close session
@@ -513,7 +513,7 @@ export default function SessionsAndSemesters() {
                   <p className="text-[12px] text-gray-500">Historical summary of the session</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setArchiveTarget(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
+              <button type="button" onClick={() => setArchiveTarget(null)} className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
             </div>
 
             <div className="p-5 space-y-4 text-[14px]">
@@ -521,7 +521,7 @@ export default function SessionsAndSemesters() {
                 <p className="text-[13px] text-gray-500"><Loader2 size={14} className="inline animate-spin mr-2" /> Loading summary…</p>
               ) : archive ? (
                 <>
-                  <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-lg border border-gray-100">
+                  <div className="grid grid-cols-2 gap-3 bg-gray-50/50 dark:bg-slate-800/40 p-3.5 rounded-lg border border-gray-200/60 dark:border-slate-800">
                     <div>
                       <span className="text-[11px] text-gray-500 font-medium uppercase block">Exams</span>
                       <span className="text-[18px] font-bold text-gray-900">{archive.exams}</span>
@@ -600,7 +600,7 @@ function SemesterModal({
               <p className="text-[12px] text-gray-500">{subtitle}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
         </div>
 
         <form onSubmit={onSubmit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">

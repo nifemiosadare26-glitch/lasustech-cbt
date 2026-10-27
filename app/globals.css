@@ -571,3 +571,139 @@ button, a, input, select, textarea, [role="button"] {
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
 }
+
+/* ============================================================================
+   COLORLESS HOVER ENGINE & MODAL PURGE
+   Eliminates all opaque, muddy ash-grey hover overlays and modal gray strips.
+   Provides a subtle, colorless translucent hint ensuring 100% text visibility.
+   ============================================================================ */
+
+/* 1. Global Colorless Hover Engine for Light Mode */
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover,
+.hover\:bg-gray-200:hover,
+.hover\:bg-slate-50:hover,
+.hover\:bg-slate-100:hover,
+.hover\:bg-slate-200:hover,
+.hover\:bg-gray-50\/80:hover,
+.hover\:bg-gray-50\/70:hover,
+.hover\:bg-gray-50\/60:hover,
+.hover\:bg-slate-50\/70:hover,
+.hover\:bg-slate-50\/50:hover,
+table tbody tr:hover,
+[role="row"]:hover {
+  background-color: rgba(0, 0, 0, 0.025) !important;
+}
+
+/* 2. Global Colorless Hover Engine for Dark Mode */
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-gray-200:hover,
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-slate-200:hover,
+.dark .hover\:bg-slate-700:hover,
+.dark .hover\:bg-slate-750:hover,
+.dark .hover\:bg-slate-800:hover,
+.dark .hover\:bg-slate-800\/50:hover,
+.dark .hover\:bg-gray-800:hover,
+.dark .hover\:bg-gray-750\/50:hover,
+.dark .hover\:bg-gray-50\/80:hover,
+.dark .hover\:bg-gray-50\/70:hover,
+.dark .hover\:bg-gray-50\/60:hover,
+.dark .hover\:bg-slate-50\/70:hover,
+.dark .hover\:bg-slate-50\/50:hover,
+.dark table tbody tr:hover,
+.dark [role="row"]:hover {
+  background-color: rgba(255, 255, 255, 0.045) !important;
+}
+
+/* 3. Modal Surfaces, Footers & Dialogs: Colorless, Seamless, No Ash */
+[role="dialog"],
+.fixed.inset-0 > div[class*="bg-white"] {
+  background-color: #ffffff;
+  color: #0F172A;
+}
+
+.dark [role="dialog"],
+.dark .fixed.inset-0 > div[class*="bg-white"] {
+  background-color: #141C2E !important;
+  color: #F8FAFC !important;
+  border-color: #263349 !important;
+}
+
+[data-modal-footer],
+.modal-footer,
+.fixed.inset-0 [data-modal-footer],
+.fixed.inset-0 .modal-footer {
+  background-color: transparent !important;
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark [data-modal-footer],
+.dark .modal-footer,
+.dark .fixed.inset-0 [data-modal-footer],
+.dark .fixed.inset-0 .modal-footer {
+  background-color: transparent !important;
+  border-top-color: #263349 !important;
+}
+
+/* Modal ash strips inside headers/footers purged to transparent */
+.fixed.inset-0 .border-t.bg-gray-50,
+.fixed.inset-0 .border-b.bg-gray-50 {
+  background-color: transparent !important;
+}
+.dark .fixed.inset-0 .border-t.bg-gray-50,
+.dark .fixed.inset-0 .border-b.bg-gray-50 {
+  background-color: transparent !important;
+}
+
+/* Modal metadata boxes: clean colorless translucent tint */
+.fixed.inset-0 *[class*="bg-gray-50/50"],
+.fixed.inset-0 *[class*="bg-gray-50"],
+.fixed.inset-0 *[class*="bg-slate-50"],
+[role="dialog"] *[class*="bg-gray-50/50"],
+[role="dialog"] *[class*="bg-gray-50"],
+[role="dialog"] *[class*="bg-slate-50"] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark .fixed.inset-0 *[class*="bg-gray-50/50"],
+.dark .fixed.inset-0 *[class*="bg-gray-50"],
+.dark .fixed.inset-0 *[class*="bg-slate-50"],
+.dark [role="dialog"] *[class*="bg-gray-50/50"],
+.dark [role="dialog"] *[class*="bg-gray-50"],
+.dark [role="dialog"] *[class*="bg-slate-50"] {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-color: #263349 !important;
+}
+
+/* 4. Modal Interactive Elements: Colorless Hint on Hover with Max Contrast */
+[role="dialog"] button:hover:not(.bg-blue-600):not(.bg-danger):not(.bg-emerald-600):not(.bg-rose-600):not([class*="bg-blue-"]):not([class*="bg-danger-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]),
+.fixed.inset-0 button:hover:not(.bg-blue-600):not(.bg-danger):not(.bg-emerald-600):not(.bg-rose-600):not([class*="bg-blue-"]):not([class*="bg-danger-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]) {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: #0F172A !important;
+}
+
+.dark [role="dialog"] button:hover:not(.bg-blue-600):not(.bg-danger):not(.bg-emerald-600):not(.bg-rose-600):not([class*="bg-blue-"]):not([class*="bg-danger-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]),
+.dark .fixed.inset-0 button:hover:not(.bg-blue-600):not(.bg-danger):not(.bg-emerald-600):not(.bg-rose-600):not([class*="bg-blue-"]):not([class*="bg-danger-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]) {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: #FFFFFF !important;
+}
+
+/* 5. Select dropdowns contrast guarantee */
+.dark select option {
+  background-color: #141C2E !important;
+  color: #F8FAFC !important;
+}
+
+/* 6. Text contrast preservation on hovered rows and cards */
+table tbody tr:hover td,
+[role="row"]:hover [role="cell"] {
+  color: inherit;
+}
+.dark table tbody tr:hover td,
+.dark [role="row"]:hover [role="cell"] {
+  color: #F8FAFC;
+}

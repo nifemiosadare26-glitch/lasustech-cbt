@@ -359,7 +359,7 @@ export default function CourseManagementPage() {
 
       {/* KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <Card className="p-4 bg-white border border-gray-200">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Courses</span>
             <BookOpen size={16} className="text-blue-600 dark:text-blue-400" />
@@ -368,7 +368,7 @@ export default function CourseManagementPage() {
           <p className="text-[11px] text-gray-400 mt-0.5">Across all departments</p>
         </Card>
 
-        <Card className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <Card className="p-4 bg-white border border-gray-200">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Active Courses</span>
             <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
@@ -377,7 +377,7 @@ export default function CourseManagementPage() {
           <p className="text-[11px] text-gray-400 mt-0.5">Available for registration & exams</p>
         </Card>
 
-        <Card className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <Card className="p-4 bg-white border border-gray-200">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Depts Covered</span>
             <Building2 size={16} className="text-purple-600 dark:text-purple-400" />
@@ -386,7 +386,7 @@ export default function CourseManagementPage() {
           <p className="text-[11px] text-gray-400 mt-0.5">With configured curricula</p>
         </Card>
 
-        <Card className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <Card className="p-4 bg-white border border-gray-200">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Enrolled</span>
             <GraduationCap size={16} className="text-purple-600 dark:text-purple-400" />
@@ -397,7 +397,7 @@ export default function CourseManagementPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <Card className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-3">
+      <Card className="p-4 bg-white border border-gray-200 space-y-3">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -507,7 +507,7 @@ export default function CourseManagementPage() {
       </Card>
 
       {/* Courses List / Table */}
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+      <Card className="bg-white border border-gray-200 overflow-hidden shadow-sm">
         {loadingCourses ? (
           <div className="py-16 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center justify-center gap-2">
             <Loader2 size={24} className="animate-spin text-blue-600" />
@@ -680,18 +680,18 @@ export default function CourseManagementPage() {
       {/* Add / Edit Course Modal */}
       {(isAddModalOpen || editingCourse) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <BookOpen size={18} className="text-blue-600" />
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                <h2 className="text-base font-semibold text-gray-900">
                   {editingCourse ? `Edit Course — ${editingCourse.code}` : "Add New Course"}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"
               >
                 <X size={18} />
               </button>
@@ -852,7 +852,7 @@ export default function CourseManagementPage() {
                             className={`flex items-center justify-between p-2 rounded text-xs transition-colors cursor-pointer border ${
                               isChecked
                                 ? "bg-blue-50/70 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700 text-blue-900 dark:text-blue-200 font-medium"
-                                : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+                                : "bg-white border-gray-200 text-gray-700 dark:text-gray-200"
                             }`}
                           >
                             <div className="flex items-center gap-2">
@@ -904,21 +904,21 @@ export default function CourseManagementPage() {
       {/* Delete Confirmation Modal */}
       {deletingCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-700 p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md border border-gray-200 p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="p-2 rounded-full bg-red-100">
                 <AlertTriangle size={20} />
               </div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">
                 Delete Course {deletingCourse.code}?
               </h3>
             </div>
 
-            <p className="text-xs text-gray-600 dark:text-gray-300">
+            <p className="text-xs text-gray-600">
               Are you sure you want to permanently delete <strong>{deletingCourse.code} — {deletingCourse.title}</strong>?
             </p>
 
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 text-[11px] text-amber-800 dark:text-amber-300">
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
               <strong>Notice:</strong> If this course has existing examination records, question items, or enrolled candidates, deleting will be rejected by the database. In that case, consider <strong>Archiving</strong> the course instead.
             </div>
 

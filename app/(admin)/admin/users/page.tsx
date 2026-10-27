@@ -829,7 +829,7 @@ export default function UsersAndRoles() {
                   <p className="text-[12px] text-gray-500">Create login credentials and roles</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setIsAddUserOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
+              <button type="button" onClick={() => setIsAddUserOpen(false)} className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleCreateUser} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
@@ -1137,7 +1137,7 @@ export default function UsersAndRoles() {
                   <p className="text-[12px] text-gray-500">Apply role to {selectedCount} selected users</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setIsChangeRoleOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
+              <button type="button" onClick={() => setIsChangeRoleOpen(false)} className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleSaveBulkRole} className="p-5 space-y-4">
@@ -1178,7 +1178,7 @@ export default function UsersAndRoles() {
                   setIsImportOpen(false);
                   setImportSummary(null);
                 }}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md"
+                className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"
               >
                 <X size={18} />
               </button>
@@ -1366,7 +1366,7 @@ export default function UsersAndRoles() {
                   <p className="text-[12px] text-gray-500">Update account details for {activeUserToEdit.names}</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setIsEditUserOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md"><X size={18} /></button>
+              <button type="button" onClick={() => setIsEditUserOpen(false)} className="text-gray-400 hover:text-gray-700 hover:bg-black/5 dark:hover:bg-white/10 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleSaveSingleUser} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
