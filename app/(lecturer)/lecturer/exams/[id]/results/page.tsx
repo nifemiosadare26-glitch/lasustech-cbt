@@ -6,7 +6,7 @@ import { Card, StatCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Download, Loader2, Search, FileText } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Search, FileText, BarChart3 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useApi } from "@/lib/useApi";
 import { apiDownload } from "@/lib/apiClient";
@@ -62,6 +62,15 @@ export default function ExamResults() {
   const results = useApi<ResultsPayload>(examId ? `/lecturer/exams/${examId}/results` : null);
 
   const payload = results.data;
+
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const totalScoredCandidates = React.useMemo(() => {
+    return (payload?.distribution ?? []).reduce((sum, item) => sum + (item.count || 0), 0);
+  }, [payload?.distribution]);
   const students = React.useMemo(() => {
     const rows = payload?.students ?? [];
     const term = search.trim().toLowerCase();
@@ -260,65 +269,120 @@ export default function ExamResults() {
             </div>
 
             <div className="space-y-6">
-              <Card className="h-[400px] flex flex-col">
-                <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 bg-white">
-                  <h3 className="font-semibold text-[17px] text-gray-900 tracking-tight">Score distribution</h3>
+              <Card noPadding className="flex flex-col overflow-hidden bg-white border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white shrink-0">
+                  <div>
+                    <h3 className="font-semibold text-[17px] text-gray-900 tracking-tight">Score distribution</h3>
+                    <p className="text-[12px] text-gray-500 mt-0.5">
+                      Performance spread across grading bands
+                    </p>
+                  </div>
                   <div className="flex items-center gap-3 text-[12px] font-medium text-gray-500">
                     <div className="flex items-center gap-1.5">
                       <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>Pass
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>Fail
+                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>Fail
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 p-4 mt-2">
-                  {(payload?.distribution.length ?? 0) === 0 ? (
-                    <p className="text-[13px] text-gray-500">No results to chart yet.</p>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={payload?.distribution ?? []}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
-                      >
-                        <XAxis
-                          dataKey="range"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 12, fill: "var(--color-gray-500)" }}
-                          dy={10}
-                          interval={0}
-                        />
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 12, fill: "var(--color-gray-500)" }}
-                          allowDecimals={false}
-                        />
-                        <Tooltip
-                          cursor={{ fill: "var(--color-gray-50)" }}
-                          contentStyle={{
-                            borderRadius: "8px",
-                            border: "1px solid var(--color-gray-200)",
-                            boxShadow: "var(--shadow-float)",
-                          }}
-                          formatter={(value) => [value, "Candidates"]}
-                        />
-                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                          {(payload?.distribution ?? []).map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={
-                                entry.label === "F"
-                                  ? "var(--color-danger, #ef4444)"
-                                  : "var(--color-blue-600, #2563eb)"
+
+                <div className="p-5 flex flex-col justify-between">
+                  <div className="w-full h-[280px] min-h-[260px] relative">
+                    {!mounted ? (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <Loader2 size={24} className="animate-spin mr-2 text-blue-600" />
+                        <span className="text-xs">Loading chart...</span>
+                      </div>
+                    ) : totalScoredCandidates === 0 ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                        <BarChart3 size={36} className="text-gray-300 mb-2" />
+                        <p className="text-[14px] font-semibold text-gray-800">No scored attempts yet</p>
+                        <p className="text-[12px] text-gray-500 mt-1 max-w-xs">
+                          Score distribution will automatically visualize here once candidates submit this exam.
+                        </p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={payload?.distribution ?? []}
+                          margin={{ top: 15, right: 10, left: -20, bottom: 20 }}
+                        >
+                          <XAxis
+                            dataKey="range"
+                            axisLine={{ stroke: "#E2E8F0" }}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: "#64748B" }}
+                            dy={10}
+                            interval={0}
+                          />
+                          <YAxis
+                            axisLine={{ stroke: "#E2E8F0" }}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: "#64748B" }}
+                            allowDecimals={false}
+                          />
+                          <Tooltip
+                            cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
+                            content={({ active, payload: tooltipPayload }) => {
+                              if (active && tooltipPayload && tooltipPayload.length) {
+                                const data = tooltipPayload[0].payload as { range: string; count: number; label: string };
+                                const percentOfTotal = totalScoredCandidates
+                                  ? ((data.count / totalScoredCandidates) * 100).toFixed(1)
+                                  : "0";
+                                return (
+                                  <div className="bg-white border border-gray-200 p-3 rounded-xl shadow-xl text-xs space-y-1 z-50">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`w-2 h-2 rounded-full ${data.label === "F" ? "bg-rose-500" : "bg-blue-600"}`} />
+                                      <span className="font-bold text-gray-900">
+                                        Grade {data.label} ({data.range}%)
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-600">
+                                      <span className="font-semibold text-gray-900 text-sm">{data.count}</span> candidate{data.count === 1 ? "" : "s"} ({percentOfTotal}%)
+                                    </p>
+                                  </div>
+                                );
                               }
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                            {(payload?.distribution ?? []).map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.label === "F" ? "#EF4444" : "#2563EB"}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                  {/* Grade Breakdown Cards */}
+                  <div className="grid grid-cols-6 gap-2 mt-4 pt-4 border-t border-gray-100">
+                    {(payload?.distribution ?? []).map((item) => {
+                      const count = item.count || 0;
+                      const pct = totalScoredCandidates ? Math.round((count / totalScoredCandidates) * 100) : 0;
+                      return (
+                        <div
+                          key={item.label}
+                          className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-50/80 border border-gray-200/60 text-center transition-colors hover:bg-gray-100/80"
+                        >
+                          <span className={`text-[12px] font-black ${item.label === "F" ? "text-rose-600" : "text-blue-600"}`}>
+                            {item.label}
+                          </span>
+                          <span className="text-[15px] font-bold text-gray-900 tabular-nums my-0.5">
+                            {count}
+                          </span>
+                          <span className="text-[10px] text-gray-400 tabular-nums">
+                            {pct}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </Card>
             </div>
