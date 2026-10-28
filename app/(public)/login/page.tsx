@@ -185,27 +185,13 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
 
   return (
     <main
-      className={`${inter.className} min-h-screen relative flex flex-col items-center justify-center w-full bg-[#050b1a] overflow-x-hidden px-4 py-8 selection:bg-blue-600 selection:text-white`}
+      className={`${inter.className} min-h-screen relative flex flex-col items-center justify-center w-full bg-[#061026] overflow-x-hidden px-4 py-8 selection:bg-blue-600 selection:text-white`}
     >
-      {/* Background ambient lighting & subtle grid */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(37,99,235,0.28),rgba(5,11,26,0))]"
-      />
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(14,165,233,0.14),rgba(5,11,26,0))]"
-      />
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem]"
-      />
-
       {/* Top Floating Tips Trigger */}
       <button
         type="button"
         onClick={() => setTipsOpen(true)}
-        className="fixed top-5 right-5 z-30 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900/90 text-slate-200 hover:text-white hover:bg-blue-600 border border-slate-700/80 hover:border-blue-400 transition-all cursor-pointer shadow-lg backdrop-blur-md"
+        className="fixed top-5 right-5 z-30 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#0a1638] text-slate-100 hover:text-white hover:bg-blue-600 border border-blue-500/30 transition-all cursor-pointer shadow-lg"
       >
         <HelpCircle size={15} className="text-blue-400" />
         <span>Tips for Login</span>
@@ -215,7 +201,6 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
         {/* BRAND HEADER */}
         <header className="flex flex-col items-center text-center mb-6 w-full">
           <div className="relative mb-3 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-blue-500/25 blur-xl scale-125" />
             <Image
               src="/lasustech-logo.png"
               alt={`${SCHOOL_NAME} logo`}
@@ -233,21 +218,21 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
             {SCHOOL_NAME}
           </h1>
 
-          <p className="text-blue-400 mt-1.5 text-xs md:text-sm font-semibold tracking-wide">
+          <p className="text-blue-300 mt-1.5 text-xs md:text-sm font-semibold tracking-wide">
             Computer Based Test Examination Portal
           </p>
         </header>
 
-        {/* FORM CARD - HIGH CONTRAST & SHARP EDGES */}
-        <div className="w-full rounded-2xl border border-slate-700/90 bg-[#0a1329]/95 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] ring-1 ring-white/10">
+        {/* FORM CARD - HIGH CONTRAST SOLID DESIGN */}
+        <div className="w-full rounded-2xl border border-[#1e3b7a] bg-[#0a1638] p-6 sm:p-8 shadow-2xl">
           <div className="flex items-center justify-between gap-2 mb-5">
             {portal ? (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-600/20 text-blue-200 border border-blue-400/40">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
                 {PORTAL_LABEL[portal]}
               </div>
             ) : (
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-100">
                 Sign in to your account
               </span>
             )}
@@ -255,7 +240,7 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
             <button
               type="button"
               onClick={() => setTipsOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-300 hover:text-white bg-blue-500/10 hover:bg-blue-600/30 border border-blue-400/20 hover:border-blue-400/40 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-200 hover:text-white bg-blue-600/20 hover:bg-blue-600 border border-blue-400/30 transition-colors cursor-pointer"
             >
               <HelpCircle size={13} />
               <span>Login Tips</span>
@@ -265,8 +250,8 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
           <form onSubmit={handleLogin} className="w-full text-left space-y-4.5">
             {/* Identifier */}
             <div className="space-y-1.5">
-              <label htmlFor="identifier" className="text-xs font-bold text-slate-100 block uppercase tracking-wider">
-                Matric Number or Staff Email <span className="text-rose-400" aria-hidden="true">*</span>
+              <label htmlFor="identifier" className="text-xs font-bold text-white block uppercase tracking-wider">
+                Matric Number or Staff Email <span className="text-red-400 font-bold" aria-hidden="true">*</span>
               </label>
               <div className="relative">
                 <input
@@ -286,19 +271,19 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
                   }}
                   autoComplete="username"
                   aria-invalid={!!error}
-                  className={`w-full h-11 px-3.5 pl-10 rounded-xl bg-[#040817] border text-white placeholder:text-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all ${
-                    error ? "border-rose-500/90 focus:border-rose-500" : "border-slate-600 focus:border-blue-400"
+                  className={`w-full h-11 px-3.5 pl-10 rounded-xl bg-[#071129] border text-white placeholder:text-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all ${
+                    error ? "border-rose-500 focus:border-rose-400" : "border-slate-500 focus:border-blue-400"
                   }`}
                 />
-                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
               </div>
             </div>
 
             {/* Password */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-xs font-bold text-slate-100 block uppercase tracking-wider">
-                  Password <span className="text-rose-400" aria-hidden="true">*</span>
+                <label htmlFor="password" className="text-xs font-bold text-white block uppercase tracking-wider">
+                  Password <span className="text-red-400 font-bold" aria-hidden="true">*</span>
                 </label>
                 {capsLock && (
                   <span id="caps-warning" className="text-[11px] text-amber-300 font-semibold flex items-center gap-1">
@@ -322,14 +307,14 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
                   onBlur={() => setCapsLock(false)}
                   autoComplete="current-password"
                   aria-invalid={!!error}
-                  className={`w-full h-11 px-3.5 pl-10 pr-10 rounded-xl bg-[#040817] border text-white placeholder:text-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all ${
-                    error ? "border-rose-500/90 focus:border-rose-500" : "border-slate-600 focus:border-blue-400"
+                  className={`w-full h-11 px-3.5 pl-10 pr-10 rounded-xl bg-[#071129] border text-white placeholder:text-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all ${
+                    error ? "border-rose-500 focus:border-rose-400" : "border-slate-500 focus:border-blue-400"
                   }`}
                 />
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
                 <button
                   type="button"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors rounded-lg cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-white transition-colors rounded-lg cursor-pointer"
                   onClick={() => setShowPassword((s) => !s)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
@@ -345,8 +330,8 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
                 role="alert"
                 className={`flex flex-col gap-2 rounded-xl p-3.5 text-xs leading-relaxed shadow-md border animate-in fade-in duration-150 ${
                   error.isLocked
-                    ? "border-amber-500/50 bg-amber-950/60 text-amber-100"
-                    : "border-rose-500/50 bg-rose-950/70 text-rose-100"
+                    ? "border-amber-500/50 bg-amber-950/80 text-amber-100"
+                    : "border-rose-500/50 bg-rose-950/80 text-rose-100"
                 }`}
               >
                 <div className="flex items-start gap-2.5">
@@ -367,7 +352,7 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
                   </button>
                   <Link
                     href="/support"
-                    className="text-slate-300 hover:text-white underline underline-offset-2 font-semibold"
+                    className="text-slate-200 hover:text-white underline underline-offset-2 font-semibold"
                   >
                     Helpdesk Support &rarr;
                   </Link>
@@ -386,16 +371,16 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-500 bg-[#040817] text-blue-600 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  className="h-4 w-4 rounded border-slate-400 bg-[#071129] text-blue-600 focus:ring-1 focus:ring-blue-500 cursor-pointer"
                 />
-                <span className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors">
+                <span className="text-xs font-semibold text-slate-100 group-hover:text-white transition-colors">
                   Keep me signed in
                 </span>
               </label>
 
               <Link
                 href="/reset"
-                className="text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline underline-offset-2 transition-colors"
+                className="text-xs font-bold text-sky-300 hover:text-white hover:underline underline-offset-4 transition-colors"
               >
                 Forgot password?
               </Link>
@@ -423,11 +408,11 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
         </div>
 
         {/* Footer */}
-        <footer className="mt-5 text-center text-xs text-slate-300">
+        <footer className="mt-5 text-center text-xs text-slate-200">
           <span>Official LASUSTECH CBT System &bull; </span>
           <Link
             href="/support"
-            className="text-blue-400 hover:text-blue-300 font-bold underline underline-offset-2 transition-colors ml-0.5"
+            className="text-sky-300 hover:text-white font-bold underline underline-offset-4 transition-colors ml-0.5"
           >
             Technical Helpdesk
           </Link>
@@ -449,26 +434,26 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
             role="dialog"
             aria-modal="true"
             aria-labelledby="tips-title"
-            className="relative z-10 w-full max-w-md bg-[#0a1329] border-l border-slate-700/90 shadow-2xl p-6 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-250 text-white"
+            className="relative z-10 w-full max-w-md bg-[#0a1638] border-l border-[#1e3b7a] shadow-2xl p-6 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-250 text-white"
           >
             <div className="space-y-6">
               {/* Header */}
-              <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-start justify-between border-b border-slate-700/80 pb-4">
                 <div className="space-y-1">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-600/20 text-blue-200 border border-blue-400/40">
                     <Info size={12} /> Candidate Assistance
                   </div>
                   <h2 id="tips-title" className="text-xl font-bold text-white tracking-tight">
                     Login Tips & Guidance
                   </h2>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-300">
                     Step-by-step instructions for seamless access to your CBT examination.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setTipsOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
                   aria-label="Close tips panel"
                 >
                   <X size={20} />
@@ -476,27 +461,27 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
               </div>
 
               {/* Student Guide */}
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-3">
-                <div className="flex items-center gap-2 text-sm font-bold text-blue-300">
+              <div className="p-4 rounded-xl bg-[#071129] border border-slate-700 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-blue-200">
                   <GraduationCap size={18} className="text-blue-400" />
                   <span>Student Credentials Format</span>
                 </div>
-                <div className="text-xs text-slate-300 space-y-2">
+                <div className="text-xs text-slate-200 space-y-2">
                   <p>
                     Your <strong>Identifier</strong> is your university Matriculation Number or admission registration number:
                   </p>
-                  <div className="p-2.5 rounded-lg bg-[#040817] border border-slate-800 font-mono text-[11px] text-blue-200 space-y-1">
+                  <div className="p-2.5 rounded-lg bg-[#04091a] border border-slate-700 font-mono text-[11px] text-blue-200 space-y-1">
                     <div>Format 1: <strong className="text-white">LASU/CSC/2023/001</strong></div>
                     <div>Format 2: <strong className="text-white">230591001</strong></div>
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    &bull; Letters are not case-sensitive (e.g. lowercase <code className="text-slate-300">lasu</code> is accepted).
+                  <p className="text-[11px] text-slate-300">
+                    &bull; Letters are not case-sensitive (e.g. lowercase <code className="text-white font-mono">lasu</code> is accepted).
                   </p>
                 </div>
               </div>
 
               {/* Password Tips */}
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-3">
+              <div className="p-4 rounded-xl bg-[#071129] border border-slate-700 space-y-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-amber-300">
                   <KeyRound size={17} className="text-amber-400" />
                   <span>Password Rules & Advice</span>
@@ -515,21 +500,21 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
               </div>
 
               {/* Troubleshooting */}
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-3">
+              <div className="p-4 rounded-xl bg-[#071129] border border-slate-700 space-y-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-rose-300">
                   <ShieldAlert size={17} className="text-rose-400" />
                   <span>Troubleshooting Common Errors</span>
                 </div>
-                <div className="text-xs text-slate-300 space-y-2.5">
+                <div className="text-xs text-slate-200 space-y-2.5">
                   <div>
                     <strong className="text-white">Account Locked:</strong>
-                    <p className="text-slate-400 text-[11px] mt-0.5">
+                    <p className="text-slate-300 text-[11px] mt-0.5">
                       After 5 incorrect password attempts, accounts are locked for 15 minutes to prevent unauthorized access. You can reset your password immediately via the "Forgot Password" link.
                     </p>
                   </div>
                   <div>
                     <strong className="text-white">Exam Hall Disconnects:</strong>
-                    <p className="text-slate-400 text-[11px] mt-0.5">
+                    <p className="text-slate-300 text-[11px] mt-0.5">
                       If your computer rebooted during an active test, re-enter your matric number and password immediately. The exam timer and your saved answers will resume seamlessly.
                     </p>
                   </div>
@@ -541,7 +526,7 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
                 <Link
                   href="/support"
                   onClick={() => setTipsOpen(false)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-blue-500/40 bg-blue-600/20 hover:bg-blue-600 hover:text-white text-blue-300 text-xs font-bold flex items-center justify-between transition-colors cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-xl border border-blue-400/50 bg-blue-600/30 hover:bg-blue-600 hover:text-white text-blue-200 text-xs font-bold flex items-center justify-between transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
                     <HelpCircle size={14} /> Open Support / In-Hall Ticket
@@ -551,7 +536,7 @@ export default function LoginPage({ portal: fixedPortal }: { portal?: Portal }) 
                 <Link
                   href="/reset"
                   onClick={() => setTipsOpen(false)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-xl border border-slate-700 bg-[#071129] hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
                     <KeyRound size={14} /> Request Password Reset
