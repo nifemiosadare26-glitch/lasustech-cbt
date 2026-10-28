@@ -114,6 +114,7 @@ export default function ExamAttemptPage() {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [paperInstructions, setPaperInstructions] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Interactive Calculator State
@@ -203,6 +204,9 @@ export default function ExamAttemptPage() {
 
         setAnswers(initialAnswers);
         setFlags(initialFlags);
+        if (paper.instructions) {
+          setPaperInstructions(paper.instructions);
+        }
 
         if (paper.deadlineAt) {
           const dl = new Date(paper.deadlineAt);
@@ -905,12 +909,7 @@ export default function ExamAttemptPage() {
       );
 
       const refCode = res.data?.refCode || "";
-      const raw = res.data?.score?.rawScore != null ? String(res.data.score.rawScore) : "";
-      const max = res.data?.score?.maxScore != null ? String(res.data.score.maxScore) : "";
-      const pct = res.data?.score?.percent != null ? String(res.data.score.percent) : "";
-      const scoreQuery = raw && max ? `&raw=${encodeURIComponent(raw)}&max=${encodeURIComponent(max)}&pct=${encodeURIComponent(pct)}` : "";
-
-      router.push(`/student/exam/${sittingId}/done?cause=manual&ref=${encodeURIComponent(refCode)}${scoreQuery}`);
+      router.push(`/student/exam/${sittingId}/done?cause=manual&ref=${encodeURIComponent(refCode)}`);
     } catch (err: any) {
       setProctorMessage(err?.message || "Failed to submit exam. Please try again or inform your invigilator.");
       setIsSubmitting(false);
@@ -925,7 +924,6 @@ export default function ExamAttemptPage() {
       const res = await apiClient<{
         data: {
           refCode: string;
-          score?: { rawScore?: number; maxScore?: number; percent?: number };
         };
       }>(
         `/student/attempts/${attemptId}/submit`,
@@ -935,12 +933,7 @@ export default function ExamAttemptPage() {
         }
       );
       const refCode = res.data?.refCode || "";
-      const raw = res.data?.score?.rawScore != null ? String(res.data.score.rawScore) : "";
-      const max = res.data?.score?.maxScore != null ? String(res.data.score.maxScore) : "";
-      const pct = res.data?.score?.percent != null ? String(res.data.score.percent) : "";
-      const scoreQuery = raw && max ? `&raw=${encodeURIComponent(raw)}&max=${encodeURIComponent(max)}&pct=${encodeURIComponent(pct)}` : "";
-
-      router.push(`/student/exam/${sittingId}/done?cause=auto&ref=${encodeURIComponent(refCode)}${scoreQuery}`);
+      router.push(`/student/exam/${sittingId}/done?cause=auto&ref=${encodeURIComponent(refCode)}`);
     } catch {
       router.push(`/student/exam/${sittingId}/done?cause=auto`);
     }
@@ -1677,6 +1670,19 @@ export default function ExamAttemptPage() {
                 <X size={20} />
               </button>
             </div>
+
+            {paperInstructions && (
+              <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 space-y-2">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-blue-900 dark:text-blue-200">
+                  Examiner Special Instructions
+                </h4>
+                <div className="text-xs text-blue-950 dark:text-blue-100 whitespace-pre-wrap leading-relaxed">
+                  {typeof paperInstructions === "string"
+                    ? paperInstructions
+                    : paperInstructions?.text || paperInstructions?.general || JSON.stringify(paperInstructions, null, 2)}
+                </div>
+              </div>
+            )}
 
             <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-200">
               <li className="flex items-start gap-2.5">

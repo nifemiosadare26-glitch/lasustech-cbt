@@ -36,6 +36,7 @@ import {
   VideoOff,
   Printer,
   KeyRound,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient, apiDownload } from "@/lib/apiClient";
@@ -642,6 +643,7 @@ export default function LiveCandidateGrid() {
                   density={gridDensity}
                   now={now}
                   busy={busyKey === s.studentId}
+                  isSelected={selectedId === s.studentId}
                   onInspect={() => setSelectedId(s.studentId)}
                   onPauseResume={() => void quickIntervene(s, s.isPaused ? "RESUME" : "PAUSE")}
                 />
@@ -1044,6 +1046,7 @@ function CandidateCard({
   now,
   busy,
   density = "standard",
+  isSelected = false,
   onInspect,
   onPauseResume,
 }: {
@@ -1052,34 +1055,42 @@ function CandidateCard({
   frame?: string;
   now: number;
   busy: boolean;
+  isSelected?: boolean;
   onInspect: () => void;
   onPauseResume: () => void;
 }) {
   const canRun = student.attemptId && (student.state === "ACTIVE" || student.state === "OFFLINE" || student.state === "PAUSED");
   return (
     <div
-      className={`rounded-xl border bg-white p-3.5 transition-shadow hover:shadow-sm ${
-        student.state === "OFFLINE"
-          ? "border-rose-200"
-          : student.state === "PAUSED"
-            ? "border-amber-200"
-            : student.flags > 0
-              ? "border-2 border-red-500 bg-red-50/20 ring-2 ring-red-400 shadow-md shadow-red-500/10"
-              : "border-gray-200"
-      }`}
+      onClick={onInspect}
+      className={cn(
+        "rounded-xl border bg-white p-3 transition-all hover:shadow-md cursor-pointer select-none",
+        isSelected
+          ? "border-blue-600 ring-4 ring-blue-500/25 shadow-lg bg-blue-50/20"
+          : student.state === "OFFLINE"
+            ? "border-rose-200"
+            : student.state === "PAUSED"
+              ? "border-amber-200"
+              : student.flags > 0
+                ? "border-2 border-red-500 bg-red-50/20 ring-2 ring-red-400 shadow-md shadow-red-500/10"
+                : "border-gray-200"
+      )}
     >
       {/* Live Video / Snapshot Preview Thumbnail */}
       <div
-        className={cn("relative w-full rounded-lg overflow-hidden bg-slate-950 mb-2.5 border border-slate-800 flex items-center justify-center group cursor-pointer", density === "compact" ? "h-20" : density === "large" ? "h-56" : "h-28")}
-        onClick={onInspect}
+        className={cn(
+          "relative w-full rounded-lg overflow-hidden bg-slate-950 mb-2.5 border border-slate-800 flex items-center justify-center group transition-all",
+          isSelected ? "border-blue-400 shadow-inner" : "hover:border-slate-600",
+          density === "compact" ? "h-28" : density === "large" ? "h-60" : "h-36"
+        )}
       >
         {frame ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={frame} alt={student.name} className="w-full h-full object-cover transform -scale-x-100" />
         ) : (
           <div className="flex flex-col items-center justify-center text-slate-500 p-2 text-center">
-            <Camera size={22} className="mb-1 text-slate-600" />
-            <span className="text-[10px] font-medium text-slate-400">
+            <Camera size={26} className="mb-1 text-slate-600" />
+            <span className="text-[11px] font-medium text-slate-400">
               {student.state === "ACTIVE" ? "Camera Standby" : "No live camera"}
             </span>
           </div>
@@ -1090,6 +1101,11 @@ function CandidateCard({
         </div>
         <div className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] text-white/90 font-mono">
           {student.seat ?? "NO SEAT"}
+        </div>
+        <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <span className="bg-black/80 text-white text-[10px] font-semibold px-2 py-1 rounded backdrop-blur-xs">
+            Click to inspect candidate
+          </span>
         </div>
       </div>
 
@@ -1276,18 +1292,32 @@ function InspectorModal({
   }, [requestLiveFeed, sittingId]);
 
   return (
-    <Modal
-      title={`${student.name} · ${student.seat ?? "no seat"}`}
-      subtitle={`${student.matricNo ?? "no matric"} · ${STATE_META[student.state]?.label ?? student.state}`}
-      onClose={onClose}
-      width="max-w-2xl"
-      footer={
-        <Button variant="secondary" onClick={onClose}>
-          Close
-        </Button>
-      }
-    >
-      <div className="space-y-4">
+    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] lg:w-[520px] bg-white border-l border-slate-200 shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-200">
+      {/* Drawer Header */}
+      <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+        <div className="min-w-0 pr-3">
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-base text-slate-900 truncate">{student.name}</h3>
+            <span className="font-mono text-xs font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-700 shrink-0">
+              {student.seat ?? "NO SEAT"}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 font-mono mt-0.5">
+            {student.matricNo ?? "no matric"} · {STATE_META[student.state]?.label ?? student.state}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+          title="Close inspector panel"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Drawer Content */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {/* Live Proctoring Video Feed (WebRTC + Snapshot Relay) */}
         <div className="bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 p-3 shadow-inner">
           <div className="flex items-center justify-between mb-2 px-1">
@@ -1302,14 +1332,14 @@ function InspectorModal({
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                {hasWebRtcStream ? "WebRTC HD Peer Stream" : "Continuous Snapshot Relay"}
+                {hasWebRtcStream ? "WebRTC HD Stream" : "Snapshot Relay"}
               </span>
               <button
                 type="button"
                 onClick={requestLiveFeed}
                 className="text-[10px] font-semibold text-blue-400 hover:text-blue-300 bg-blue-950/60 border border-blue-800 px-2 py-0.5 rounded transition-colors"
               >
-                Reconnect WebRTC
+                Reconnect
               </button>
             </div>
           </div>
@@ -1355,7 +1385,7 @@ function InspectorModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <Stat label="Answered" value={`${student.answered}/${student.questionCount || "—"}`} />
           <Stat label="Progress" value={`${student.progress}%`} />
           <Stat label="Extra time" value={student.extraMinutes ? `+${student.extraMinutes} min` : "None"} />
@@ -1405,54 +1435,66 @@ function InspectorModal({
           </p>
         ) : null}
 
-        <div className="pt-2 border-t border-gray-100">
-          <h4 className="text-[12px] font-bold uppercase tracking-wider text-gray-700 mb-2">Invigilator actions</h4>
-          <div className="flex flex-wrap gap-2">
+        <div className="pt-3 border-t border-gray-200">
+          <h4 className="text-[12px] font-bold uppercase tracking-wider text-gray-700 mb-2.5">
+            Invigilator Control Actions
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
             {running &&
               (student.isPaused ? (
-                <Button size="sm" onClick={() => onAction("resume")}>
-                  <Play size={14} className="mr-1.5" /> Resume
+                <Button size="sm" onClick={() => onAction("resume")} className="w-full justify-start bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Play size={14} className="mr-2" /> Resume Exam
                 </Button>
               ) : (
-                <Button size="sm" variant="secondary" onClick={() => onAction("pause")}>
-                  <Pause size={14} className="mr-1.5" /> Pause
+                <Button size="sm" variant="secondary" onClick={() => onAction("pause")} className="w-full justify-start border-amber-300 text-amber-800 hover:bg-amber-50">
+                  <Pause size={14} className="mr-2 text-amber-600" /> Pause Exam
                 </Button>
               ))}
-            <Button size="sm" variant="secondary" disabled={!running} onClick={() => onAction("extend")}>
-              <Timer size={14} className="mr-1.5" /> Extra time
+            <Button size="sm" variant="secondary" disabled={!running} onClick={() => onAction("extend")} className="w-full justify-start">
+              <Timer size={14} className="mr-2 text-blue-600" /> Extra Time
             </Button>
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("message")}>
-              <Send size={14} className="mr-1.5" /> Message
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("message")} className="w-full justify-start">
+              <Send size={14} className="mr-2 text-indigo-600" /> Message
             </Button>
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("flag")}>
-              <Flag size={14} className="mr-1.5" /> Flag
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("flag")} className="w-full justify-start">
+              <Flag size={14} className="mr-2 text-amber-600" /> Flag Behavior
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => onAction("seat")}>
-              <RotateCcw size={14} className="mr-1.5" /> Reassign seat
+            <Button size="sm" variant="secondary" onClick={() => onAction("seat")} className="w-full justify-start">
+              <RotateCcw size={14} className="mr-2 text-slate-600" /> Reassign Seat
             </Button>
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("incident")}>
-              <ShieldAlert size={14} className="mr-1.5" /> File incident
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("incident")} className="w-full justify-start">
+              <ShieldAlert size={14} className="mr-2 text-rose-600" /> File Incident
             </Button>
             {student.flags > 0 && (
-              <Button size="sm" variant="secondary" onClick={() => onAction("clearFlags")}>
-                <CheckCircle2 size={14} className="mr-1.5" /> Clear flags
+              <Button size="sm" variant="secondary" onClick={() => onAction("clearFlags")} className="w-full justify-start">
+                <CheckCircle2 size={14} className="mr-2 text-emerald-600" /> Clear Flags
               </Button>
             )}
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("reset")}>
-              <Wifi size={14} className="mr-1.5" /> Release session
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("reset")} className="w-full justify-start">
+              <Wifi size={14} className="mr-2 text-slate-600" /> Release Session
             </Button>
             <Button
               size="sm"
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-rose-600 text-white hover:bg-rose-700 w-full justify-start col-span-2 mt-1"
               disabled={!running}
               onClick={() => onAction("end")}
             >
-              <Ban size={14} className="mr-1.5" /> End script
+              <Ban size={14} className="mr-2" /> End Script Immediately
             </Button>
           </div>
         </div>
       </div>
-    </Modal>
+
+      {/* Drawer Footer */}
+      <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+        <span className="text-[11px] text-slate-500">
+          Click any camera on the hall grid to switch
+        </span>
+        <Button size="sm" variant="secondary" onClick={onClose}>
+          Close Panel
+        </Button>
+      </div>
+    </div>
   );
 }
 

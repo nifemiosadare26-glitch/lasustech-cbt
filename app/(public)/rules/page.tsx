@@ -68,18 +68,18 @@ export default function RulesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col print:bg-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col print:bg-white transition-colors">
       {/* Top Bar */}
-      <header className="h-[60px] bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-20 print:hidden">
+      <header className="h-[60px] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-20 print:hidden">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-900 text-white flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-lg bg-blue-900 dark:bg-blue-800 text-white flex items-center justify-center font-bold text-sm">
             L
           </div>
           <div>
-            <span className="font-bold text-blue-950 tracking-tight text-[16px] block leading-tight">
+            <span className="font-bold text-blue-950 dark:text-blue-300 tracking-tight text-[16px] block leading-tight">
               LASUSTECH CBT
             </span>
-            <span className="text-[11px] text-slate-500 block leading-tight">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">
               Academic Examination Portal
             </span>
           </div>
@@ -91,7 +91,7 @@ export default function RulesPage() {
             variant="secondary"
             size="sm"
             onClick={handlePrint}
-            className="text-[13px] text-slate-700 hover:text-blue-700"
+            className="text-[13px] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400"
           >
             <Printer size={15} className="mr-1.5" /> Print Rules
           </Button>
@@ -109,7 +109,7 @@ export default function RulesPage() {
         <div className="mb-6 print:hidden">
           <Link
             href="/student"
-            className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-blue-700 transition-colors"
+            className="inline-flex items-center text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
           >
             <ArrowLeft size={16} className="mr-2" />
             Back to student dashboard
@@ -161,8 +161,8 @@ export default function RulesPage() {
               onClick={() => setActiveCategory(tab.id as any)}
               className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
                 activeCategory === tab.id
-                  ? "bg-blue-900 text-white shadow-xs"
-                  : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                  ? "bg-blue-900 dark:bg-blue-600 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
               }`}
             >
               {tab.label}
@@ -173,53 +173,53 @@ export default function RulesPage() {
         <div className="space-y-6">
           {/* SECTION 1: ENTRY & ARRIVAL */}
           {(activeCategory === "all" || activeCategory === "entry") && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
-                <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 flex items-center justify-center">
                   <UserCheck size={20} />
                 </div>
                 <div>
-                  <h2 className="text-[17px] font-bold text-slate-900">
+                  <h2 className="text-[17px] font-bold text-slate-900 dark:text-slate-100">
                     1. Before You Enter the CBT Hall
                   </h2>
-                  <p className="text-[12.5px] text-slate-500">Arrival, verification, and entry procedures</p>
+                  <p className="text-[12.5px] text-slate-500 dark:text-slate-400">Arrival, verification, and entry procedures</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[13.5px]">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Clock size={16} className="text-blue-600" /> Arrive 25–30 Minutes Early
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <Clock size={16} className="text-blue-600 dark:text-blue-400" /> Arrive 25–30 Minutes Early
                   </span>
-                  <p className="text-slate-600 leading-relaxed text-[13px]">
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[13px]">
                     Don&apos;t rush at the biometric turnstiles. Getting to your assigned CBT Lab (Hall 1, 2, or 3) early gives you time to verify your lab batch and settle in without anxiety.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <FileText size={16} className="text-blue-600" /> Hold Your Student ID & Docket
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <FileText size={16} className="text-blue-600 dark:text-blue-400" /> Hold Your Student ID & Docket
                   </span>
-                  <p className="text-slate-600 leading-relaxed text-[13px]">
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[13px]">
                     Your physical LASUSTECH Student Identity Card (or verified exam docket) is strictly required for biometric hall clearance. Digital phone screenshots will not be accepted.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <BookOpen size={16} className="text-blue-600" /> Stamped Rough Sheets Only
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <BookOpen size={16} className="text-blue-600 dark:text-blue-400" /> Stamped Rough Sheets Only
                   </span>
-                  <p className="text-slate-600 leading-relaxed text-[13px]">
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[13px]">
                     Official signed calculation paper will be provided at your desk by hall invigilators. 
                     <strong> Do not bring your own sheets from home</strong>—having any personal paper on you in the hall is treated as an integrity violation.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <CheckCircle2 size={16} className="text-emerald-600" /> Bring Only Pens / Pencils
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" /> Bring Only Pens / Pencils
                   </span>
-                  <p className="text-slate-600 leading-relaxed text-[13px]">
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[13px]">
                     You only need a pen or HB pencil for working on your rough paper. Everything else (jackets, heavy pouches, cases) should be deposited outside.
                   </p>
                 </div>
@@ -229,58 +229,58 @@ export default function RulesPage() {
 
           {/* SECTION 2: AT THE WORKSTATION */}
           {(activeCategory === "all" || activeCategory === "workstation") && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
-                <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center">
                   <Monitor size={20} />
                 </div>
                 <div>
-                  <h2 className="text-[17px] font-bold text-slate-900">
+                  <h2 className="text-[17px] font-bold text-slate-900 dark:text-slate-100">
                     2. Sitting at Your Computer Workstation
                   </h2>
-                  <p className="text-[12.5px] text-slate-500">How the test screen works and how to protect your score</p>
+                  <p className="text-[12.5px] text-slate-500 dark:text-slate-400">How the test screen works and how to protect your score</p>
                 </div>
               </div>
 
               {/* Crucial Screen Rule Banner */}
-              <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-950 mb-4 flex items-start gap-3">
-                <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-950 dark:text-amber-200 mb-4 flex items-start gap-3">
+                <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold text-[14px] block mb-0.5">
+                  <span className="font-bold text-[14px] block mb-0.5 text-amber-950 dark:text-amber-200">
                     Stay Locked in Full-Screen: Keep Your Eyes and Cursor on the Test
                   </span>
-                  <p className="text-[13px] text-amber-900 leading-relaxed">
+                  <p className="text-[13px] text-amber-900 dark:text-amber-300 leading-relaxed">
                     The CBT platform runs in a locked fullscreen environment. <strong>Do not press the Windows key, Alt+Tab, or attempt to minimize the browser.</strong> The proctoring system flags window switches automatically. More than 2 tab-switch events will submit and lock your test session.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-3 text-[13.5px]">
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></span>
-                  <div>
-                    <strong className="text-slate-900">Continuous Auto-Save:</strong> Every answer you select is saved instantly to the server. You never have to fear losing your progress if your computer reboots.
+                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 mt-2 shrink-0"></span>
+                  <div className="text-slate-700 dark:text-slate-300">
+                    <strong className="text-slate-900 dark:text-slate-100">Continuous Auto-Save:</strong> Every answer you select is saved instantly to the server. You never have to fear losing your progress if your computer reboots.
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></span>
-                  <div>
-                    <strong className="text-slate-900">On-Screen Calculator:</strong> If your subject involves math or engineering computations, click the <em>Calculator</em> icon on your screen. You do not need a physical calculator.
+                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 mt-2 shrink-0"></span>
+                  <div className="text-slate-700 dark:text-slate-300">
+                    <strong className="text-slate-900 dark:text-slate-100">On-Screen Calculator:</strong> If your subject involves math or engineering computations, click the <em>Calculator</em> icon on your screen. You do not need a physical calculator.
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></span>
-                  <div>
-                    <strong className="text-slate-900">Flag Difficult Questions:</strong> If you get stuck on a difficult question, click <strong>&quot;Flag Question&quot;</strong> and move ahead. Come back to it at the end using the numbered question palette on the right side of your screen.
+                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 mt-2 shrink-0"></span>
+                  <div className="text-slate-700 dark:text-slate-300">
+                    <strong className="text-slate-900 dark:text-slate-100">Flag Difficult Questions:</strong> If you get stuck on a difficult question, click <strong>&quot;Flag Question&quot;</strong> and move ahead. Come back to it at the end using the numbered question palette on the right side of your screen.
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></span>
-                  <div>
-                    <strong className="text-slate-900">Review Before You Submit:</strong> When you finish, check the summary palette. Any questions colored gray are unanswered. When you are 100% satisfied, click <strong>Submit Exam</strong>.
+                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 mt-2 shrink-0"></span>
+                  <div className="text-slate-700 dark:text-slate-300">
+                    <strong className="text-slate-900 dark:text-slate-100">Review Before You Submit:</strong> When you finish, check the summary palette. Any questions colored gray are unanswered. When you are 100% satisfied, click <strong>Submit Exam</strong>.
                   </div>
                 </div>
               </div>
@@ -289,43 +289,43 @@ export default function RulesPage() {
 
           {/* SECTION 3: WHAT IF GLITCHES HAPPEN */}
           {(activeCategory === "all" || activeCategory === "glitches") && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
-                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
                   <Zap size={20} />
                 </div>
                 <div>
-                  <h2 className="text-[17px] font-bold text-slate-900">
+                  <h2 className="text-[17px] font-bold text-slate-900 dark:text-slate-100">
                     3. What If Something Glitches? (Don&apos;t Panic!)
                   </h2>
-                  <p className="text-[12.5px] text-slate-500">Real-world situations & how the system protects you</p>
+                  <p className="text-[12.5px] text-slate-500 dark:text-slate-400">Real-world situations & how the system protects you</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[13px]">
-                <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/50 space-y-2">
-                  <div className="font-bold text-emerald-950 text-[14px]">
+                <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/40 space-y-2">
+                  <div className="font-bold text-emerald-950 dark:text-emerald-200 text-[14px]">
                     If the Power Blinks or PC Shuts Down
                   </div>
-                  <p className="text-emerald-900 leading-relaxed">
+                  <p className="text-emerald-900 dark:text-emerald-300 leading-relaxed">
                     Generator changeovers can happen. <strong>Your answers are already safely stored in our central database.</strong> When power returns, the technician logs you right back in and your timer continues from the exact second it stopped.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/50 space-y-2">
-                  <div className="font-bold text-blue-950 text-[14px]">
+                <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/40 space-y-2">
+                  <div className="font-bold text-blue-950 dark:text-blue-200 text-[14px]">
                     If the Screen Freezes or Won&apos;t Click
                   </div>
-                  <p className="text-blue-900 leading-relaxed">
+                  <p className="text-blue-900 dark:text-blue-300 leading-relaxed">
                     <strong>Do NOT press the CPU power button or unplug cables.</strong> Simply raise your hand quietly. An invigilator or IT assistant will refresh the secure workstation or provide an instant mouse swap.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/50 space-y-2">
-                  <div className="font-bold text-indigo-950 text-[14px]">
+                <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/40 space-y-2">
+                  <div className="font-bold text-indigo-950 dark:text-indigo-200 text-[14px]">
                     If You Need to Relocate Systems
                   </div>
-                  <p className="text-indigo-900 leading-relaxed">
+                  <p className="text-indigo-900 dark:text-indigo-300 leading-relaxed">
                     If any workstation has a hardware fault, the invigilator can immediately transfer your session to a hot-standby machine. You will never lose answers or test minutes.
                   </p>
                 </div>
@@ -335,49 +335,49 @@ export default function RulesPage() {
 
           {/* SECTION 4: STRICT PROHIBITED ITEMS */}
           {(activeCategory === "all" || activeCategory === "prohibited") && (
-            <div className="bg-white rounded-xl border border-red-200 p-6 shadow-2xs">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-red-100">
-                <div className="w-9 h-9 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-red-200 dark:border-red-900/60 p-6 shadow-2xs">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-red-100 dark:border-red-900/60">
+                <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400 flex items-center justify-center">
                   <Ban size={20} />
                 </div>
                 <div>
-                  <h2 className="text-[17px] font-bold text-red-950">
+                  <h2 className="text-[17px] font-bold text-red-950 dark:text-red-200">
                     4. Strictly Prohibited in the Hall (Zero Tolerance)
                   </h2>
-                  <p className="text-[12.5px] text-red-700">These items must remain outside in the storage lockers</p>
+                  <p className="text-[12.5px] text-red-700 dark:text-red-300">These items must remain outside in the storage lockers</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px]">
-                <div className="p-3.5 rounded-lg bg-red-50/50 border border-red-100 flex items-start gap-2.5">
-                  <span className="text-red-600 font-bold text-base leading-none mt-0.5">&times;</span>
+                <div className="p-3.5 rounded-lg bg-red-50/50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/60 flex items-start gap-2.5">
+                  <span className="text-red-600 dark:text-red-400 font-bold text-base leading-none mt-0.5">&times;</span>
                   <div>
-                    <strong className="text-red-950 block">Smartphones & Smartwatches:</strong>
-                    Must be completely powered OFF and kept in your bag outside. Having a phone on your body—even turned off in your pocket—is classified as malpractice by Senate regulations.
+                    <strong className="text-red-950 dark:text-red-200 block">Smartphones & Smartwatches:</strong>
+                    <span className="text-slate-700 dark:text-slate-300">Must be completely powered OFF and kept in your bag outside. Having a phone on your body—even turned off in your pocket—is classified as malpractice by Senate regulations.</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-lg bg-red-50/50 border border-red-100 flex items-start gap-2.5">
-                  <span className="text-red-600 font-bold text-base leading-none mt-0.5">&times;</span>
+                <div className="p-3.5 rounded-lg bg-red-50/50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/60 flex items-start gap-2.5">
+                  <span className="text-red-600 dark:text-red-400 font-bold text-base leading-none mt-0.5">&times;</span>
                   <div>
-                    <strong className="text-red-950 block">Earbuds, AirPods & Headsets:</strong>
-                    All wireless Bluetooth and wired audio accessories are completely barred.
+                    <strong className="text-red-950 dark:text-red-200 block">Earbuds, AirPods & Headsets:</strong>
+                    <span className="text-slate-700 dark:text-slate-300">All wireless Bluetooth and wired audio accessories are completely barred.</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-lg bg-red-50/50 border border-red-100 flex items-start gap-2.5">
-                  <span className="text-red-600 font-bold text-base leading-none mt-0.5">&times;</span>
+                <div className="p-3.5 rounded-lg bg-red-50/50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/60 flex items-start gap-2.5">
+                  <span className="text-red-600 dark:text-red-400 font-bold text-base leading-none mt-0.5">&times;</span>
                   <div>
-                    <strong className="text-red-950 block">Physical Calculators:</strong>
-                    Use the on-screen digital calculator provided within the exam screen.
+                    <strong className="text-red-950 dark:text-red-200 block">Physical Calculators:</strong>
+                    <span className="text-slate-700 dark:text-slate-300">Use the on-screen digital calculator provided within the exam screen.</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-lg bg-red-50/50 border border-red-100 flex items-start gap-2.5">
-                  <span className="text-red-600 font-bold text-base leading-none mt-0.5">&times;</span>
+                <div className="p-3.5 rounded-lg bg-red-50/50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/60 flex items-start gap-2.5">
+                  <span className="text-red-600 dark:text-red-400 font-bold text-base leading-none mt-0.5">&times;</span>
                   <div>
-                    <strong className="text-red-950 block">Bags, Books, Notes or Blank Paper:</strong>
-                    No personal papers or notebooks may be taken past the security threshold.
+                    <strong className="text-red-950 dark:text-red-200 block">Bags, Books, Notes or Blank Paper:</strong>
+                    <span className="text-slate-700 dark:text-slate-300">No personal papers or notebooks may be taken past the security threshold.</span>
                   </div>
                 </div>
               </div>
@@ -385,16 +385,16 @@ export default function RulesPage() {
           )}
 
           {/* SECTION 5: REAL STUDENT FAQS (INTERACTIVE ACCORDION) */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
-            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
-              <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs">
+            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center">
                 <HelpCircle size={20} />
               </div>
               <div>
-                <h2 className="text-[17px] font-bold text-slate-900">
+                <h2 className="text-[17px] font-bold text-slate-900 dark:text-slate-100">
                   5. Frequently Asked Questions by LASUSTECH Students
                 </h2>
-                <p className="text-[12.5px] text-slate-500">Quick answers to common exam concerns</p>
+                <p className="text-[12.5px] text-slate-500 dark:text-slate-400">Quick answers to common exam concerns</p>
               </div>
             </div>
 
@@ -404,22 +404,22 @@ export default function RulesPage() {
                 return (
                   <div
                     key={idx}
-                    className="border border-slate-200 rounded-lg overflow-hidden transition-all"
+                    className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden transition-all"
                   >
                     <button
                       type="button"
                       onClick={() => toggleFaq(idx)}
-                      className="w-full p-4 text-left flex items-center justify-between gap-3 bg-white hover:bg-slate-50 font-semibold text-[14px] text-slate-900 cursor-pointer"
+                      className="w-full p-4 text-left flex items-center justify-between gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-[14px] text-slate-900 dark:text-slate-100 cursor-pointer"
                     >
                       <span>{faq.q}</span>
                       {isOpen ? (
-                        <ChevronUp size={18} className="text-blue-600 shrink-0" />
+                        <ChevronUp size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
                       ) : (
-                        <ChevronDown size={18} className="text-slate-400 shrink-0" />
+                        <ChevronDown size={18} className="text-slate-400 dark:text-slate-500 shrink-0" />
                       )}
                     </button>
                     {isOpen && (
-                      <div className="p-4 bg-slate-50 border-t border-slate-100 text-[13px] text-slate-700 leading-relaxed">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">
                         {faq.a}
                       </div>
                     )}
@@ -430,7 +430,7 @@ export default function RulesPage() {
           </div>
 
           {/* SECTION 6: QUICK READINESS CHECKLIST */}
-          <div className="bg-gradient-to-br from-slate-900 to-blue-950 rounded-xl p-6 text-white shadow-sm print:hidden">
+          <div className="bg-gradient-to-br from-slate-900 to-blue-950 rounded-xl p-6 text-white shadow-sm print:hidden border border-slate-800">
             <div className="flex items-center gap-2.5 mb-4">
               <CheckCircle2 size={20} className="text-emerald-400" />
               <h3 className="font-bold text-[17px] text-white">
@@ -475,17 +475,17 @@ export default function RulesPage() {
         </div>
 
         {/* Bottom CTA */}
-        <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left print:hidden">
+        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left print:hidden">
           <div>
-            <h4 className="font-semibold text-slate-900 text-[15px]">Ready to begin?</h4>
-            <p className="text-[13px] text-slate-500">
+            <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-[15px]">Ready to begin?</h4>
+            <p className="text-[13px] text-slate-500 dark:text-slate-400">
               Return to your dashboard or review scheduled mock tests.
             </p>
           </div>
           <div className="flex gap-3">
             <Link
               href="/student"
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-[13.5px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-[13.5px] font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700"
             >
               Student Dashboard
             </Link>

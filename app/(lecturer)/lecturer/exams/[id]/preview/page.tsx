@@ -82,7 +82,7 @@ interface ExamDetail {
   publicClosesAt: string | null;
   publishedAt: string | null;
   createdAt: string;
-  sittings: { id: string; startsAt: string; endsAt: string; status: string }[];
+  sittings: { id: string; startsAt: string; endsAt: string; status: string; venue?: string | null; requireWebcam?: boolean }[];
   sections: SectionRow[];
 }
 
@@ -383,12 +383,24 @@ export default function ExamPreview() {
             </Card>
 
             {exam.sittings.length > 0 && (
-              <Card title="Timetabled sittings">
-                <div className="space-y-2 text-[13px]">
+              <Card title="Timetabled Examination Sittings">
+                <div className="space-y-3 text-[13px]">
                   {exam.sittings.map((sitting) => (
-                    <div key={sitting.id} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                      <span className="text-gray-600">{fmtDate(sitting.startsAt)}</span>
-                      <Badge variant="gray-tint">{sitting.status.toLowerCase()}</Badge>
+                    <div key={sitting.id} className="py-2.5 border-b border-gray-100 last:border-0">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-900">{fmtDate(sitting.startsAt)}</span>
+                        <Badge variant={sitting.status === "OPEN" ? "success" : "gray-tint"}>
+                          {sitting.status.toLowerCase()}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-[12px] text-gray-500 mt-1">
+                        <span>Venue: {sitting.venue ?? "Scheduled Sitting"}</span>
+                        {sitting.requireWebcam && (
+                          <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                            Proctored
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -55,10 +55,52 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
     setLoading(true);
     setError(null);
 
-    apiClient<AttendanceRecord>(`/admin/schedule/${sittingId}/attendance`)
-      .then((res: AttendanceRecord) => {
+    apiClient<any>(`/admin/schedule/${sittingId}/attendance`)
+      .then((res: any) => {
         if (!active) return;
-        setData(res);
+        const raw = res?.data || res;
+        if (!raw) {
+          setError("No attendance data returned from server");
+          return;
+        }
+
+        const sitting = raw.sitting || {
+          id: raw.sittingId || sittingId,
+          startsAt: raw.startsAt || new Date().toISOString(),
+          endsAt: raw.endsAt || new Date().toISOString(),
+          status: raw.status || "SCHEDULED",
+          venue: raw.venue || "CBT Centre",
+          courseCode: raw.courseCode || "EXAM",
+          courseTitle: raw.courseTitle || raw.examTitle || "Examination",
+          session: raw.sessionName || raw.session || "Current Academic Session",
+          lecturer: raw.lecturer || "Faculty Coordinator",
+          invigilators: Array.isArray(raw.invigilators)
+            ? raw.invigilators.map((i: any) => (typeof i === "string" ? i : i.names || i.id || ""))
+            : [],
+        };
+
+        const summary = raw.summary || {
+          totalRegistered: raw.totalRegistered || (raw.attendees || []).length,
+          presentCount: raw.presentCount || (raw.attendees || []).filter((a: any) => a.isPresent).length,
+          absentCount: raw.absentCount || Math.max(0, (raw.attendees || []).length - ((raw.attendees || []).filter((a: any) => a.isPresent).length)),
+          inProgressCount: (raw.attendees || []).filter((a: any) => a.attemptStatus === "IN_PROGRESS").length,
+          completedCount: (raw.attendees || []).filter((a: any) => a.attemptStatus === "SUBMITTED" || a.attemptStatus === "COMPLETED").length,
+        };
+
+        const candidates = raw.candidates || (raw.attendees || []).map((a: any, idx: number) => ({
+          sn: a.sn || idx + 1,
+          studentId: a.studentId,
+          matricNo: a.matricNo || "—",
+          names: a.names,
+          department: a.department || "—",
+          seatNumber: a.seatLabel || a.seatNumber,
+          status: a.isPresent ? "PRESENT" : "ABSENT",
+          startedAt: a.startedAt,
+          submittedAt: a.submittedAt,
+          ipAddress: a.ipAddress,
+        }));
+
+        setData({ sitting, summary, candidates });
       })
       .catch((err: any) => {
         if (!active) return;
@@ -79,6 +121,35 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto print:p-0 print:bg-white print:static print:overflow-visible">
+      <style>{`
+        @media print {
+          body {
+            background: white !important;
+            color: black !important;
+          }
+          /* Hide all page content except the printable attendance register */
+          body * {
+            visibility: hidden;
+          }
+          #printable-attendance-register,
+          #printable-attendance-register * {
+            visibility: visible;
+          }
+          #printable-attendance-register {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 16px !important;
+            box-sizing: border-box !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+        }
+      `}</style>
       <div className="relative w-full max-w-5xl rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         {/* Header - Screen only */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-transparent print:hidden">

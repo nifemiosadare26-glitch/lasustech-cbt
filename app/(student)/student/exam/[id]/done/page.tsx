@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Copy, AlertTriangle, Loader2, Info, ArrowRight, ShieldCheck, Home } from "lucide-react";
+import { CheckCircle2, Copy, AlertTriangle, Loader2, Info, ArrowRight, ShieldCheck, Home, Lock, Megaphone, X } from "lucide-react";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useApi } from "@/lib/useApi";
 import { useUser } from "@/components/auth/user-context";
 import { exitFullscreen, copyToClipboard } from "@/lib/browser";
+import { getRealtimeSocket } from "@/lib/realtime";
 
 function ExamDoneContent() {
   const router = useRouter();
@@ -16,13 +17,35 @@ function ExamDoneContent() {
 
   const refParam = searchParams?.get("ref");
   const causeParam = searchParams?.get("cause") as "manual" | "auto" | "invigilator" | "cheat_logout" | null;
-  const rawParam = searchParams?.get("raw");
-  const maxParam = searchParams?.get("max");
-  const pctParam = searchParams?.get("pct");
 
   const [time, setTime] = useState<string>("");
   const [countdown, setCountdown] = useState(60);
   const [copied, setCopied] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState<string | null>(null);
+
+  // Listen to invigilator broadcast announcements after the exam
+  useEffect(() => {
+    if (!sittingId) return;
+    const socket = getRealtimeSocket();
+    if (!socket) return;
+
+    socket.emit("join_sitting", sittingId);
+
+    const handleRealtimeBroadcast = (payload: any) => {
+      if (payload?.type === "sitting.broadcast" || payload?.event === "sitting.broadcast") {
+        const msg = payload?.data?.message || payload?.message;
+        if (msg) setBroadcastMessage(String(msg));
+      }
+    };
+
+    socket.on("event", handleRealtimeBroadcast);
+    socket.on("sitting.broadcast", handleRealtimeBroadcast);
+
+    return () => {
+      socket.off("event", handleRealtimeBroadcast);
+      socket.off("sitting.broadcast", handleRealtimeBroadcast);
+    };
+  }, [sittingId]);
 
   // Fetch live sitting & candidate profile
   const { data } = useApi<{
@@ -94,6 +117,26 @@ function ExamDoneContent() {
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-4 sm:p-6 select-none">
       <div className="max-w-lg w-full space-y-6">
+        {/* Live Invigilator Announcement Banner (Real-time Broadcast During & After Exam) */}
+        {broadcastMessage && (
+          <div className="bg-blue-600 text-white px-4 py-3.5 rounded-2xl shadow-lg border border-blue-500 flex items-start justify-between gap-3 text-xs sm:text-sm font-medium animate-fadeIn">
+            <div className="flex items-start gap-2.5">
+              <Megaphone size={18} className="shrink-0 mt-0.5 animate-pulse text-amber-300" />
+              <div>
+                <strong className="block text-amber-200 uppercase tracking-wider text-[11px] mb-0.5">Invigilator Broadcast Announcement:</strong>
+                <span className="leading-relaxed">{broadcastMessage}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setBroadcastMessage(null)}
+              className="text-blue-200 hover:text-white p-1 rounded transition-colors"
+              title="Dismiss announcement"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Cause Banner */}
         {causeParam === "auto" && (
           <div className="bg-blue-50 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 px-4 py-3 rounded-2xl border border-blue-200 dark:border-blue-800 flex items-start gap-3 text-sm font-medium">
@@ -160,23 +203,16 @@ function ExamDoneContent() {
                 </span>
               </div>
 
-              {rawParam && maxParam && (
-                <div className="flex justify-between items-center py-2 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
-                  <span className="text-blue-900 dark:text-blue-300 font-bold text-xs uppercase tracking-wider">
-                    Score / Total Allotted
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-blue-950 dark:text-white text-sm tabular-nums">
-                      {rawParam} / {maxParam}
-                    </span>
-                    {pctParam && (
-                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300 tabular-nums">
-                        ({Math.round(Number(pctParam))}%)
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Institutional Moderation Result Notice for Internal Exams */}
+              <div className="py-3 px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-1.5 text-left">
+                <span className="text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 uppercase tracking-wider">
+                  <Lock size={13} className="text-amber-500" />
+                  Official Results Withheld
+                </span>
+                <p className="text-[11.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Pursuant to LASUSTECH Examination Regulations, internal examination scores are withheld upon submission pending departmental board moderation and Senate ratification.
+                </p>
+              </div>
 
               <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Reference Code</span>
@@ -206,12 +242,16 @@ function ExamDoneContent() {
               <Home size={18} /> Return to Student Dashboard
             </Link>
 
-            <Link
-              href="/student/results"
-              className="flex items-center justify-center gap-2 w-full h-11 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+            {/* Disabled View Results Button for Internal Institutional Exams */}
+            <button
+              type="button"
+              disabled
+              title="Official exam results are released only after departmental moderation"
+              className="flex items-center justify-center gap-2 w-full h-11 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 font-semibold rounded-xl text-xs cursor-not-allowed border border-dashed border-slate-200 dark:border-slate-800"
             >
-              View Examination Results <ArrowRight size={14} />
-            </Link>
+              <Lock size={13} className="text-slate-400 dark:text-slate-500" />
+              View Examination Results (Withheld for Moderation)
+            </button>
           </div>
 
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-4 font-medium">

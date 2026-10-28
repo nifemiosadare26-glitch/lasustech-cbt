@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock, Printer,
+  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock, Printer, Globe, Link2, Copy,
 } from "lucide-react";
 import Link from "next/link";
 import { apiClient } from "@/lib/apiClient";
 import { useApi, useDebounced, type PageMeta } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
 import { fmtDateTime } from "@/lib/format";
+import { copyToClipboard } from "@/lib/browser";
 import { ConfirmModal, ErrorBanner, Modal, Pagination, errMessage, selectCls, useToast } from "@/components/admin/ui";
 import { ExamAttendanceModal } from "@/components/admin/exam-attendance-modal";
 
@@ -23,6 +24,9 @@ interface Sitting {
   examId: string;
   examTitle: string;
   examKind: string;
+  examSlug?: string | null;
+  publicLink?: string | null;
+  isPublic?: boolean;
   courseCode: string | null;
   courseTitle: string | null;
   subjectName: string | null;
@@ -289,12 +293,31 @@ export default function AdminExamSchedule() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-[13px] text-gray-900">{slot.courseCode ?? "—"}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-[13px] text-gray-900">{slot.courseCode ?? "—"}</span>
+                          {(slot.audience === "PUBLIC" || slot.isPublic) && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                              <Globe size={10} /> Public
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[13px] text-gray-500">{slot.courseTitle ?? slot.subjectName ?? ""}</div>
                         <div className="text-[11px] text-gray-400 mt-0.5">
                           {slot.examTitle} · {KIND_LABEL[slot.examKind] ?? slot.examKind}
                           {slot.sessionName ? ` · ${slot.sessionName}` : ""}
                         </div>
+                        {slot.publicLink && (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <a
+                              href={slot.publicLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-mono"
+                            >
+                              <Link2 size={11} /> {slot.publicLink}
+                            </a>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="space-y-1.5">
@@ -389,6 +412,19 @@ export default function AdminExamSchedule() {
                               >
                                 Open Live Monitor
                               </Link>
+                              {slot.publicLink && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    setMenu(null);
+                                    await copyToClipboard(`${window.location.origin}${slot.publicLink}`);
+                                    toast.show("Public exam link copied to clipboard.");
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <Link2 size={13} /> Copy Public Link
+                                </button>
+                              )}
                               {(slot.status === "SCHEDULED" || slot.status === "OPEN") && (
                                 <button
                                   type="button"
@@ -472,16 +508,31 @@ export default function AdminExamSchedule() {
 
       {accessCode && (
         <Modal
-          title="Exam access code"
-          subtitle="Share this code with candidates in the hall. It is only shown once."
+          title="Exam Access Code & Schedule Dispatch"
+          subtitle="This access code has been dispatched to candidates, invigilators, and the course lecturer."
           onClose={() => setAccessCode(null)}
           footer={
             <Button onClick={() => setAccessCode(null)}>Done</Button>
           }
         >
-          <div className="text-center py-4">
-            <div className="font-mono text-[40px] tracking-[0.3em] font-bold text-gray-900">{accessCode}</div>
-            <p className="text-[12px] text-gray-500 mt-2">Stored only as a bcrypt hash.</p>
+          <div className="text-center py-4 space-y-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+              <span className="text-xs uppercase font-bold text-slate-500 tracking-wider">Exam Access Unlock Code</span>
+              <div className="font-mono text-[42px] tracking-[0.25em] font-bold text-blue-600 mt-1 select-all">{accessCode}</div>
+              <p className="text-[12px] text-slate-500 mt-2">
+                Candidates use this code to unlock the examination attempt.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await copyToClipboard(accessCode);
+                toast.show("Access code copied to clipboard.");
+              }}
+            >
+              <Copy size={14} className="mr-1.5" /> Copy Code
+            </Button>
           </div>
         </Modal>
       )}

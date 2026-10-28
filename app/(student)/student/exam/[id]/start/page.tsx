@@ -65,6 +65,38 @@ type SittingPayload = {
   antiCheatEnabled?: boolean;
 };
 
+function getInstructionList(raw: any): string[] {
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    return raw
+      .split(/\r?\n/)
+      .map((s) => s.trim().replace(/^[-*•\d+.]\s*/, ""))
+      .filter((s) => s.length > 0);
+  }
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => (typeof item === "string" ? item.trim() : JSON.stringify(item)))
+      .filter((s) => s.length > 0);
+  }
+  if (typeof raw === "object") {
+    if (Array.isArray(raw.rules)) return raw.rules.filter(Boolean);
+    if (Array.isArray(raw.items)) return raw.items.filter(Boolean);
+    if (typeof raw.text === "string") {
+      return raw.text
+        .split(/\r?\n/)
+        .map((s: string) => s.trim().replace(/^[-*•\d+.]\s*/, ""))
+        .filter((s: string) => s.length > 0);
+    }
+    if (typeof raw.general === "string") {
+      return raw.general
+        .split(/\r?\n/)
+        .map((s: string) => s.trim().replace(/^[-*•\d+.]\s*/, ""))
+        .filter((s: string) => s.length > 0);
+    }
+  }
+  return [];
+}
+
 export default function ExamStartPage() {
   const router = useRouter();
   const params = useParams();
@@ -347,11 +379,31 @@ export default function ExamStartPage() {
             </div>
           )}
 
+          {/* Special Paper-Specific Instructions from Examiner */}
+          {getInstructionList(sitting.instructions).length > 0 && (
+            <div className="p-5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 space-y-3">
+              <h3 className="font-bold text-blue-950 dark:text-blue-100 text-sm uppercase tracking-wider flex items-center gap-1.5">
+                <BookOpen size={16} className="text-blue-600 dark:text-blue-400" />
+                Paper-Specific Instructions ({sitting.courseCode})
+              </h3>
+              <ul className="space-y-2 text-sm text-blue-900 dark:text-blue-200">
+                {getInstructionList(sitting.instructions).map((inst, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-200 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span className="leading-relaxed">{inst}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Exam Instructions Bar - explicitly styled for dark mode clarity */}
           <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-3">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm uppercase tracking-wider flex items-center gap-1.5">
               <ShieldCheck size={16} className="text-blue-600 dark:text-blue-400" />
-              Examination Instructions
+              General Examination Regulations
             </h3>
             <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-200">
               <li className="flex items-start gap-2.5">

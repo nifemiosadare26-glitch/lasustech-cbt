@@ -115,7 +115,7 @@ export default function PublicExamLanding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400">
         <Loader2 size={20} className="animate-spin mr-2" /> Loading exam...
       </div>
     );
@@ -123,16 +123,16 @@ export default function PublicExamLanding() {
 
   if (loadError || !exam) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <div className="max-w-md w-full text-center space-y-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center px-6 bg-gray-50 dark:bg-slate-950">
+        <div className="max-w-md w-full text-center space-y-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-8 rounded-2xl shadow-sm">
+          <div className="mx-auto w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 flex items-center justify-center">
             <AlertCircle size={22} />
           </div>
-          <h1 className="text-[20px] font-semibold text-gray-900">Exam unavailable</h1>
-          <p className="text-[14px] text-gray-600">
+          <h1 className="text-[20px] font-semibold text-gray-900 dark:text-slate-100">Exam unavailable</h1>
+          <p className="text-[14px] text-gray-600 dark:text-slate-300">
             {loadError ?? "This exam link is not valid. Check the link from your examiner and try again."}
           </p>
-          <Link href="/" className="inline-block text-[13px] font-medium text-blue-700 hover:underline">
+          <Link href="/" className="inline-block text-[13px] font-medium text-blue-700 dark:text-blue-400 hover:underline">
             Go to the home page
           </Link>
         </div>
@@ -146,35 +146,35 @@ export default function PublicExamLanding() {
   const instructions = instructionsText(exam.instructions);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-blue-700 text-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 transition-colors">
+      <header className="bg-blue-700 dark:bg-blue-950 text-white border-b border-blue-800 dark:border-blue-900 shadow-sm">
         <div className="max-w-4xl mx-auto px-5 py-8 sm:py-10">
           <div className="flex items-center gap-2 text-[12px] uppercase tracking-wider text-blue-100 font-semibold">
             <Globe size={14} /> Public exam
           </div>
-          <h1 className="mt-2 text-[24px] sm:text-[30px] font-semibold tracking-tight">{exam.title}</h1>
+          <h1 className="mt-2 text-[24px] sm:text-[30px] font-semibold tracking-tight text-white">{exam.title}</h1>
           <p className="mt-2 text-[14px] text-blue-100">{exam.ownerLabel}</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {exam.institutionName && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-800/60 px-3 py-1 text-[12px]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-800/60 dark:bg-blue-900/60 px-3 py-1 text-[12px] text-white">
                 <Building2 size={13} /> {exam.institutionName}
               </span>
             )}
             {exam.levelLabel && (
-              <span className="rounded-full bg-blue-800/60 px-3 py-1 text-[12px]">{exam.levelLabel}</span>
+              <span className="rounded-full bg-blue-800/60 dark:bg-blue-900/60 px-3 py-1 text-[12px] text-white">{exam.levelLabel}</span>
             )}
             {exam.examBoard && (
-              <span className="rounded-full bg-blue-800/60 px-3 py-1 text-[12px]">{exam.examBoard}</span>
+              <span className="rounded-full bg-blue-800/60 dark:bg-blue-900/60 px-3 py-1 text-[12px] text-white">{exam.examBoard}</span>
             )}
-            <span className="rounded-full bg-blue-800/60 px-3 py-1 text-[12px] capitalize">{exam.kindLabel}</span>
+            <span className="rounded-full bg-blue-800/60 dark:bg-blue-900/60 px-3 py-1 text-[12px] capitalize text-white">{exam.kindLabel}</span>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-5 py-8 grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-6">
-          <section className="bg-white border border-gray-200 rounded-xl p-5">
-            <h2 className="text-[15px] font-semibold text-gray-900">Before you begin</h2>
+          <section className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
+            <h2 className="text-[15px] font-semibold text-gray-900 dark:text-slate-100">Before you begin</h2>
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Fact icon={<FileQuestion size={16} />} label="Questions" value={String(exam.questionCount)} />
               <Fact
@@ -190,22 +190,22 @@ export default function PublicExamLanding() {
             </div>
 
             {instructions.trim() ? (
-              <div className="mt-5 rounded-lg bg-gray-50 border border-gray-200 p-4">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+              <div className="mt-5 rounded-lg bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 p-4">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">
                   Instructions
                 </p>
-                <p className="text-[13px] text-gray-700 whitespace-pre-wrap leading-relaxed">{instructions}</p>
+                <p className="text-[13px] text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{instructions}</p>
               </div>
             ) : (
-              <p className="mt-5 text-[13px] text-gray-600">
+              <p className="mt-5 text-[13px] text-gray-600 dark:text-slate-300">
                 Answer every question. Your answers save as you go, and the exam submits automatically when the timer
                 runs out.
               </p>
             )}
 
             {(notOpen || closed) && (
-              <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-                <CalendarClock size={16} className="shrink-0 mt-0.5" />
+              <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-200">
+                <CalendarClock size={16} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                 <span>
                   {notOpen
                     ? `This exam opens on ${fmtDate(exam.opensAt) ?? "a later date"}.`
@@ -214,14 +214,14 @@ export default function PublicExamLanding() {
               </div>
             )}
             {!blocked && exam.closesAt && (
-              <p className="mt-4 text-[12px] text-gray-500">Closes {fmtDate(exam.closesAt)}.</p>
+              <p className="mt-4 text-[12px] text-gray-500 dark:text-slate-400">Closes {fmtDate(exam.closesAt)}.</p>
             )}
           </section>
 
           {existing && !blocked && (
-            <section className="bg-white border border-blue-200 rounded-xl p-5">
-              <h2 className="text-[15px] font-semibold text-gray-900">You have an exam in progress</h2>
-              <p className="mt-1 text-[13px] text-gray-600">
+            <section className="bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 rounded-xl p-5 shadow-xs">
+              <h2 className="text-[15px] font-semibold text-gray-900 dark:text-slate-100">You have an exam in progress</h2>
+              <p className="mt-1 text-[13px] text-gray-600 dark:text-slate-300">
                 {existing.name ? `${existing.name}, your` : "Your"} attempt is still open in this browser.
               </p>
               <Button className="mt-4" onClick={() => router.push(`/exam/${slug}/attempt`)}>
@@ -232,10 +232,10 @@ export default function PublicExamLanding() {
         </div>
 
         <div className="lg:col-span-2">
-          <form onSubmit={start} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+          <form onSubmit={start} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-xs">
             <div>
-              <h2 className="text-[15px] font-semibold text-gray-900">Enter your details</h2>
-              <p className="text-[12px] text-gray-500 mt-0.5">
+              <h2 className="text-[15px] font-semibold text-gray-900 dark:text-slate-100">Enter your details</h2>
+              <p className="text-[12px] text-gray-500 dark:text-slate-400 mt-0.5">
                 {exam.allowRetake ? "You can retake this exam." : "Your name appears on your result."}
               </p>
             </div>
@@ -243,22 +243,22 @@ export default function PublicExamLanding() {
             {formError && (
               <div
                 role="alert"
-                className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] text-red-800"
+                className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50 px-3 py-2.5 text-[12px] text-red-800 dark:text-red-200"
               >
-                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
                 <span>{formError}</span>
               </div>
             )}
 
             <div>
-              <label htmlFor="candidate-name" className="block text-[13px] font-medium text-gray-700 mb-1.5">
+              <label htmlFor="candidate-name" className="block text-[13px] font-medium text-gray-700 dark:text-slate-300 mb-1.5">
                 Full name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                 <Input
                   id="candidate-name"
-                  className="pl-9"
+                  className="pl-9 bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100"
                   placeholder="e.g. Amina Okafor"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -269,8 +269,8 @@ export default function PublicExamLanding() {
             </div>
 
             <div>
-              <label htmlFor="candidate-email" className="block text-[13px] font-medium text-gray-700 mb-1.5">
-                Email <span className="text-gray-400 font-normal">(optional)</span>
+              <label htmlFor="candidate-email" className="block text-[13px] font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+                Email <span className="text-gray-400 dark:text-slate-500 font-normal">(optional)</span>
               </label>
               <Input
                 id="candidate-email"
@@ -279,22 +279,23 @@ export default function PublicExamLanding() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                className="bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100"
               />
-              <p className="text-[11px] text-gray-500 mt-1">
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
                 Use the same email to resume, and to prevent taking the exam twice.
               </p>
             </div>
 
             {exam.requiresCode && (
               <div>
-                <label htmlFor="candidate-code" className="block text-[13px] font-medium text-gray-700 mb-1.5">
+                <label htmlFor="candidate-code" className="block text-[13px] font-medium text-gray-700 dark:text-slate-300 mb-1.5">
                   Access code <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                   <Input
                     id="candidate-code"
-                    className="pl-9"
+                    className="pl-9 bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 font-mono"
                     placeholder="Code from your examiner"
                     value={accessCode}
                     onChange={(e) => setAccessCode(e.target.value)}
@@ -305,18 +306,18 @@ export default function PublicExamLanding() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" isLoading={starting} disabled={blocked}>
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold" isLoading={starting} disabled={blocked}>
               {blocked ? "Not available" : "Start exam"}
               {!blocked && !starting && <ArrowRight size={16} className="ml-2" />}
             </Button>
 
-            <div className="flex items-start gap-2 text-[11px] text-gray-500">
-              <Lock size={13} className="shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 text-[11px] text-gray-500 dark:text-slate-400">
+              <Lock size={13} className="shrink-0 mt-0.5 text-gray-400 dark:text-slate-500" />
               <span>Your answers are saved securely. Do not close this tab during the exam.</span>
             </div>
           </form>
 
-          <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
+          <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-gray-400 dark:text-slate-500">
             <ShieldCheck size={13} /> Computer-based testing platform
           </div>
         </div>
@@ -327,10 +328,10 @@ export default function PublicExamLanding() {
 
 function Fact({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
-      <div className="flex items-center gap-1.5 text-gray-400">{icon}</div>
-      <div className="mt-1.5 text-[16px] font-semibold text-gray-900 leading-none">{value}</div>
-      <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{label}</div>
+    <div className="rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800/40 p-3">
+      <div className="flex items-center gap-1.5 text-gray-400 dark:text-slate-500">{icon}</div>
+      <div className="mt-1.5 text-[16px] font-semibold text-gray-900 dark:text-slate-100 leading-none">{value}</div>
+      <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">{label}</div>
     </div>
   );
 }
