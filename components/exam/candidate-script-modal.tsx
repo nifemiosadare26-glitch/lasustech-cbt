@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import {
   CheckCircle2,
   XCircle,
@@ -235,6 +236,23 @@ export function CandidateScriptModal({
             <div className="space-y-4 overflow-y-auto pr-1">
               {/* Top Banner / Summary Card */}
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+                  <Image
+                    src="/lasustech-logo.png"
+                    alt="LASUSTECH Logo"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 object-contain shrink-0"
+                  />
+                  <div>
+                    <div className="text-[11px] font-bold tracking-wider text-blue-900 uppercase">
+                      Lagos State University of Science and Technology
+                    </div>
+                    <div className="text-[13px] font-semibold text-gray-900">
+                      Official Candidate Examination Script &amp; Grading Breakdown
+                    </div>
+                  </div>
+                </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1.5 text-[13px] text-gray-700">

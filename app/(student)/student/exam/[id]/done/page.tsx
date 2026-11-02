@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Copy, AlertTriangle, Loader2, Info, ArrowRight, ShieldCheck, Home, Lock, Megaphone, X } from "lucide-react";
 import { useEffect, useState, Suspense } from "react";
@@ -161,6 +162,25 @@ function ExamDoneContent() {
         <div className="bg-white dark:bg-slate-900 p-6 sm:p-9 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
           {/* Top Decorative accent */}
           <div className="absolute top-0 left-0 right-0 h-2 bg-linear-to-r from-blue-600 via-indigo-600 to-emerald-500" />
+
+          {/* Official University Crest */}
+          <div className="flex items-center justify-center gap-2.5 mb-6 pt-1">
+            <Image
+              src="/lasustech-logo.png"
+              alt="LASUSTECH Logo"
+              width={42}
+              height={42}
+              className="h-10 w-10 object-contain"
+            />
+            <div className="text-left">
+              <span className="text-[10px] font-bold tracking-wider text-blue-600 uppercase block">
+                LASUSTECH Examination Center
+              </span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                Official Submission Confirmation
+              </span>
+            </div>
+          </div>
 
           {/* Icon */}
           <div className="relative inline-flex items-center justify-center mx-auto mb-5">

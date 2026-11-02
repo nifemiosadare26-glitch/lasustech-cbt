@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -72,9 +73,13 @@ export default function RulesPage() {
       {/* Top Bar */}
       <header className="h-[60px] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-20 print:hidden">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-900 dark:bg-blue-800 text-white flex items-center justify-center font-bold text-sm">
-            L
-          </div>
+          <Image
+            src="/lasustech-logo.png"
+            alt="LASUSTECH Logo"
+            width={36}
+            height={36}
+            className="h-9 w-9 object-contain"
+          />
           <div>
             <span className="font-bold text-blue-950 dark:text-blue-300 tracking-tight text-[16px] block leading-tight">
               LASUSTECH CBT

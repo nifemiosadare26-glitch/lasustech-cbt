@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -149,8 +150,24 @@ export default function PublicExamLanding() {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 transition-colors">
       <header className="bg-blue-700 dark:bg-blue-950 text-white border-b border-blue-800 dark:border-blue-900 shadow-sm">
         <div className="max-w-4xl mx-auto px-5 py-8 sm:py-10">
-          <div className="flex items-center gap-2 text-[12px] uppercase tracking-wider text-blue-100 font-semibold">
-            <Globe size={14} /> Public exam
+          <div className="flex items-center gap-3.5 mb-3">
+            <div className="h-12 w-12 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
+              <Image
+                src="/lasustech-logo.png"
+                alt="LASUSTECH Logo"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+              />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-blue-200">
+                Lagos State University of Science and Technology
+              </div>
+              <div className="flex items-center gap-2 text-[12px] uppercase tracking-wider text-blue-100 font-semibold">
+                <Globe size={13} /> Public Examination Portal
+              </div>
+            </div>
           </div>
           <h1 className="mt-2 text-[24px] sm:text-[30px] font-semibold tracking-tight text-white">{exam.title}</h1>
           <p className="mt-2 text-[14px] text-blue-100">{exam.ownerLabel}</p>

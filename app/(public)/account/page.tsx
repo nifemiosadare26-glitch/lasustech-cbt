@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Loader2, AlertCircle, KeyRound, ShieldCheck } from "lucide-react";
 import { Inter } from "next/font/google";
@@ -71,8 +72,14 @@ export default function AccountSetupPage() {
         aria-hidden="true"
         className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden px-6 py-10 text-center bg-[radial-gradient(ellipse_at_center,_#14285a_0%,_#081229_70%)]"
       >
-        <div className="flex h-36 w-36 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 shadow-[0_0_50px_rgba(56,189,248,0.25)] backdrop-blur-md mb-6">
-          <KeyRound className="h-16 w-16 text-sky-400 drop-shadow-[0_0_16px_rgba(56,189,248,0.5)]" />
+        <div className="flex h-36 w-36 items-center justify-center rounded-3xl bg-white/10 border border-sky-400/30 shadow-[0_0_50px_rgba(56,189,248,0.25)] backdrop-blur-md mb-6 p-4">
+          <Image
+            src="/lasustech-logo.png"
+            alt="LASUSTECH Logo"
+            width={120}
+            height={120}
+            className="h-28 w-28 object-contain"
+          />
         </div>
         <p className="text-2xl xl:text-3xl font-semibold text-white text-balance max-w-md">
           {SCHOOL_NAME}
@@ -84,8 +91,14 @@ export default function AccountSetupPage() {
       <section className="flex items-center justify-center px-4 py-8 sm:px-8 bg-[#0b1733] lg:border-l lg:border-white/10">
         <div className="w-full max-w-[400px]">
           {/* Small emblem for mobile */}
-          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-sky-400/10 border border-sky-400/30 lg:hidden shadow-[0_0_24px_rgba(56,189,248,0.25)]">
-            <KeyRound className="h-10 w-10 text-sky-400" />
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 border border-sky-400/30 lg:hidden shadow-[0_0_24px_rgba(56,189,248,0.25)] p-2">
+            <Image
+              src="/lasustech-logo.png"
+              alt="LASUSTECH Logo"
+              width={56}
+              height={56}
+              className="h-14 w-14 object-contain"
+            />
           </div>
 
           <p className="inline-flex items-center rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-sm font-medium text-sky-200 mb-3">

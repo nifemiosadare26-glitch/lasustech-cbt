@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Download, BarChart3, Clock, X, AlertTriangle, Loader2, ShieldAlert } from "lucide-react";
@@ -90,11 +91,27 @@ export default function ExamReports() {
     <>
       {toast.node}
       <div className="space-y-6 pb-12 flex flex-col h-full relative max-w-5xl mx-auto">
-        <div>
-          <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Reports &amp; Broadsheets</h2>
-          <p className="text-[14px] text-gray-500 mt-1">
-            Generate official Senate-formatted documents and statistical analyses from the live database.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-100">
+          <div className="flex items-center gap-3.5">
+            <div className="h-12 w-12 rounded-xl bg-white border border-gray-200 shadow-xs p-1 flex items-center justify-center shrink-0">
+              <Image
+                src="/lasustech-logo.png"
+                alt="LASUSTECH Logo"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+              />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold tracking-wider text-blue-900 uppercase">
+                Lagos State University of Science and Technology
+              </div>
+              <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Reports &amp; Broadsheets</h2>
+              <p className="text-[13px] text-gray-500">
+                Generate official Senate-formatted documents and statistical analyses from the live database.
+              </p>
+            </div>
+          </div>
         </div>
 
         {(structure.error || courses.error) && (

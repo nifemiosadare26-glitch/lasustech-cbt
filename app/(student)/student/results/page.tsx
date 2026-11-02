@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import {
   Download,
   Printer,
@@ -225,10 +226,19 @@ export default function StudentResultsPage() {
           </div>
 
           {/* CBT Assessment Badge */}
-          <div className="shrink-0 flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/15">
+          <div className="shrink-0 flex items-center gap-3.5 bg-white/10 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/15">
+            <div className="h-12 w-12 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
+              <Image
+                src="/lasustech-logo.png"
+                alt="LASUSTECH Logo"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+              />
+            </div>
             <div className="text-left">
               <span className="text-xs font-semibold text-blue-200 uppercase tracking-wider block">
-                CBT Portal Assessment
+                LASUSTECH CBT
               </span>
               <span className="text-sm font-semibold text-white block mt-0.5">
                 Official Examination Records

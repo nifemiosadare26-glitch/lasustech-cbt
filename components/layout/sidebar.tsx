@@ -199,8 +199,8 @@ export function Sidebar({
                     goes navy in dark mode, which would sink this plate into the rail
                     it exists to contrast against. Same reason the rail hardcodes
                     `text-[#ffffff]`. */}
-                <div className="bg-[#ffffff] p-0.5 rounded-sm shrink-0">
-                  <Image src="/lasustech-logo.png" alt="Logo" width={20} height={20} className="w-5 h-5 object-contain" />
+                <div className="bg-[#ffffff] p-1 rounded-md shrink-0 shadow-xs flex items-center justify-center">
+                  <Image src="/lasustech-logo.png" alt="LASUSTECH Logo" width={30} height={30} className="w-7 h-7 object-contain" />
                 </div>
                 <span className="font-bold text-[16px] tracking-tight ml-3 truncate">LASUSTECH CBT</span>
               </div>
@@ -229,8 +229,8 @@ export function Sidebar({
         {/* Brand */}
         <div className={cn("h-[56px] flex items-center border-b border-blue-800/50 relative", isCollapsed ? "justify-center" : "px-6")}>
           {/* Literal white; see the mobile drawer's plate above. */}
-          <div className="bg-[#ffffff] p-0.5 rounded-sm shrink-0">
-            <Image src="/lasustech-logo.png" alt="Logo" width={20} height={20} className="w-5 h-5 object-contain" />
+          <div className="bg-[#ffffff] p-1 rounded-md shrink-0 shadow-xs flex items-center justify-center">
+            <Image src="/lasustech-logo.png" alt="LASUSTECH Logo" width={30} height={30} className="w-7 h-7 object-contain" />
           </div>
           {!isCollapsed && <span className="font-bold text-[16px] tracking-tight ml-3 truncate">LASUSTECH CBT</span>}
           

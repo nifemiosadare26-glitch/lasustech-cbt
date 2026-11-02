@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -699,7 +700,16 @@ export default function PublicExamAttempt() {
       <div className="flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-slate-950 select-none">
         {/* 1. Header Bar matching internal exam layout */}
         <header className="h-[56px] bg-blue-900 dark:bg-slate-950 text-white px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-30 relative border-b border-blue-950/40 dark:border-slate-800">
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-white p-0.5 flex items-center justify-center shrink-0 shadow-xs">
+              <Image
+                src="/lasustech-logo.png"
+                alt="LASUSTECH Logo"
+                width={28}
+                height={28}
+                className="h-7 w-7 object-contain"
+              />
+            </div>
             <div className="font-bold text-[15px] truncate max-w-[180px] sm:max-w-xs md:max-w-md flex items-center gap-2">
               <span>{attempt.exam.title}</span>
               {currentSection && (

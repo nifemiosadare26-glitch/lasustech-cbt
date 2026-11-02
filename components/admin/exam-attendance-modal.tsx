@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Printer, X, Loader2, CheckCircle2, UserCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/apiClient";
@@ -203,9 +204,13 @@ export function ExamAttendanceModal({ sittingId, onClose }: ExamAttendanceModalP
               {/* Institutional Header */}
               <div className="text-center border-b-2 border-gray-900 pb-4">
                 <div className="flex items-center justify-center gap-3 mb-1">
-                  <div className="h-12 w-12 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-xl border-2 border-amber-500">
-                    L
-                  </div>
+                  <Image
+                    src="/lasustech-logo.png"
+                    alt="LASUSTECH Logo"
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 object-contain shrink-0"
+                  />
                   <div>
                     <h1 className="text-xl font-black uppercase tracking-tight text-gray-900">
                       Lagos State University of Science and Technology

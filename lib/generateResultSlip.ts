@@ -35,7 +35,7 @@ export type SlipOptions = {
   results: SlipCourse[];
   session: string;
   semester: string; // "All" | "Harmattan" | "Rain"
-  logoUrl?: string; // defaults to /logo.png
+  logoUrl?: string; // defaults to /lasustech-logo.png or /logo.png
 };
 
 type RGB = [number, number, number];
@@ -132,7 +132,9 @@ export async function generateResultSlip(opts: SlipOptions) {
   doc.rect(0, 40, pageW, 1.6, "F");
 
   // Logo (or monogram fallback)
-  const logo = await loadImage(opts.logoUrl ?? "/logo.png");
+  const logo =
+    (await loadImage(opts.logoUrl ?? "/lasustech-logo.png")) ??
+    (await loadImage("/logo.png"));
   const badgeX = M;
   const badgeY = 8;
   const badge = 24;

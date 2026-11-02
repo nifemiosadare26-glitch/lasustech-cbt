@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -131,7 +132,7 @@ export function Topbar({
   return (
     <>
       <header className="h-[56px] bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-20 sticky top-0">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onToggleMobileMenu}
@@ -140,7 +141,18 @@ export function Topbar({
           >
             <Menu size={20} />
           </button>
-          <h1 className="text-[17px] font-semibold text-gray-900 hidden sm:block">{title}</h1>
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-md bg-white border border-gray-200/80 p-0.5 flex items-center justify-center shrink-0 sm:hidden">
+              <Image
+                src="/lasustech-logo.png"
+                alt="LASUSTECH Logo"
+                width={24}
+                height={24}
+                className="h-6 w-6 object-contain"
+              />
+            </div>
+            <h1 className="text-[16px] sm:text-[17px] font-semibold text-gray-900">{title}</h1>
+          </div>
         </div>
 
         <div className="flex items-center gap-4 text-[14px]">

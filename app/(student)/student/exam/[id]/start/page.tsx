@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
@@ -240,6 +241,26 @@ export default function ExamStartPage() {
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {/* Header */}
         <div className="bg-slate-900 dark:bg-slate-950 text-white p-6 sm:p-8">
+          <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-800">
+            <div className="h-11 w-11 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
+              <Image
+                src="/lasustech-logo.png"
+                alt="LASUSTECH Logo"
+                width={36}
+                height={36}
+                className="h-9 w-9 object-contain"
+              />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold tracking-wider text-blue-300 uppercase">
+                Lagos State University of Science and Technology
+              </div>
+              <div className="text-[13px] font-semibold text-slate-200">
+                Official Examination Docket &amp; Briefing
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="font-mono font-bold text-sm bg-blue-600 px-3 py-1 rounded-md text-white">
               {sitting.courseCode}
