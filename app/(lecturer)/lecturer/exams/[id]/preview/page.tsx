@@ -167,7 +167,7 @@ export default function ExamPreview() {
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-[20px] font-semibold text-gray-900 tracking-tight">{exam.title}</h2>
                 <Badge variant={exam.status === "APPROVED" || exam.status === "LOCKED" ? "success" : "gray-tint"}>
-                  {exam.status === "APPROVED" ? "Active" : exam.status.replace(/_/g, " ").toLowerCase()}
+                  {exam.status === "APPROVED" ? "Active" : exam.status === "DRAFT" ? "Pending Admin Schedule" : exam.status.replace(/_/g, " ").toLowerCase()}
                 </Badge>
                 {exam.audience === "PUBLIC" ? (
                   <Badge variant="blue-tint" className="gap-1.5">
@@ -209,10 +209,12 @@ export default function ExamPreview() {
           <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
             <Link2 size={18} className="text-blue-600 shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <p className="text-[13px] text-blue-900 font-medium">Anyone with this link can take the exam.</p>
+              <p className="text-[13px] text-blue-900 font-medium">Public examination link</p>
               <p className="text-[12px] text-blue-700 break-all mt-1">{exam.publicUrl}</p>
               <p className="text-[12px] text-blue-700 mt-1">
-                {exam.requiresCode ? "Candidates need the access code to start." : "No access code is required."}
+                {exam.status === "APPROVED"
+                  ? "Exam is active. Candidates require the scheduled access code to begin."
+                  : "Exam requires scheduling by an Administrator to become active."}
               </p>
             </div>
           </div>
@@ -222,7 +224,9 @@ export default function ExamPreview() {
           <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
             <CalendarDays size={18} className="text-amber-600 shrink-0 mt-0.5" />
             <p className="text-[13px] text-amber-800 font-medium">
-              This exam is published and active. It is immediately available on the timetable for Administrator scheduling.
+              {exam.status === "APPROVED"
+                ? "This exam is active and scheduled on the university timetable."
+                : "This exam paper is awaiting scheduling by an Administrator. It will become active once timetabled."}
             </p>
           </div>
         )}
@@ -238,8 +242,6 @@ export default function ExamPreview() {
                   <h3 className="font-semibold text-gray-900 text-[15px]">{section.title}</h3>
                   <span className="text-[12px] text-gray-500">
                     {section.questions.length} questions
-                    {section.minutes ? ` · ${section.minutes} mins` : ""}
-                    {section.weight && Number(section.weight) !== 1 ? ` · weight ${section.weight}` : ""}
                   </span>
                 </div>
 

@@ -88,8 +88,8 @@ export default function PublicExamLanding() {
       setFormError("Enter your full name so your result can be matched to you.");
       return;
     }
-    if (exam?.requiresCode && !accessCode.trim()) {
-      setFormError("This exam needs the access code from the examiner.");
+    if (!accessCode.trim()) {
+      setFormError("Enter the 6-digit access code provided for this examination.");
       return;
     }
 
@@ -303,25 +303,26 @@ export default function PublicExamLanding() {
               </p>
             </div>
 
-            {exam.requiresCode && (
-              <div>
-                <label htmlFor="candidate-code" className="block text-[13px] font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-                  Access code <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-                  <Input
-                    id="candidate-code"
-                    className="pl-9 bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 font-mono"
-                    placeholder="Code from your examiner"
-                    value={accessCode}
-                    onChange={(e) => setAccessCode(e.target.value)}
-                    autoComplete="off"
-                    required
-                  />
-                </div>
+            <div>
+              <label htmlFor="candidate-code" className="block text-[13px] font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+                Access code <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+                <Input
+                  id="candidate-code"
+                  className="pl-9 bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 font-mono tracking-widest font-bold"
+                  placeholder="Enter access code"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  autoComplete="off"
+                  required
+                />
               </div>
-            )}
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
+                Enter the access code provided by your examiner or administrator.
+              </p>
+            </div>
 
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold" isLoading={starting} disabled={blocked}>
               {blocked ? "Not available" : "Start exam"}

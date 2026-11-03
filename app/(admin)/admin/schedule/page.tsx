@@ -139,6 +139,22 @@ export default function AdminExamSchedule() {
   const [deleting, setDeleting] = React.useState<Sitting | null>(null);
   const [transitioning, setTransitioning] = React.useState<{ sitting: Sitting; action: "open" | "close" } | null>(null);
 
+  const viewCode = async (sitting: Sitting) => {
+    setBusy(`view-code-${sitting.id}`);
+    try {
+      const res = await apiClient<{ data: { accessCode: string | null } }>(`/admin/schedule/${sitting.id}/access-code`);
+      if (res.data?.accessCode) {
+        setAccessCode(res.data.accessCode);
+      } else {
+        toast.show("No active access code found. You can generate a new one.", "err");
+      }
+    } catch (e) {
+      toast.show(errMessage(e), "err");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const act = async (sitting: Sitting, action: "open" | "close" | "access-code") => {
     setBusy(`${action}-${sitting.id}`);
     try {
@@ -426,16 +442,28 @@ export default function AdminExamSchedule() {
                                 </button>
                               )}
                               {(slot.status === "SCHEDULED" || slot.status === "OPEN") && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setMenu(null);
-                                    void act(slot, "access-code");
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                                >
-                                  <KeyRound size={13} className="inline mr-1.5" /> New access code
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMenu(null);
+                                      void viewCode(slot);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer font-medium"
+                                  >
+                                    <KeyRound size={13} className="inline mr-1.5" /> View access code
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMenu(null);
+                                      void act(slot, "access-code");
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                                  >
+                                    <KeyRound size={13} className="inline mr-1.5" /> New access code
+                                  </button>
+                                </>
                               )}
                               {slot.status !== "CLOSED" && slot.status !== "CANCELLED" && (
                                 <>
@@ -724,22 +752,22 @@ function SchedulePanel({
                     onChange={(e) => setExamId(e.target.value)}
                     disabled={mode === "edit"}
                   >
-                    {!exams.length && <option value="">No approved exams available</option>}
+                    {!exams.length && <option value="">No exams available for scheduling</option>}
                     {exams.map((e) => (
                       <option key={e.id} value={e.id}>
-                        {e.courseCode ?? "Exam"} — {e.title}
+                        {e.audience === "PUBLIC" ? "[Public Exam] " : ""}{e.courseCode ?? "Exam"} — {e.title}
                         {e.sessionName ? ` (${e.sessionName})` : ""}
                       </option>
                     ))}
                   </select>
                   {exam && (
                     <p className="text-[12px] text-gray-500 mt-1">
-                      {exam.courseTitle ?? ""} · {exam.courseLevel ?? ""} level · {exam.status}
+                      {exam.audience === "PUBLIC" ? "Public / External Exam · " : ""}{exam.courseTitle ?? ""} · {exam.courseLevel ? `${exam.courseLevel} level · ` : ""}{exam.status}
                     </p>
                   )}
                   {!exams.length && (
                     <p className="text-[12px] text-amber-700 mt-1">
-                      Published institution exams appear here once a lecturer publishes their paper.
+                      Exams created by lecturers (internal and public) appear here for administrator scheduling.
                     </p>
                   )}
                 </div>

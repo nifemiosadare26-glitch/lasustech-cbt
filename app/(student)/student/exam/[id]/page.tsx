@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Minimize2,
   Maximize2,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -117,6 +118,17 @@ export default function ExamAttemptPage() {
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [paperInstructions, setPaperInstructions] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Multiple Sections Workflow State
+  const [showMultipleSectionsIntro, setShowMultipleSectionsIntro] = useState<boolean>(false);
+  const [completedSectionIds, setCompletedSectionIds] = useState<Set<string>>(new Set());
+  const [sectionModalData, setSectionModalData] = useState<{
+    completedSectionTitle: string;
+    pendingSections: ExamSectionMeta[];
+    nextSection?: ExamSectionMeta;
+  } | null>(null);
+  const [showPendingSectionsWarning, setShowPendingSectionsWarning] = useState<ExamSectionMeta[] | null>(null);
+  const hasCheckedIntro = useRef(false);
 
   // Interactive Calculator State
   const [calcExpr, setCalcExpr] = useState<string>("");
@@ -876,11 +888,113 @@ export default function ExamAttemptPage() {
     saveAnswerToServer(currentQuestion, currentSelected, isNowFlagged);
   };
 
+  // Palette metrics
+  const palette = useMemo(() => {
+    return questions.map((q) => {
+      const num = q.position;
+      const isAnswered = (answers[num] || []).length > 0;
+      const isCurrent = num === currentQuestion;
+      const isFlagged = flags.has(num);
+
+      let status = "unanswered";
+      if (isAnswered) status = "answered";
+      if (isCurrent) status = "current";
+      if (isFlagged) {
+        status = isAnswered ? "flagged-answered" : "flagged";
+        if (isCurrent) status += "-current";
+      }
+      return { num, status, isAnswered, isFlagged };
+    });
+  }, [questions, currentQuestion, answers, flags]);
+
+  const answeredCount = Object.values(answers).filter((a) => a.length > 0).length;
+  const unansweredCount = questions.length - answeredCount;
+  const flaggedCount = flags.size;
+
+  // Derived effective sections (ensuring robust fallback if legacy payload)
+  const effectiveSections = useMemo<ExamSectionMeta[]>(() => {
+    if (sections && sections.length > 0) return sections;
+    const map = new Map<string, { id: string; title: string; position: number; count: number }>();
+    let fallbackPos = 1;
+    for (const item of questions) {
+      const sId = item.sectionId || "default";
+      if (!map.has(sId)) {
+        map.set(sId, {
+          id: sId,
+          title: item.sectionTitle || `Section ${String.fromCharCode(64 + fallbackPos)}`,
+          position: item.sectionPosition ?? fallbackPos,
+          count: 0,
+        });
+        fallbackPos++;
+      }
+      map.get(sId)!.count++;
+    }
+    const derived = Array.from(map.values()).sort((a, b) => a.position - b.position);
+    return derived.length > 1 ? derived.map((s) => ({ ...s, questionCount: s.count })) : [];
+  }, [sections, questions]);
+
+  const hasMultipleSections = effectiveSections.length > 1;
+  const currentQuestionItem = questions[currentQuestion - 1];
+  const currentSectionId = currentQuestionItem?.sectionId;
+  const currentSection = effectiveSections.find((s) => s.id === currentSectionId) || (effectiveSections[0] ?? null);
+  const currentSectionQuestions = currentSection
+    ? questions.filter((item) => item.sectionId === currentSection.id)
+    : questions;
+  const questionIndexInSection = currentSectionQuestions.findIndex((item) => item.position === currentQuestion) + 1;
+
+  const isLastQuestionOfCurrentSection = useMemo(() => {
+    if (!currentSection || currentSectionQuestions.length === 0) return false;
+    const lastQ = currentSectionQuestions[currentSectionQuestions.length - 1];
+    return currentQuestionItem?.position === lastQ.position;
+  }, [currentSection, currentSectionQuestions, currentQuestionItem]);
+
+  // Multiple Sections Intro trigger when paper is loaded
+  useEffect(() => {
+    if (!loading && !loadError && questions.length > 0 && hasMultipleSections && !hasCheckedIntro.current) {
+      hasCheckedIntro.current = true;
+      setShowMultipleSectionsIntro(true);
+    }
+  }, [loading, loadError, questions.length, hasMultipleSections]);
+
+  const handleFinishCurrentSection = useCallback(() => {
+    if (!currentSection) {
+      setShowSubmitModal(true);
+      return;
+    }
+    const newCompleted = new Set(completedSectionIds);
+    newCompleted.add(currentSection.id);
+    setCompletedSectionIds(newCompleted);
+
+    const pending = effectiveSections.filter((s) => !newCompleted.has(s.id));
+    const nextSec = pending[0] || undefined;
+
+    setSectionModalData({
+      completedSectionTitle: currentSection.title,
+      pendingSections: pending,
+      nextSection: nextSec,
+    });
+  }, [currentSection, completedSectionIds, effectiveSections]);
+
+  const handleOpenSubmit = useCallback(() => {
+    if (hasMultipleSections) {
+      const pending = effectiveSections.filter((s) => !completedSectionIds.has(s.id));
+      if (pending.length > 0) {
+        setShowPendingSectionsWarning(pending);
+        return;
+      }
+    }
+    setShowSubmitModal(true);
+  }, [hasMultipleSections, effectiveSections, completedSectionIds]);
+
   const handleNext = () => {
+    if (hasMultipleSections && isLastQuestionOfCurrentSection) {
+      handleFinishCurrentSection();
+      return;
+    }
     if (currentQuestion < questions.length) {
       setCurrentQuestion((prev) => prev + 1);
     } else {
-      setShowSubmitModal(true);
+      handleOpenSubmit();
     }
   };
 
@@ -959,60 +1073,6 @@ export default function ExamAttemptPage() {
       router.push(`/login?reason=tab_switch_terminated`);
     }
   };
-
-  // Palette metrics
-  const palette = useMemo(() => {
-    return questions.map((q) => {
-      const num = q.position;
-      const isAnswered = (answers[num] || []).length > 0;
-      const isCurrent = num === currentQuestion;
-      const isFlagged = flags.has(num);
-
-      let status = "unanswered";
-      if (isAnswered) status = "answered";
-      if (isCurrent) status = "current";
-      if (isFlagged) {
-        status = isAnswered ? "flagged-answered" : "flagged";
-        if (isCurrent) status += "-current";
-      }
-      return { num, status, isAnswered, isFlagged };
-    });
-  }, [questions, currentQuestion, answers, flags]);
-
-  const answeredCount = Object.values(answers).filter((a) => a.length > 0).length;
-  const unansweredCount = questions.length - answeredCount;
-  const flaggedCount = flags.size;
-
-  // Derived effective sections (ensuring robust fallback if legacy payload)
-  const effectiveSections = useMemo<ExamSectionMeta[]>(() => {
-    if (sections && sections.length > 0) return sections;
-    const map = new Map<string, { id: string; title: string; position: number; count: number }>();
-    let fallbackPos = 1;
-    for (const item of questions) {
-      const sId = item.sectionId || "default";
-      if (!map.has(sId)) {
-        map.set(sId, {
-          id: sId,
-          title: item.sectionTitle || `Section ${String.fromCharCode(64 + fallbackPos)}`,
-          position: item.sectionPosition ?? fallbackPos,
-          count: 0,
-        });
-        fallbackPos++;
-      }
-      map.get(sId)!.count++;
-    }
-    const derived = Array.from(map.values()).sort((a, b) => a.position - b.position);
-    return derived.length > 1 ? derived.map((s) => ({ ...s, questionCount: s.count })) : [];
-  }, [sections, questions]);
-
-  const hasMultipleSections = effectiveSections.length > 1;
-  const currentQuestionItem = questions[currentQuestion - 1];
-  const currentSectionId = currentQuestionItem?.sectionId;
-  const currentSection = effectiveSections.find((s) => s.id === currentSectionId) || (effectiveSections[0] ?? null);
-  const currentSectionQuestions = currentSection
-    ? questions.filter((item) => item.sectionId === currentSection.id)
-    : questions;
-  const questionIndexInSection = currentSectionQuestions.findIndex((item) => item.position === currentQuestion) + 1;
 
   if (loading) {
     return (
@@ -1351,12 +1411,14 @@ export default function ExamAttemptPage() {
                       <span
                         className={cn(
                           "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black",
-                          isActive
+                          completedSectionIds.has(sec.id)
+                            ? "bg-emerald-600 text-white"
+                            : isActive
                             ? "bg-blue-600 text-white"
                             : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
                         )}
                       >
-                        {String.fromCharCode(65 + idx)}
+                        {completedSectionIds.has(sec.id) ? "✓" : String.fromCharCode(65 + idx)}
                       </span>
                       <span>{sec.title}</span>
                       <span
@@ -1475,10 +1537,14 @@ export default function ExamAttemptPage() {
                   <span className="hidden sm:inline">{isFlagged ? "Flagged" : "Flag for review"}</span>
                 </button>
                 <button
-                  className="px-7 sm:px-8 h-12 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer shadow-2xs"
+                  className="px-7 sm:px-8 h-12 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
                   onClick={handleNext}
                 >
-                  {currentQuestion === questions.length ? "Review and Submit" : "Save and Next"}
+                  {hasMultipleSections && isLastQuestionOfCurrentSection
+                    ? `Finish ${currentSection?.title || "Section"} →`
+                    : currentQuestion === questions.length
+                    ? "Review and Submit"
+                    : "Save and Next"}
                 </button>
               </div>
             </div>
@@ -1655,7 +1721,7 @@ export default function ExamAttemptPage() {
             </div>
 
             <button
-              onClick={() => setShowSubmitModal(true)}
+              onClick={handleOpenSubmit}
               className="w-full h-12 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer shadow-2xs"
             >
               Submit Exam
@@ -1972,6 +2038,232 @@ export default function ExamAttemptPage() {
           <ShieldAlert size={12} className="text-emerald-500" /> Invigilator live feed active
         </div>
       </div>
+
+      {/* Multiple Sections Welcome / Instruction Modal */}
+      {showMultipleSectionsIntro && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Layers size={24} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                  Examination Structure
+                </span>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  Multiple Sections ({effectiveSections.length})
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              This examination is organized into <strong>{effectiveSections.length} sections</strong>. Questions within each section are randomized. You can progress section-by-section and will be informed of remaining sections upon completing each one.
+            </p>
+
+            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+              {effectiveSections.map((sec, idx) => {
+                const count = questions.filter((q) => q.sectionId === sec.id).length;
+                return (
+                  <div
+                    key={sec.id}
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {sec.title}
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      {count} {count === 1 ? "question" : "questions"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowMultipleSectionsIntro(false);
+                if (effectiveSections.length > 0) {
+                  const firstQ = questions.find((q) => q.sectionId === effectiveSections[0].id);
+                  if (firstQ) setCurrentQuestion(firstQ.position);
+                }
+              }}
+              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+            >
+              Start Examination ({effectiveSections[0]?.title || "Section 1"}) →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Section Finished / Pending Sections Modal */}
+      {sectionModalData && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={24} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                  {sectionModalData.pendingSections.length === 0 ? "All Sections Completed" : "Section Completed"}
+                </span>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {sectionModalData.completedSectionTitle}
+                </h3>
+              </div>
+            </div>
+
+            {sectionModalData.pendingSections.length > 0 ? (
+              <>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  You have finished <strong>{sectionModalData.completedSectionTitle}</strong>. You still have <strong>{sectionModalData.pendingSections.length} pending {sectionModalData.pendingSections.length === 1 ? "section" : "sections"}</strong> left to complete:
+                </p>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {sectionModalData.pendingSections.map((sec) => {
+                    const secQs = questions.filter((q) => q.sectionId === sec.id);
+                    const ansCount = secQs.filter((q) => (answers[q.position] || []).length > 0).length;
+                    return (
+                      <div
+                        key={sec.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 text-xs"
+                      >
+                        <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                          {sec.title}
+                        </div>
+                        <span className="text-amber-800 dark:text-amber-300 font-medium">
+                          {ansCount}/{secQs.length} answered
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSectionModalData(null)}
+                    className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    Stay in Current Section
+                  </button>
+                  {sectionModalData.nextSection && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetSec = sectionModalData.nextSection!;
+                        const firstQ = questions.find((q) => q.sectionId === targetSec.id);
+                        if (firstQ) setCurrentQuestion(firstQ.position);
+                        setSectionModalData(null);
+                      }}
+                      className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors shadow-2xs cursor-pointer"
+                    >
+                      Proceed to {sectionModalData.nextSection.title} →
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                  Congratulations! You have completed all sections. There are no pending sections left. You can now review your answers or proceed to submit your examination.
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSectionModalData(null)}
+                    className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    Review Answers
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSectionModalData(null);
+                      setShowSubmitModal(true);
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors shadow-2xs cursor-pointer"
+                  >
+                    Submit Examination Now
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pending Sections Incomplete Warning Modal */}
+      {showPendingSectionsWarning && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border-2 border-amber-500 text-slate-900 dark:text-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center mx-auto">
+              <AlertCircle size={28} />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                Pending Sections Incomplete
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                You have not completed all sections in this examination. The following {showPendingSectionsWarning.length === 1 ? "section is" : "sections are"} still pending:
+              </p>
+            </div>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {showPendingSectionsWarning.map((sec) => {
+                const secQs = questions.filter((q) => q.sectionId === sec.id);
+                const ansCount = secQs.filter((q) => (answers[q.position] || []).length > 0).length;
+                return (
+                  <div
+                    key={sec.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs font-semibold text-amber-900 dark:text-amber-200"
+                  >
+                    <span>{sec.title}</span>
+                    <span className="font-mono text-[11px]">{ansCount}/{secQs.length} answered</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const firstPending = showPendingSectionsWarning[0];
+                  if (firstPending) {
+                    const firstQ = questions.find((q) => q.sectionId === firstPending.id);
+                    if (firstQ) setCurrentQuestion(firstQ.position);
+                  }
+                  setShowPendingSectionsWarning(null);
+                }}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
+              >
+                Go to {showPendingSectionsWarning[0]?.title || "Pending Section"} →
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPendingSectionsWarning(null);
+                  setShowSubmitModal(true);
+                }}
+                className="w-full py-2.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+              >
+                Submit anyway despite incomplete sections
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

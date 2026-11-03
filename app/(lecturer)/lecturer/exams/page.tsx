@@ -121,8 +121,7 @@ export default function ExamManagementList() {
           <div>
             <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Exams</h2>
             <p className="text-[14px] text-gray-500">
-              Build a paper and publish it — it becomes active immediately. Admin timetables school exams; public exams
-              get a shareable link.
+              Build and manage examination papers. All exams (both internal and public) require scheduling by an Administrator to become active.
             </p>
           </div>
           <Button onClick={() => router.push("/lecturer/exams/new")}>
@@ -245,7 +244,7 @@ export default function ExamManagementList() {
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant={STATUS_VARIANT[exam.status] ?? "gray-tint"}>
-                          {exam.status === "APPROVED" ? "Active" : exam.status.replace(/_/g, " ").toLowerCase()}
+                          {exam.status === "APPROVED" ? "Active" : exam.status === "DRAFT" ? "Pending Admin Schedule" : exam.status.replace(/_/g, " ").toLowerCase()}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-[13px] text-gray-500">

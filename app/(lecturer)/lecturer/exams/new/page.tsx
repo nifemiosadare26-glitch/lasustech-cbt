@@ -56,8 +56,6 @@ interface RuleForm {
 interface SectionForm {
   id: string;
   title: string;
-  minutes: number;
-  weight: number;
   rules: RuleForm[];
 }
 
@@ -74,8 +72,6 @@ const newRule = (defaultCount = 5): RuleForm => ({ id: uid(), difficulty: "", to
 const newSection = (index: number): SectionForm => ({
   id: uid(),
   title: `Section ${String.fromCharCode(65 + index)}`,
-  minutes: 30,
-  weight: 1,
   rules: [newRule(5)],
 });
 
@@ -214,11 +210,8 @@ export default function ExamBuilder() {
       }
       return null;
     }
-    if (current === 4 && audience === "PUBLIC") {
-      if (!Number(durationMin) || Number(durationMin) < 1) return "A public exam needs a duration.";
-      if (publicOpensAt && publicClosesAt && new Date(publicClosesAt) <= new Date(publicOpensAt)) {
-        return "The closing time must be after the opening time.";
-      }
+    if (current === 4) {
+      if (!Number(durationMin) || Number(durationMin) < 1) return "Please enter a valid general exam duration in minutes.";
     }
     return null;
   };
@@ -271,7 +264,7 @@ export default function ExamBuilder() {
         settings: {
           shuffleQuestions,
           shuffleOptions,
-          showResults,
+          showResults: true,
           allowRetake,
           maxAttempts: allowRetake ? Math.max(1, Number(maxAttempts) || 1) : 1,
           ...(customGrades ? { gradeBands: buildGradeBands() } : {}),
@@ -279,8 +272,7 @@ export default function ExamBuilder() {
         sections: sections.map((section) => ({
           title: section.title.trim(),
           timerMode: "SHARED" as const,
-          minutes: Number(section.minutes) || undefined,
-          weight: Number(section.weight) || 1,
+          weight: 1,
           rules: section.rules.map((rule) => ({
             mode: "BY_RULE" as const,
             ...(rule.difficulty ? { difficulty: rule.difficulty } : {}),
@@ -289,13 +281,6 @@ export default function ExamBuilder() {
             marks: Number(rule.marks),
           })),
         })),
-        ...(audience === "PUBLIC"
-          ? {
-              publicOpensAt: toIso(publicOpensAt),
-              publicClosesAt: toIso(publicClosesAt),
-              accessCode: accessCode.trim() || undefined,
-            }
-          : {}),
       };
 
       const res = await apiClient<{ data: { exam: { id: string; title: string }; publicUrl: string | null } }>(
@@ -304,12 +289,8 @@ export default function ExamBuilder() {
       );
 
       const exam = res.data.exam;
-      if (audience === "PUBLIC" && res.data.publicUrl) {
-        setCreated({ id: exam.id, title: exam.title, publicUrl: res.data.publicUrl });
-      } else {
-        toast.show("Exam published. Admin can now timetable it.");
-        router.push(`/lecturer/exams/${exam.id}/preview`);
-      }
+      toast.show("Exam paper created and submitted for Administrator scheduling.");
+      router.push(`/lecturer/exams/${exam.id}/preview`);
     } catch (e) {
       setError(errMessage(e));
     } finally {
@@ -571,31 +552,7 @@ export default function ExamBuilder() {
                           onChange={(e) => updateSection(section.id, { title: e.target.value })}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[13px] font-semibold text-gray-900 block mb-1.5">
-                            Time (mins)
-                          </label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={section.minutes}
-                            onChange={(e) =>
-                              updateSection(section.id, { minutes: Number(e.target.value) })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[13px] font-semibold text-gray-900 block mb-1.5">Weight</label>
-                          <Input
-                            type="number"
-                            min={0.1}
-                            step={0.1}
-                            value={section.weight}
-                            onChange={(e) => updateSection(section.id, { weight: Number(e.target.value) })}
-                          />
-                        </div>
-                      </div>
+
                       <p className="text-[12px] text-gray-500">
                         {section.rules.length} rule{section.rules.length === 1 ? "" : "s"} ·{" "}
                         {section.rules.reduce((sum, rule) => sum + (Number(rule.count) || 0), 0)} questions
@@ -807,12 +764,6 @@ export default function ExamBuilder() {
                         value: shuffleOptions,
                         set: setShuffleOptions,
                       },
-                      {
-                        label: "Show results on submit",
-                        hint: "Candidates see their score and grade immediately",
-                        value: showResults,
-                        set: setShowResults,
-                      },
                     ].map((row) => (
                       <label key={row.label} className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                         <div>
@@ -829,44 +780,21 @@ export default function ExamBuilder() {
                     ))}
                   </div>
 
-                  {audience === "PUBLIC" && (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-4">
+                  {audience === "PUBLIC" ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
                       <div className="flex items-start gap-2">
                         <Globe size={16} className="text-blue-700 mt-0.5 shrink-0" />
-                        <p className="text-[12px] text-blue-900">
-                          The exam is open from the start date until the close date. Leave both empty to keep it open
-                          indefinitely.
+                        <p className="text-[13px] text-blue-950 font-medium">
+                          All public examinations require scheduling by an Administrator. When scheduled by the Administrator, a 6-digit candidate access code will be generated and sent directly to your notifications, and the public exam link will become active.
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[13px] font-semibold text-gray-900 block mb-1.5">Opens</label>
-                          <Input
-                            type="datetime-local"
-                            value={publicOpensAt}
-                            onChange={(e) => setPublicOpensAt(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[13px] font-semibold text-gray-900 block mb-1.5">Closes</label>
-                          <Input
-                            type="datetime-local"
-                            value={publicClosesAt}
-                            onChange={(e) => setPublicClosesAt(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[13px] font-semibold text-gray-900 block mb-1.5">
-                          Access code (optional)
-                        </label>
-                        <Input
-                          value={accessCode}
-                          onChange={(e) => setAccessCode(e.target.value)}
-                          placeholder="Leave empty for an open link"
-                        />
-                        <p className="text-[12px] text-gray-500 mt-1">
-                          Stored as a bcrypt hash. Candidates must type it before starting.
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+                      <div className="flex items-start gap-2">
+                        <School size={16} className="text-blue-700 mt-0.5 shrink-0" />
+                        <p className="text-[13px] text-blue-950 font-medium">
+                          Internal school examinations are timetabled and scheduled by an Administrator. The exam paper becomes active once an Administrator schedules a sitting.
                         </p>
                       </div>
                     </div>
@@ -931,30 +859,18 @@ export default function ExamBuilder() {
                       >
                         <span className="text-gray-700">{section.title}</span>
                         <span className="text-gray-500">
-                          {section.rules.reduce((sum, rule) => sum + (Number(rule.count) || 0), 0)} questions ·{" "}
-                          {section.minutes} mins
+                          {section.rules.reduce((sum, rule) => sum + (Number(rule.count) || 0), 0)} questions
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  {audience === "INSTITUTIONAL" ? (
-                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
-                      <p className="text-[12px] text-amber-800">
-                        Publishing makes the exam active immediately. Admin will place it on the timetable; only one
-                        school sitting can run at a time.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                      <Info size={16} className="text-blue-600 mt-0.5 shrink-0" />
-                      <p className="text-[12px] text-blue-800">
-                        A shareable link is generated when you publish. Candidates give their name and an optional
-                        email; the same email cannot take the exam twice.
-                      </p>
-                    </div>
-                  )}
+                  <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <Info size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                    <p className="text-[12px] text-blue-900">
+                      All examinations (internal and public) require scheduling by an Administrator before becoming active.
+                    </p>
+                  </div>
                 </div>
               </Card>
             )}
@@ -1010,7 +926,7 @@ export default function ExamBuilder() {
               </Button>
             ) : (
               <Button variant="primary" onClick={() => void publish()} isLoading={publishing}>
-                {audience === "PUBLIC" ? "Publish & create link" : "Publish exam"}
+                {audience === "PUBLIC" ? "Save & submit public exam" : "Save & submit exam"}
               </Button>
             )}
           </div>

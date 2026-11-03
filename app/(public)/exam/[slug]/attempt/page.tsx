@@ -25,6 +25,11 @@ import {
   Maximize2,
   Minimize2,
   RotateCcw,
+  Layers,
+  Copy,
+  Check,
+  ExternalLink,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mediaSrc } from "@/lib/apiClient";
@@ -44,6 +49,7 @@ import { MathText } from "@/components/question/math-text";
 import { isFullscreen as getIsFullscreen, requestFullscreen, exitFullscreen, onFullscreenChange } from "@/lib/browser";
 
 interface SubmitResult {
+  attemptId?: string;
   submitted: boolean;
   autoSubmitted?: boolean;
   alreadySubmitted?: boolean;
@@ -96,6 +102,19 @@ export default function PublicExamAttempt() {
   const [submitting, setSubmitting] = React.useState(false);
   const [result, setResult] = React.useState<SubmitResult | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
+
+  // Multiple Sections Workflow State
+  const [showMultipleSectionsIntro, setShowMultipleSectionsIntro] = React.useState<boolean>(false);
+  const [completedSectionIds, setCompletedSectionIds] = React.useState<Set<string>>(new Set());
+  const [sectionModalData, setSectionModalData] = React.useState<{
+    completedSectionTitle: string;
+    pendingSections: { id: string; title: string; position: number; count: number }[];
+    nextSection?: { id: string; title: string; position: number; count: number };
+  } | null>(null);
+  const [showPendingSectionsWarning, setShowPendingSectionsWarning] = React.useState<
+    { id: string; title: string; position: number; count: number }[] | null
+  >(null);
+  const hasCheckedIntro = React.useRef(false);
 
   // Camera & Live Proctor Stream State
   const [cameraActive, setCameraActive] = React.useState<boolean>(false);
@@ -224,6 +243,7 @@ export default function PublicExamAttempt() {
 
     if (data.result) {
       setResult({
+        attemptId: data.attemptId,
         submitted: true,
         alreadySubmitted: true,
         showResults: true,
@@ -233,7 +253,7 @@ export default function PublicExamAttempt() {
         grade: data.result.grade,
       });
     } else if (isClosed(data.status)) {
-      setResult({ submitted: true, autoSubmitted: true });
+      setResult({ attemptId: data.attemptId, submitted: true, autoSubmitted: true });
     }
   };
 
@@ -349,7 +369,10 @@ export default function PublicExamAttempt() {
         streamRef.current = null;
       }
       setCameraActive(false);
-      setResult(res.data);
+      setResult({
+        ...res.data,
+        attemptId: res.data.attemptId || session.attemptId,
+      });
     } catch (error) {
       setNotice(publicErrorMessage(error));
       setSubmitting(false);
@@ -695,6 +718,61 @@ export default function PublicExamAttempt() {
     : questions;
   const questionIndexInSection = currentSectionQuestions.findIndex((item) => item.questionVersionId === question?.questionVersionId) + 1;
 
+  const isLastQuestionOfCurrentSection = React.useMemo(() => {
+    if (!currentSection || currentSectionQuestions.length === 0) return false;
+    const lastQ = currentSectionQuestions[currentSectionQuestions.length - 1];
+    return question?.questionVersionId === lastQ.questionVersionId;
+  }, [currentSection, currentSectionQuestions, question]);
+
+  React.useEffect(() => {
+    if (!loading && !loadError && questions.length > 0 && hasMultipleSections && !hasCheckedIntro.current) {
+      hasCheckedIntro.current = true;
+      setShowMultipleSectionsIntro(true);
+    }
+  }, [loading, loadError, questions.length, hasMultipleSections]);
+
+  const handleFinishCurrentSection = React.useCallback(() => {
+    if (!currentSection) {
+      setConfirmOpen(true);
+      return;
+    }
+    const newCompleted = new Set(completedSectionIds);
+    newCompleted.add(currentSection.id);
+    setCompletedSectionIds(newCompleted);
+
+    const pending = effectiveSections.filter((s) => !newCompleted.has(s.id));
+    const nextSec = pending[0] || undefined;
+
+    setSectionModalData({
+      completedSectionTitle: currentSection.title,
+      pendingSections: pending as any,
+      nextSection: nextSec as any,
+    });
+  }, [currentSection, completedSectionIds, effectiveSections]);
+
+  const handleOpenSubmit = React.useCallback(() => {
+    if (hasMultipleSections) {
+      const pending = effectiveSections.filter((s) => !completedSectionIds.has(s.id));
+      if (pending.length > 0) {
+        setShowPendingSectionsWarning(pending as any);
+        return;
+      }
+    }
+    setConfirmOpen(true);
+  }, [hasMultipleSections, effectiveSections, completedSectionIds]);
+
+  const handleNext = () => {
+    if (hasMultipleSections && isLastQuestionOfCurrentSection) {
+      handleFinishCurrentSection();
+      return;
+    }
+    if (current < questions.length - 1) {
+      setCurrent((prev) => prev + 1);
+    } else {
+      handleOpenSubmit();
+    }
+  };
+
   return (
     <RoleThemeProvider role="student" className="h-full">
       <div className="flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-slate-950 select-none">
@@ -924,12 +1002,14 @@ export default function PublicExamAttempt() {
                             <span
                               className={cn(
                                 "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black",
-                                isActive
+                                completedSectionIds.has(sec.id)
+                                  ? "bg-emerald-600 text-white"
+                                  : isActive
                                   ? "bg-blue-600 text-white"
                                   : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
                               )}
                             >
-                              {String.fromCharCode(65 + idx)}
+                              {completedSectionIds.has(sec.id) ? "✓" : String.fromCharCode(65 + idx)}
                             </span>
                             <span>{sec.title}</span>
                             <span
@@ -1047,23 +1127,21 @@ export default function PublicExamAttempt() {
               </button>
 
               <div className="flex items-center gap-3">
-                {current < questions.length - 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => setCurrent((prev) => Math.min(questions.length - 1, prev + 1))}
-                    className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    Next Question
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmOpen(true)}
-                    className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Send size={15} /> Submit Exam
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+                >
+                  {hasMultipleSections && isLastQuestionOfCurrentSection ? (
+                    `Finish ${currentSection?.title || "Section"} →`
+                  ) : current === questions.length - 1 ? (
+                    <>
+                      <Send size={15} /> Review &amp; Submit
+                    </>
+                  ) : (
+                    "Next Question"
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -1251,7 +1329,7 @@ export default function PublicExamAttempt() {
             <div className="p-4 border-t border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
               <button
                 type="button"
-                onClick={() => setConfirmOpen(true)}
+                onClick={handleOpenSubmit}
                 disabled={submitting}
                 className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
               >
@@ -1377,6 +1455,232 @@ export default function PublicExamAttempt() {
             </div>
           </div>
         )}
+
+        {/* 5. Multiple Sections Welcome / Instruction Modal */}
+        {showMultipleSectionsIntro && (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <Layers size={24} />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                    Examination Structure
+                  </span>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    Multiple Sections ({effectiveSections.length})
+                  </h3>
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                This examination is organized into <strong>{effectiveSections.length} sections</strong>. Questions within each section are randomized. You will be prompted as you finish each section to review pending sections before final submission.
+              </p>
+
+              <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                {effectiveSections.map((sec, idx) => {
+                  const count = questions.filter((q) => q.sectionId === sec.id).length;
+                  return (
+                    <div
+                      key={sec.id}
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {sec.title}
+                        </span>
+                      </div>
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        {count} {count === 1 ? "question" : "questions"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMultipleSectionsIntro(false);
+                  if (effectiveSections.length > 0) {
+                    const firstQIdx = questions.findIndex((q) => q.sectionId === effectiveSections[0].id);
+                    if (firstQIdx >= 0) setCurrent(firstQIdx);
+                  }
+                }}
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                Start Examination ({effectiveSections[0]?.title || "Section 1"}) →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 6. Section Finished / Pending Sections Modal */}
+        {sectionModalData && (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                    {sectionModalData.pendingSections.length === 0 ? "All Sections Completed" : "Section Completed"}
+                  </span>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    {sectionModalData.completedSectionTitle}
+                  </h3>
+                </div>
+              </div>
+
+              {sectionModalData.pendingSections.length > 0 ? (
+                <>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    You have finished <strong>{sectionModalData.completedSectionTitle}</strong>. You still have <strong>{sectionModalData.pendingSections.length} pending {sectionModalData.pendingSections.length === 1 ? "section" : "sections"}</strong> left to complete:
+                  </p>
+
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {sectionModalData.pendingSections.map((sec) => {
+                      const secQs = questions.filter((q) => q.sectionId === sec.id);
+                      const ansCount = secQs.filter((q) => (answers[q.questionVersionId] ?? []).length > 0).length;
+                      return (
+                        <div
+                          key={sec.id}
+                          className="flex items-center justify-between p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 text-xs"
+                        >
+                          <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                            {sec.title}
+                          </div>
+                          <span className="text-amber-800 dark:text-amber-300 font-medium">
+                            {ansCount}/{secQs.length} answered
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setSectionModalData(null)}
+                      className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      Stay in Current Section
+                    </button>
+                    {sectionModalData.nextSection && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetSec = sectionModalData.nextSection!;
+                          const firstQIdx = questions.findIndex((q) => q.sectionId === targetSec.id);
+                          if (firstQIdx >= 0) setCurrent(firstQIdx);
+                          setSectionModalData(null);
+                        }}
+                        className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors shadow-2xs cursor-pointer"
+                      >
+                        Proceed to {sectionModalData.nextSection.title} →
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                    Congratulations! You have completed all sections. There are no pending sections left. You can now review your answers or proceed to submit your examination.
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setSectionModalData(null)}
+                      className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      Review Answers
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSectionModalData(null);
+                        setConfirmOpen(true);
+                      }}
+                      className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors shadow-2xs cursor-pointer"
+                    >
+                      Submit Examination Now
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 7. Pending Sections Incomplete Warning Modal */}
+        {showPendingSectionsWarning && (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border-2 border-amber-500 text-slate-900 dark:text-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center mx-auto">
+                <AlertCircle size={28} />
+              </div>
+
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  Pending Sections Incomplete
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  You have not completed all sections in this examination. The following {showPendingSectionsWarning.length === 1 ? "section is" : "sections are"} still pending:
+                </p>
+              </div>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {showPendingSectionsWarning.map((sec) => {
+                  const secQs = questions.filter((q) => q.sectionId === sec.id);
+                  const ansCount = secQs.filter((q) => (answers[q.questionVersionId] ?? []).length > 0).length;
+                  return (
+                    <div
+                      key={sec.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs font-semibold text-amber-900 dark:text-amber-200"
+                    >
+                      <span>{sec.title}</span>
+                      <span className="font-mono text-[11px]">{ansCount}/{secQs.length} answered</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstPending = showPendingSectionsWarning[0];
+                    if (firstPending) {
+                      const firstQIdx = questions.findIndex((q) => q.sectionId === firstPending.id);
+                      if (firstQIdx >= 0) setCurrent(firstQIdx);
+                    }
+                    setShowPendingSectionsWarning(null);
+                  }}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                >
+                  Go to {showPendingSectionsWarning[0]?.title || "Pending Section"} →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPendingSectionsWarning(null);
+                    setConfirmOpen(true);
+                  }}
+                  className="w-full py-2.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+                >
+                  Submit anyway despite incomplete sections
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </RoleThemeProvider>
   );
@@ -1394,31 +1698,44 @@ function ResultView({
   const showScore = result.showResults !== false && result.percent != null;
   const passed = result.passed ?? (result.percent != null ? result.percent >= (exam.passMark ?? 50) : null);
   const router = useRouter();
+  const [copied, setCopied] = React.useState(false);
+
+  const attemptId = result.attemptId || "";
+  const resultUrl = typeof window !== "undefined" && attemptId ? `${window.location.origin}/exam/${slug}/result/${attemptId}` : "";
+
+  const handleCopyLink = () => {
+    if (!resultUrl) return;
+    navigator.clipboard.writeText(resultUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center px-4 py-12 select-none">
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 sm:p-9 text-center shadow-xl">
-        <div
-          className={cn(
-            "mx-auto h-16 w-16 rounded-full flex items-center justify-center shadow-sm",
-            showScore && passed === false
-              ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400"
-              : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
-          )}
-        >
-          {showScore && passed === false ? <XCircle size={32} /> : <CheckCircle2 size={32} />}
+      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-3xl p-6 sm:p-9 text-center shadow-xl space-y-6">
+        <div>
+          <div
+            className={cn(
+              "mx-auto h-16 w-16 rounded-full flex items-center justify-center shadow-sm",
+              showScore && passed === false
+                ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400"
+                : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+            )}
+          >
+            {showScore && passed === false ? <XCircle size={32} /> : <CheckCircle2 size={32} />}
+          </div>
+
+          <h1 className="mt-4 text-2xl font-extrabold text-gray-900 dark:text-slate-100">
+            {result.autoSubmitted ? "Time Elapsed — Exam Submitted" : "Examination Submitted"}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+            {exam.title}
+            {result.alreadySubmitted ? " • (Session Concluded)" : ""}
+          </p>
         </div>
 
-        <h1 className="mt-4 text-2xl font-extrabold text-gray-900 dark:text-slate-100">
-          {result.autoSubmitted ? "Time Elapsed — Exam Submitted" : "Examination Submitted"}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-          {exam.title}
-          {result.alreadySubmitted ? " • (Session Concluded)" : ""}
-        </p>
-
         {showScore ? (
-          <div className="mt-6 rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 p-6">
+          <div className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 p-6 text-center">
             <span className="text-xs uppercase font-bold tracking-wider text-slate-400 block mb-1">
               Score Obtained
             </span>
@@ -1428,7 +1745,7 @@ function ResultView({
                 : `${result.percent}%`}
             </div>
             <div className="mt-2 text-sm font-semibold text-blue-600 dark:text-blue-400">
-              {result.percent}%
+              Overall: {result.percent}%
             </div>
 
             <div className="mt-4 flex items-center justify-center gap-2">
@@ -1452,12 +1769,54 @@ function ResultView({
             </div>
           </div>
         ) : (
-          <div className="mt-6 p-5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-200 leading-relaxed font-medium">
+          <div className="p-5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-200 leading-relaxed font-medium">
             Your answers have been recorded successfully. Official results are subject to administrative vetting and will be published upon release.
           </div>
         )}
 
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
+        {/* Shareable Result Link */}
+        {attemptId && (
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-left space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Official Result Slip Link
+              </span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                Available Immediately
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={resultUrl}
+                className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-600 dark:text-slate-300 select-all outline-hidden"
+              />
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                <span>{copied ? "Copied!" : "Copy"}</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              You can bookmark or copy this link to access and verify your official result slip anytime.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+          {attemptId && (
+            <button
+              type="button"
+              onClick={() => router.push(`/exam/${slug}/result/${attemptId}`)}
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+            >
+              <Printer size={14} /> View Official Result Slip
+            </button>
+          )}
           <button
             type="button"
             onClick={() => router.push("/")}
@@ -1469,7 +1828,7 @@ function ResultView({
             <button
               type="button"
               onClick={() => router.push(`/exam/${slug}`)}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors cursor-pointer"
             >
               Take Again
             </button>
