@@ -1059,114 +1059,125 @@ function CandidateCard({
   onInspect: () => void;
   onPauseResume: () => void;
 }) {
-  const canRun = student.attemptId && (student.state === "ACTIVE" || student.state === "OFFLINE" || student.state === "PAUSED");
+  const isSuspicious = student.flags > 0;
+  const isOffline = student.state === "OFFLINE";
+  const isPaused = student.state === "PAUSED";
+  const heightCls =
+    density === "compact"
+      ? "h-36 sm:h-40"
+      : density === "large"
+        ? "h-64 sm:h-72"
+        : "h-48 sm:h-52";
+
   return (
     <div
       onClick={onInspect}
       className={cn(
-        "rounded-xl border bg-white p-3 transition-all hover:shadow-md cursor-pointer select-none",
+        "relative rounded-2xl overflow-hidden bg-slate-950 border transition-all duration-200 cursor-pointer select-none group shadow-sm hover:shadow-xl",
+        heightCls,
         isSelected
-          ? "border-blue-600 ring-4 ring-blue-500/25 shadow-lg bg-blue-50/20"
-          : student.state === "OFFLINE"
-            ? "border-rose-200"
-            : student.state === "PAUSED"
-              ? "border-amber-200"
-              : student.flags > 0
-                ? "border-2 border-red-500 bg-red-50/20 ring-2 ring-red-400 shadow-md shadow-red-500/10"
-                : "border-gray-200"
+          ? "border-blue-500 ring-4 ring-blue-500/40 shadow-blue-500/20 scale-[1.02] z-10"
+          : isSuspicious
+            ? "border-2 border-red-500 ring-2 ring-red-500/30 shadow-red-500/20"
+            : isOffline
+              ? "border-rose-400/80 ring-1 ring-rose-400/30 opacity-85"
+              : isPaused
+                ? "border-amber-400 ring-2 ring-amber-400/30"
+                : "border-slate-800 hover:border-blue-400"
       )}
     >
-      {/* Live Video / Snapshot Preview Thumbnail */}
-      <div
-        className={cn(
-          "relative w-full rounded-lg overflow-hidden bg-slate-950 mb-2.5 border border-slate-800 flex items-center justify-center group transition-all",
-          isSelected ? "border-blue-400 shadow-inner" : "hover:border-slate-600",
-          density === "compact" ? "h-28" : density === "large" ? "h-60" : "h-36"
+      {/* 1. Full-bleed Live Video Screen */}
+      {frame ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={frame}
+          alt={student.name}
+          className="w-full h-full object-cover transform -scale-x-100 transition-transform duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-b from-slate-900 to-slate-950 p-4 text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-800/80 flex items-center justify-center mb-2 text-slate-400 group-hover:text-blue-400 transition-colors">
+            {isOffline ? <WifiOff size={22} className="text-rose-400" /> : <Camera size={22} />}
+          </div>
+          <span className="text-[12px] font-semibold text-slate-300">
+            {isOffline ? "Workstation Offline" : student.state === "ACTIVE" ? "Camera Standby" : "No Camera Feed"}
+          </span>
+          <span className="text-[10px] text-slate-500 font-mono mt-0.5">
+            {student.seat ?? "No seat assigned"}
+          </span>
+        </div>
+      )}
+
+      {/* 2. Top-Left Floating HUD: Live Status & Seat Tag */}
+      <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-20 pointer-events-none">
+        <div className="flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold border border-white/10 text-white shadow-xs">
+          <span
+            className={cn(
+              "w-2 h-2 rounded-full",
+              isOffline
+                ? "bg-rose-500"
+                : isPaused
+                  ? "bg-amber-400"
+                  : "bg-emerald-500 animate-pulse"
+            )}
+          />
+          <span className="tracking-wider uppercase">
+            {isOffline ? "OFFLINE" : isPaused ? "PAUSED" : "LIVE"}
+          </span>
+        </div>
+        {student.seat && (
+          <span className="bg-slate-900/85 backdrop-blur-md text-slate-200 font-mono text-[10px] font-bold px-2 py-0.5 rounded-md border border-white/10 shadow-xs">
+            {student.seat}
+          </span>
         )}
-      >
-        {frame ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={frame} alt={student.name} className="w-full h-full object-cover transform -scale-x-100" />
-        ) : (
-          <div className="flex flex-col items-center justify-center text-slate-500 p-2 text-center">
-            <Camera size={26} className="mb-1 text-slate-600" />
-            <span className="text-[11px] font-medium text-slate-400">
-              {student.state === "ACTIVE" ? "Camera Standby" : "No live camera"}
-            </span>
+      </div>
+
+      {/* 3. Top-Right Floating HUD: Suspicious Alert */}
+      <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20 pointer-events-none">
+        {isSuspicious && (
+          <div className="flex items-center gap-1 bg-red-600/90 text-white backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold shadow-md animate-pulse">
+            <Flag size={11} className="fill-white" />
+            <span>{student.flags} FLAGS</span>
           </div>
         )}
-        <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/75 px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald-400 border border-emerald-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          LIVE
-        </div>
-        <div className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] text-white/90 font-mono">
-          {student.seat ?? "NO SEAT"}
-        </div>
-        <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-          <span className="bg-black/80 text-white text-[10px] font-semibold px-2 py-1 rounded backdrop-blur-xs">
-            Click to inspect candidate
+      </div>
+
+      {/* 4. Bottom Sleek Translucent Gradient Overlay with Student Info */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-8 pb-2.5 px-3 z-20 flex flex-col justify-end pointer-events-none">
+        <div className="flex items-baseline justify-between gap-1.5">
+          <p className="text-[13px] font-bold text-white truncate drop-shadow-xs">
+            {student.name}
+          </p>
+          <span className="text-[11px] font-mono text-emerald-400 font-bold shrink-0">
+            {student.progress}%
           </span>
+        </div>
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-300 mt-0.5">
+          <span>{student.matricNo || "EXT CANDIDATE"}</span>
+          <span>{student.answered}/{student.questionCount || "—"} Qs</span>
         </div>
       </div>
 
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-[11px] font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded shrink-0">
-            {student.seat ?? "NO SEAT"}
-          </span>
-          <StateChip state={student.state} />
+      {/* 5. Bottom Progress Accent Line */}
+      <div className="absolute bottom-0 inset-x-0 h-1 bg-slate-800 z-20">
+        <div
+          className={cn(
+            "h-full transition-all duration-300",
+            student.progress >= 100 ? "bg-emerald-500" : isSuspicious ? "bg-red-500" : "bg-blue-500"
+          )}
+          style={{ width: `${Math.max(3, student.progress)}%` }}
+        />
+      </div>
+
+      {/* 6. Hover / Click For Actions Indicator */}
+      <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center z-30 pointer-events-none">
+        <div className="bg-slate-900/95 text-white text-[12px] font-bold px-3 py-1.5 rounded-xl border border-blue-400 shadow-xl flex items-center gap-2 transform group-hover:scale-105 transition-transform">
+          <Eye size={14} className="text-blue-400" />
+          <span>Click for Actions</span>
         </div>
-        {student.flags > 0 && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0">
-            <Flag size={11} className="fill-red-600 text-red-600" /> SUSPICIOUS ({student.flags})
-          </span>
-        )}
-      </div>
-
-      <button onClick={onInspect} className="block text-left w-full mt-2">
-        <div className="font-semibold text-[13px] text-gray-900 truncate">{student.name}</div>
-        <div className="text-[11px] font-mono text-gray-500">{student.matricNo ?? "—"}</div>
-      </button>
-
-      <div className="mt-2.5">
-        <Progress student={student} />
-      </div>
-
-      <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-gray-500">
-        <span className="flex items-center gap-1 truncate">
-          {student.state === "OFFLINE" ? <WifiOff size={12} className="text-rose-500" /> : <Wifi size={12} className="text-gray-400" />}
-          {student.state === "OFFLINE" && student.offlineSeconds !== null
-            ? `Silent ${Math.floor(student.offlineSeconds / 60)}m ${student.offlineSeconds % 60}s`
-            : student.lastSeenAt
-              ? timeAgo(student.lastSeenAt)
-              : "No heartbeat"}
+        <span className="text-[10px] text-blue-200 mt-1 font-medium bg-black/60 px-2 py-0.5 rounded">
+          Extra time · Pause · Message · Flag · End
         </span>
-        <span className="text-right truncate">
-          {student.deadlineAt ? clock(student.deadlineAt, now) : student.submittedAt ? "Submitted" : "No timer"}
-        </span>
-        {student.extraMinutes > 0 && (
-          <span className="text-blue-700 font-medium">+{student.extraMinutes} min extra</span>
-        )}
-        {student.questionCount > 0 && (
-          <span className="text-right">{student.answered} answered</span>
-        )}
-      </div>
-
-      <div className="mt-3 flex items-center gap-2">
-        <Button size="sm" variant="secondary" className="h-7 flex-1 text-[12px]" onClick={onInspect}>
-          <Eye size={13} className="mr-1" /> Inspect
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="h-7 text-[12px]"
-          disabled={!canRun || busy}
-          isLoading={busy}
-          onClick={onPauseResume}
-          title={student.isPaused ? "Resume candidate" : "Pause candidate"}
-        >
-          {!busy && (student.isPaused ? <Play size={13} /> : <Pause size={13} />)}
-        </Button>
       </div>
     </div>
   );
@@ -1385,6 +1396,68 @@ function InspectorModal({
           </div>
         </div>
 
+        {/* Invigilator Control Actions for this Student */}
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-[13px] font-bold text-slate-900 flex items-center gap-1.5">
+              <span>Actions for {student.name.split(" ")[0]}</span>
+            </h4>
+            <span className="text-[11px] font-mono text-slate-600 font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+              {student.seat ? `Seat ${student.seat}` : "Unassigned"}
+            </span>
+          </div>
+
+          {!student.attemptId ? (
+            <p className="text-[12px] text-gray-500 bg-white border border-gray-200 rounded-lg p-2.5 mb-2">
+              This candidate has not started an attempt yet. You can still reassign their seat or file an incident.
+            </p>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-2">
+            {running &&
+              (student.isPaused ? (
+                <Button size="sm" onClick={() => onAction("resume")} className="w-full justify-start bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                  <Play size={14} className="mr-2" /> Resume Exam
+                </Button>
+              ) : (
+                <Button size="sm" variant="secondary" onClick={() => onAction("pause")} className="w-full justify-start border-amber-300 text-amber-800 hover:bg-amber-100/60 font-semibold bg-white">
+                  <Pause size={14} className="mr-2 text-amber-600" /> Pause Exam
+                </Button>
+              ))}
+            <Button size="sm" variant="secondary" disabled={!running} onClick={() => onAction("extend")} className="w-full justify-start bg-white font-semibold">
+              <Timer size={14} className="mr-2 text-blue-600" /> Extra Time
+            </Button>
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("message")} className="w-full justify-start bg-white font-semibold">
+              <Send size={14} className="mr-2 text-indigo-600" /> Message
+            </Button>
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("flag")} className="w-full justify-start bg-white font-semibold">
+              <Flag size={14} className="mr-2 text-amber-600" /> Flag Behavior
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => onAction("seat")} className="w-full justify-start bg-white font-semibold">
+              <RotateCcw size={14} className="mr-2 text-slate-600" /> Reassign Seat
+            </Button>
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("incident")} className="w-full justify-start bg-white font-semibold">
+              <ShieldAlert size={14} className="mr-2 text-rose-600" /> File Incident
+            </Button>
+            {student.flags > 0 && (
+              <Button size="sm" variant="secondary" onClick={() => onAction("clearFlags")} className="w-full justify-start bg-white font-semibold">
+                <CheckCircle2 size={14} className="mr-2 text-emerald-600" /> Clear Flags
+              </Button>
+            )}
+            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("reset")} className="w-full justify-start bg-white font-semibold">
+              <Wifi size={14} className="mr-2 text-slate-600" /> Release Session
+            </Button>
+            <Button
+              size="sm"
+              className="bg-rose-600 text-white hover:bg-rose-700 w-full justify-start col-span-2 mt-1 font-semibold"
+              disabled={!running}
+              onClick={() => onAction("end")}
+            >
+              <Ban size={14} className="mr-2" /> End Script Immediately
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <Stat label="Answered" value={`${student.answered}/${student.questionCount || "—"}`} />
           <Stat label="Progress" value={`${student.progress}%`} />
@@ -1427,62 +1500,6 @@ function InspectorModal({
             </div>
           </div>
         )}
-
-        {!student.attemptId ? (
-          <p className="text-[13px] text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3">
-            This candidate has not started an attempt yet, so proctoring actions are unavailable. You can still
-            reassign their seat or file an incident.
-          </p>
-        ) : null}
-
-        <div className="pt-3 border-t border-gray-200">
-          <h4 className="text-[12px] font-bold uppercase tracking-wider text-gray-700 mb-2.5">
-            Invigilator Control Actions
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            {running &&
-              (student.isPaused ? (
-                <Button size="sm" onClick={() => onAction("resume")} className="w-full justify-start bg-emerald-600 hover:bg-emerald-700 text-white">
-                  <Play size={14} className="mr-2" /> Resume Exam
-                </Button>
-              ) : (
-                <Button size="sm" variant="secondary" onClick={() => onAction("pause")} className="w-full justify-start border-amber-300 text-amber-800 hover:bg-amber-50">
-                  <Pause size={14} className="mr-2 text-amber-600" /> Pause Exam
-                </Button>
-              ))}
-            <Button size="sm" variant="secondary" disabled={!running} onClick={() => onAction("extend")} className="w-full justify-start">
-              <Timer size={14} className="mr-2 text-blue-600" /> Extra Time
-            </Button>
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("message")} className="w-full justify-start">
-              <Send size={14} className="mr-2 text-indigo-600" /> Message
-            </Button>
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("flag")} className="w-full justify-start">
-              <Flag size={14} className="mr-2 text-amber-600" /> Flag Behavior
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => onAction("seat")} className="w-full justify-start">
-              <RotateCcw size={14} className="mr-2 text-slate-600" /> Reassign Seat
-            </Button>
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("incident")} className="w-full justify-start">
-              <ShieldAlert size={14} className="mr-2 text-rose-600" /> File Incident
-            </Button>
-            {student.flags > 0 && (
-              <Button size="sm" variant="secondary" onClick={() => onAction("clearFlags")} className="w-full justify-start">
-                <CheckCircle2 size={14} className="mr-2 text-emerald-600" /> Clear Flags
-              </Button>
-            )}
-            <Button size="sm" variant="secondary" disabled={!student.attemptId} onClick={() => onAction("reset")} className="w-full justify-start">
-              <Wifi size={14} className="mr-2 text-slate-600" /> Release Session
-            </Button>
-            <Button
-              size="sm"
-              className="bg-rose-600 text-white hover:bg-rose-700 w-full justify-start col-span-2 mt-1"
-              disabled={!running}
-              onClick={() => onAction("end")}
-            >
-              <Ban size={14} className="mr-2" /> End Script Immediately
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Drawer Footer */}

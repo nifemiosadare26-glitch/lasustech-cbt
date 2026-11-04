@@ -152,9 +152,17 @@ export default function ExamAttemptPage() {
   const [tabSwitches, setTabSwitches] = useState<number>(0);
   const [tabWarningModal, setTabWarningModal] = useState<number | null>(null);
 
-  // Live Proctor Monitoring State
+  // Live Proctor Monitoring & Vanishing Broadcast State
   const [isPausedByProctor, setIsPausedByProctor] = useState<boolean>(false);
   const [proctorMessage, setProctorMessage] = useState<string | null>(null);
+  const [broadcastNotice, setBroadcastNotice] = useState<{
+    id: string;
+    message: string;
+    title?: string;
+    durationSec: number;
+  } | null>(null);
+  const seenBroadcastsRef = useRef<Set<string>>(new Set());
+  const [broadcastSecondsLeft, setBroadcastSecondsLeft] = useState<number>(8);
   const [tabSwitchLimit, setTabSwitchLimit] = useState<number>(2);
 
   // 1. Initial Load: Start or resume attempt for this sitting
@@ -382,7 +390,18 @@ export default function ExamAttemptPage() {
       if (payload?.type === "attempt.intervene") {
         if (payload?.attemptId === attemptId || (candidateStudentId && payload?.studentId === candidateStudentId)) {
           if (payload?.action === "MESSAGE" && payload?.extra?.message) {
-            setProctorMessage(String(payload.extra.message));
+            const msg = String(payload.extra.message).trim();
+            const id = `intervene-${Date.now()}-${msg}`;
+            if (!seenBroadcastsRef.current.has(id)) {
+              seenBroadcastsRef.current.add(id);
+              setBroadcastSecondsLeft(10);
+              setBroadcastNotice({
+                id,
+                message: msg,
+                title: "Direct Invigilator Message",
+                durationSec: 10,
+              });
+            }
           } else if (payload?.action === "PAUSE") {
             setIsPausedByProctor(true);
           } else if (payload?.action === "RESUME") {
@@ -391,9 +410,21 @@ export default function ExamAttemptPage() {
             router.replace(`/student/exam/${sittingId}/done`);
           }
         }
-      } else if (payload?.type === "sitting.broadcast") {
-        if (payload?.sittingId === sittingId && payload?.message) {
-          setProctorMessage(String(payload.message));
+      } else if (payload?.type === "sitting.broadcast" || (payload?.message && payload?.sittingId === sittingId)) {
+        if (!payload?.sittingId || payload?.sittingId === sittingId) {
+          const msg = String(payload.message || "").trim();
+          if (!msg) return;
+          const id = `broadcast-${payload.sentAt || ""}-${msg}`;
+          if (seenBroadcastsRef.current.has(id)) return;
+          seenBroadcastsRef.current.add(id);
+
+          setBroadcastSecondsLeft(8);
+          setBroadcastNotice({
+            id,
+            message: msg,
+            title: "Examination Broadcast Notice",
+            durationSec: 8,
+          });
         }
       }
     };
@@ -408,6 +439,25 @@ export default function ExamAttemptPage() {
       socket.off("sitting.broadcast", handleRealtimeEvent);
     };
   }, [sittingId, attemptId, candidateStudentId, router]);
+
+  // Auto-vanish countdown timer for broadcast announcements
+  useEffect(() => {
+    if (!broadcastNotice) return;
+    setBroadcastSecondsLeft(broadcastNotice.durationSec);
+
+    const interval = setInterval(() => {
+      setBroadcastSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setBroadcastNotice(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [broadcastNotice]);
 
   // Camera Acquisition & Stream Setup
   useEffect(() => {
@@ -1916,31 +1966,52 @@ export default function ExamAttemptPage() {
         </div>
       )}
 
-      {/* Proctor Message Attention-Grabbing Modal Pop-up */}
-      {proctorMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border-2 border-blue-600 dark:border-blue-500 space-y-5 text-center">
-            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto border-2 border-blue-200 dark:border-blue-800 shadow-inner">
-              <Megaphone size={32} />
-            </div>
-            <div>
-              <span className="inline-block bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
-                Official Invigilator Notice
-              </span>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Message from Invigilator
-              </h3>
-              <div className="mt-3 p-4 rounded-2xl bg-blue-50/60 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-sm font-medium text-gray-800 dark:text-slate-100 leading-relaxed text-left whitespace-pre-wrap">
-                {proctorMessage}
+      {/* Broadcast Announcement Banner (Shows once & automatically vanishes) */}
+      {broadcastNotice && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-xl animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="relative overflow-hidden rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 text-white border-2 border-amber-400 shadow-2xl p-4 sm:p-5 backdrop-blur-md">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+                  <Megaphone size={18} className="animate-pulse" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
+                    Exam Broadcast &bull; Official Announcement
+                  </span>
+                  <h4 className="text-[14px] font-bold text-white">
+                    {broadcastNotice.title ?? "Announcement from Exam Administrator"}
+                  </h4>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-amber-300 bg-amber-950/60 border border-amber-800/80 px-2 py-0.5 rounded-full">
+                  Vanishing in {broadcastSecondsLeft}s
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setBroadcastNotice(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Dismiss announcement"
+                >
+                  <X size={16} />
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setProctorMessage(null)}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 size={16} /> Acknowledge &amp; Resume Examination
-            </button>
+
+            <div className="mt-3 p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-[13px] text-amber-100 font-medium leading-relaxed whitespace-pre-wrap">
+              {broadcastNotice.message}
+            </div>
+
+            {/* Vanishing Progress Bar */}
+            <div className="absolute bottom-0 inset-x-0 h-1 bg-slate-800">
+              <div
+                className="h-full bg-amber-400 transition-all duration-1000 ease-linear"
+                style={{
+                  width: `${(broadcastSecondsLeft / broadcastNotice.durationSec) * 100}%`,
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

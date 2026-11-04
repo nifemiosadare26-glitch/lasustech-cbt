@@ -30,6 +30,7 @@ import {
   Check,
   ExternalLink,
   Printer,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mediaSrc } from "@/lib/apiClient";
@@ -102,6 +103,14 @@ export default function PublicExamAttempt() {
   const [submitting, setSubmitting] = React.useState(false);
   const [result, setResult] = React.useState<SubmitResult | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
+  const [broadcastNotice, setBroadcastNotice] = React.useState<{
+    id: string;
+    message: string;
+    title?: string;
+    durationSec: number;
+  } | null>(null);
+  const seenBroadcastsRef = React.useRef<Set<string>>(new Set());
+  const [broadcastSecondsLeft, setBroadcastSecondsLeft] = React.useState<number>(8);
 
   // Multiple Sections Workflow State
   const [showMultipleSectionsIntro, setShowMultipleSectionsIntro] = React.useState<boolean>(false);
@@ -421,44 +430,89 @@ export default function PublicExamAttempt() {
     };
   }, [attempt?.requireWebcam, result]);
 
-  // --- Real-time Proctor WebSocket & Periodic Snapshot Frames ---------------
+  // --- Real-time Proctor WebSocket, Instant Broadcasts & Periodic Snapshot Frames ---
   React.useEffect(() => {
-    if (!attempt?.sittingId || !cameraActive || !session || result) return;
+    if (!attempt?.sittingId || !session || result) return;
 
     const socket = getRealtimeSocket();
     if (!socket) return;
 
     socket.emit("join_sitting", attempt.sittingId);
 
-    const frameInterval = setInterval(() => {
-      if (!videoRef.current || !canvasRef.current) return;
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (video.videoWidth === 0 || video.videoHeight === 0) return;
+    const handleBroadcast = (payload: any) => {
+      if (payload?.type === "sitting.broadcast" || (payload?.message && (!payload?.sittingId || payload?.sittingId === attempt.sittingId))) {
+        const msg = String(payload.message || "").trim();
+        if (!msg) return;
+        const id = `broadcast-${payload.sentAt || ""}-${msg}`;
+        if (seenBroadcastsRef.current.has(id)) return;
+        seenBroadcastsRef.current.add(id);
 
-      canvas.width = 160;
-      canvas.height = 120;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+        setBroadcastSecondsLeft(8);
+        setBroadcastNotice({
+          id,
+          message: msg,
+          title: "Examination Broadcast Notice",
+          durationSec: 8,
+        });
+      }
+    };
 
-      ctx.drawImage(video, 0, 0, 160, 120);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+    socket.on("sitting.broadcast", handleBroadcast);
+    socket.on("event", handleBroadcast);
 
-      socket.emit("camera_frame", {
-        sittingId: attempt.sittingId,
-        attemptId: session.attemptId,
-        studentId: session.name || "Guest Candidate",
-        studentName: session.name || "Guest Candidate",
-        matricNo: "EXT-" + session.attemptId.slice(0, 6).toUpperCase(),
-        image: dataUrl,
-      });
-    }, 15000);
+    let frameInterval: NodeJS.Timeout | null = null;
+    if (cameraActive) {
+      frameInterval = setInterval(() => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+        canvas.width = 160;
+        canvas.height = 120;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.drawImage(video, 0, 0, 160, 120);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+
+        socket.emit("camera_frame", {
+          sittingId: attempt.sittingId,
+          attemptId: session.attemptId,
+          studentId: session.name || "Guest Candidate",
+          studentName: session.name || "Guest Candidate",
+          matricNo: "EXT-" + session.attemptId.slice(0, 6).toUpperCase(),
+          image: dataUrl,
+        });
+      }, 15000);
+    }
 
     return () => {
-      clearInterval(frameInterval);
+      if (frameInterval) clearInterval(frameInterval);
+      socket.off("sitting.broadcast", handleBroadcast);
+      socket.off("event", handleBroadcast);
       socket.emit("leave_sitting", attempt.sittingId);
     };
   }, [attempt?.sittingId, cameraActive, session, result]);
+
+  // Auto-vanish countdown timer for broadcast announcements
+  React.useEffect(() => {
+    if (!broadcastNotice) return;
+    setBroadcastSecondsLeft(broadcastNotice.durationSec);
+
+    const interval = setInterval(() => {
+      setBroadcastSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setBroadcastNotice(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [broadcastNotice]);
 
   // --- Anti-cheat Tab Switch Detection & Violation Reporting ----------------
   React.useEffect(() => {
@@ -1677,6 +1731,56 @@ export default function PublicExamAttempt() {
                 >
                   Submit anyway despite incomplete sections
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Broadcast Announcement Banner (Shows once & automatically vanishes) */}
+        {broadcastNotice && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-xl animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto">
+            <div className="relative overflow-hidden rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 text-white border-2 border-amber-400 shadow-2xl p-4 sm:p-5 backdrop-blur-md">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0">
+                    <Megaphone size={18} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
+                      Exam Broadcast &bull; Official Announcement
+                    </span>
+                    <h4 className="text-[14px] font-bold text-white">
+                      {broadcastNotice.title ?? "Announcement from Exam Administrator"}
+                    </h4>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-amber-300 bg-amber-950/60 border border-amber-800/80 px-2 py-0.5 rounded-full">
+                    Vanishing in {broadcastSecondsLeft}s
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastNotice(null)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Dismiss announcement"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-[13px] text-amber-100 font-medium leading-relaxed whitespace-pre-wrap">
+                {broadcastNotice.message}
+              </div>
+
+              {/* Vanishing Progress Bar */}
+              <div className="absolute bottom-0 inset-x-0 h-1 bg-slate-800">
+                <div
+                  className="h-full bg-amber-400 transition-all duration-1000 ease-linear"
+                  style={{
+                    width: `${(broadcastSecondsLeft / broadcastNotice.durationSec) * 100}%`,
+                  }}
+                />
               </div>
             </div>
           </div>
