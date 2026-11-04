@@ -88,7 +88,8 @@ export default function PublicExamLanding() {
       setFormError("Enter your full name so your result can be matched to you.");
       return;
     }
-    if (!accessCode.trim()) {
+    const code = accessCode.trim().toUpperCase();
+    if (!code) {
       setFormError("Enter the 6-digit access code provided for this examination.");
       return;
     }
@@ -102,7 +103,7 @@ export default function PublicExamLanding() {
           body: JSON.stringify({
             name: name.trim(),
             email: email.trim() || undefined,
-            accessCode: accessCode.trim() || undefined,
+            accessCode: code,
           }),
         },
       );
@@ -141,9 +142,10 @@ export default function PublicExamLanding() {
     );
   }
 
+  const isPendingSchedule = exam.status ? exam.status !== "APPROVED" : exam.isScheduled === false;
   const notOpen = exam.state === "NOT_OPEN";
   const closed = exam.state === "CLOSED";
-  const blocked = notOpen || closed;
+  const blocked = isPendingSchedule || notOpen || closed;
   const instructions = instructionsText(exam.instructions);
 
   return (
@@ -220,7 +222,17 @@ export default function PublicExamLanding() {
               </p>
             )}
 
-            {(notOpen || closed) && (
+            {isPendingSchedule ? (
+              <div className="mt-5 flex items-start gap-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-200">
+                <CalendarClock size={18} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <p className="font-semibold text-amber-900 dark:text-amber-100">Awaiting Administrator Schedule</p>
+                  <p className="mt-0.5 text-[12px] text-amber-700 dark:text-amber-300">
+                    This examination paper has been set and published by the lecturer and is pending timetable scheduling by an Administrator. It will open for candidates as soon as it is scheduled.
+                  </p>
+                </div>
+              </div>
+            ) : (notOpen || closed) ? (
               <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-200">
                 <CalendarClock size={16} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                 <span>
@@ -229,7 +241,7 @@ export default function PublicExamLanding() {
                     : `This exam closed on ${fmtDate(exam.closesAt) ?? "an earlier date"}.`}
                 </span>
               </div>
-            )}
+            ) : null}
             {!blocked && exam.closesAt && (
               <p className="mt-4 text-[12px] text-gray-500 dark:text-slate-400">Closes {fmtDate(exam.closesAt)}.</p>
             )}
@@ -312,9 +324,9 @@ export default function PublicExamLanding() {
                 <Input
                   id="candidate-code"
                   className="pl-9 bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 font-mono tracking-widest font-bold"
-                  placeholder="Enter access code"
+                  placeholder="Enter 6-digit access code"
                   value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value)}
+                  onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                   autoComplete="off"
                   required
                 />
@@ -325,7 +337,7 @@ export default function PublicExamLanding() {
             </div>
 
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold" isLoading={starting} disabled={blocked}>
-              {blocked ? "Not available" : "Start exam"}
+              {isPendingSchedule ? "Awaiting Admin Schedule" : blocked ? "Not available" : "Start exam"}
               {!blocked && !starting && <ArrowRight size={16} className="ml-2" />}
             </Button>
 

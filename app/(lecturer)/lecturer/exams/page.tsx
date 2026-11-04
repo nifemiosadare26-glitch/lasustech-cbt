@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, MoreHorizontal, FileCheck, Calendar, Link2, Loader2, Globe, Building2,
+  Search, Plus, MoreHorizontal, FileCheck, Calendar, Link2, Loader2, Globe, Building2, KeyRound, Copy,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
@@ -30,7 +30,9 @@ interface ExamRow {
   durationMin: number | null;
   passMark: string | null;
   publicSlug: string | null;
+  publicLink?: string | null;
   publicUrl: string | null;
+  accessCode?: string | null;
   publicOpensAt: string | null;
   publicClosesAt: string | null;
   publishedAt: string | null;
@@ -104,8 +106,11 @@ export default function ExamManagementList() {
   });
 
   const copyLink = async (exam: ExamRow) => {
-    if (!exam.publicUrl) return;
-    const ok = await copyToClipboard(exam.publicUrl);
+    const link = exam.publicSlug
+      ? `${window.location.origin}/exam/${exam.publicSlug}`
+      : exam.publicUrl;
+    if (!link) return;
+    const ok = await copyToClipboard(link);
     if (ok) {
       toast.show("Public exam link copied.");
     } else {
@@ -229,17 +234,42 @@ export default function ExamManagementList() {
                             <Building2 size={12} /> Internal
                           </Badge>
                         )}
-                        {exam.audience === "PUBLIC" && exam.publicUrl && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void copyLink(exam);
-                            }}
-                            className="mt-1.5 flex items-center gap-1 text-[12px] text-blue-600 hover:text-blue-800 cursor-pointer"
-                          >
-                            <Link2 size={12} /> Copy link
-                          </button>
+                        {exam.audience === "PUBLIC" && (
+                          <div className="mt-1.5 space-y-1">
+                            {(exam.publicSlug || exam.publicUrl) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void copyLink(exam);
+                                }}
+                                className="flex items-center gap-1 text-[12px] text-blue-600 hover:text-blue-800 cursor-pointer"
+                              >
+                                <Link2 size={12} /> Copy link
+                              </button>
+                            )}
+                            {exam.accessCode ? (
+                              <div className="flex items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                  <KeyRound size={10} /> {exam.accessCode}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await copyToClipboard(exam.accessCode!);
+                                    toast.show("Access code copied.");
+                                  }}
+                                  className="text-gray-400 hover:text-gray-700 p-0.5"
+                                  title="Copy access code"
+                                >
+                                  <Copy size={11} />
+                                </button>
+                              </div>
+                            ) : exam.status === "DRAFT" ? (
+                              <span className="text-[10px] text-gray-400 italic block">Code set on schedule</span>
+                            ) : null}
+                          </div>
                         )}
                       </td>
                       <td className="px-6 py-4">

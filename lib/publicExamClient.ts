@@ -135,6 +135,8 @@ export interface PublicExamMeta {
   closesAt: string | null;
   showResults: boolean;
   allowRetake: boolean;
+  status?: string;
+  isScheduled?: boolean;
   state: "NOT_OPEN" | "CLOSED" | "OPEN";
 }
 

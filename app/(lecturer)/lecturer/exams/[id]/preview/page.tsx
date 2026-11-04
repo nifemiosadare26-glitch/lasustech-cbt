@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, Clock, FileCheck, CheckCircle2, Link2, Loader2, Globe, Building2, CalendarDays, ShieldCheck,
+  ArrowLeft, Clock, FileCheck, CheckCircle2, Link2, Loader2, Globe, Building2, CalendarDays, ShieldCheck, KeyRound, Copy,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { mediaSrc } from "@/lib/apiClient";
@@ -76,7 +76,9 @@ interface ExamDetail {
   passMark: string | null;
   settings: Record<string, unknown> | null;
   publicSlug: string | null;
+  publicLink?: string | null;
   publicUrl: string | null;
+  accessCode?: string | null;
   requiresCode: boolean;
   publicOpensAt: string | null;
   publicClosesAt: string | null;
@@ -113,13 +115,27 @@ export default function ExamPreview() {
 
   const { data: exam, error, loading, reload } = useApi<ExamDetail>(id ? `/lecturer/exams/${id}` : null);
 
+  const publicUrl = typeof window !== "undefined" && exam?.publicSlug
+    ? `${window.location.origin}/exam/${exam.publicSlug}`
+    : (exam?.publicUrl ?? null);
+
   const copy = async () => {
-    if (!exam?.publicUrl) return;
-    const ok = await copyToClipboard(exam.publicUrl);
+    if (!publicUrl) return;
+    const ok = await copyToClipboard(publicUrl);
     if (ok) {
       toast.show("Public exam link copied.");
     } else {
       toast.show("Could not copy the link.", "err");
+    }
+  };
+
+  const copyCode = async () => {
+    if (!exam?.accessCode) return;
+    const ok = await copyToClipboard(exam.accessCode);
+    if (ok) {
+      toast.show("Access code copied to clipboard.");
+    } else {
+      toast.show("Could not copy access code.", "err");
     }
   };
 
@@ -191,12 +207,17 @@ export default function ExamPreview() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {exam.audience === "PUBLIC" && exam.publicUrl && (
+            {exam.audience === "PUBLIC" && publicUrl && (
               <>
                 <Button variant="secondary" onClick={() => void copy()}>
                   <Link2 size={16} className="mr-2" /> Copy public link
                 </Button>
-                <Button variant="secondary" onClick={() => window.open(exam.publicUrl!, "_blank", "noopener")}>
+                {exam.accessCode && (
+                  <Button variant="secondary" onClick={() => void copyCode()}>
+                    <KeyRound size={16} className="mr-2" /> Copy code ({exam.accessCode})
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={() => window.open(publicUrl, "_blank", "noopener")}>
                   Open exam page
                 </Button>
               </>
@@ -205,16 +226,62 @@ export default function ExamPreview() {
           </div>
         </div>
 
-        {exam.audience === "PUBLIC" && exam.publicUrl && (
-          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <Link2 size={18} className="text-blue-600 shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <p className="text-[13px] text-blue-900 font-medium">Public examination link</p>
-              <p className="text-[12px] text-blue-700 break-all mt-1">{exam.publicUrl}</p>
-              <p className="text-[12px] text-blue-700 mt-1">
+        {exam.audience === "PUBLIC" && (
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <Globe size={20} className="text-blue-600 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[14px] text-blue-900 font-semibold">Public Examination Link & Access Code</p>
+                    <Badge variant={exam.status === "APPROVED" ? "success" : "warning"}>
+                      {exam.status === "APPROVED" ? "Active on Timetable" : "Pending Admin Schedule"}
+                    </Badge>
+                  </div>
+                  {publicUrl && (
+                    <p className="text-[13px] text-blue-700 break-all mt-1 font-mono select-all">
+                      {publicUrl}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {publicUrl && (
+                  <>
+                    <Button size="sm" variant="secondary" onClick={() => void copy()}>
+                      <Copy size={14} className="mr-1.5" /> Copy link
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => window.open(publicUrl, "_blank", "noopener")}>
+                      Open page
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-blue-200/60 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <KeyRound size={16} className="text-blue-700" />
+                <span className="text-[13px] text-blue-900 font-medium">Candidate Access Code:</span>
+                {exam.accessCode ? (
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-mono font-bold text-[14px] rounded border border-blue-300 tracking-wider">
+                      {exam.accessCode}
+                    </span>
+                    <Button size="sm" variant="tertiary" className="h-7 px-2 text-blue-700 hover:text-blue-900" onClick={() => void copyCode()}>
+                      <Copy size={13} className="mr-1" /> Copy code
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="text-[12px] text-blue-600 italic">
+                    Will be generated automatically when scheduled by Administrator
+                  </span>
+                )}
+              </div>
+              <p className="text-[12px] text-blue-600">
                 {exam.status === "APPROVED"
-                  ? "Exam is active. Candidates require the scheduled access code to begin."
-                  : "Exam requires scheduling by an Administrator to become active."}
+                  ? "Candidates navigate to this URL and enter the access code to take the exam."
+                  : "All public exams must be scheduled by an Admin before candidates can start."}
               </p>
             </div>
           </div>

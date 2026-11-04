@@ -27,6 +27,7 @@ interface Sitting {
   examSlug?: string | null;
   publicLink?: string | null;
   isPublic?: boolean;
+  accessCode?: string | null;
   courseCode: string | null;
   courseTitle: string | null;
   subjectName: string | null;
@@ -140,13 +141,18 @@ export default function AdminExamSchedule() {
   const [transitioning, setTransitioning] = React.useState<{ sitting: Sitting; action: "open" | "close" } | null>(null);
 
   const viewCode = async (sitting: Sitting) => {
+    if (sitting.accessCode) {
+      setAccessCode(sitting.accessCode);
+      return;
+    }
     setBusy(`view-code-${sitting.id}`);
     try {
       const res = await apiClient<{ data: { accessCode: string | null } }>(`/admin/schedule/${sitting.id}/access-code`);
       if (res.data?.accessCode) {
         setAccessCode(res.data.accessCode);
+        sitting.accessCode = res.data.accessCode;
       } else {
-        toast.show("No active access code found. You can generate a new one.", "err");
+        toast.show("No active access code found. You can generate a new one using Actions → Regenerate Access Code.", "err");
       }
     } catch (e) {
       toast.show(errMessage(e), "err");
@@ -323,17 +329,61 @@ export default function AdminExamSchedule() {
                           {slot.sessionName ? ` · ${slot.sessionName}` : ""}
                         </div>
                         {slot.publicLink && (
-                          <div className="mt-1 flex items-center gap-1.5">
+                          <div className="mt-1 flex items-center gap-2">
                             <a
                               href={slot.publicLink}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-mono"
+                              className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-mono font-medium"
                             >
                               <Link2 size={11} /> {slot.publicLink}
                             </a>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const url = `${window.location.origin}${slot.publicLink}`;
+                                await copyToClipboard(url);
+                                toast.show("Public exam link copied.");
+                              }}
+                              className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                              title="Copy full public exam link"
+                            >
+                              <Copy size={12} />
+                            </button>
                           </div>
                         )}
+                        <div className="mt-1.5 flex items-center gap-2">
+                          {slot.accessCode ? (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-mono font-bold">
+                              <KeyRound size={11} className="text-blue-600" />
+                              <span>Code: {slot.accessCode}</span>
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await copyToClipboard(slot.accessCode!);
+                                  toast.show("Access code copied.");
+                                }}
+                                className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer ml-0.5"
+                                title="Copy access code"
+                              >
+                                <Copy size={11} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void viewCode(slot);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline cursor-pointer"
+                            >
+                              <KeyRound size={11} /> {busy === `view-code-${slot.id}` ? "Loading..." : "Check Access Code"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="space-y-1.5">
