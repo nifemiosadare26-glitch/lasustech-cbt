@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock, Printer, Globe, Link2, Copy, Eye, EyeOff,
+  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock, Printer, Globe, Link2, Copy, Eye, EyeOff, Share2, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { apiClient } from "@/lib/apiClient";
@@ -16,6 +16,10 @@ import { fmtDateTime } from "@/lib/format";
 import { copyToClipboard } from "@/lib/browser";
 import { ConfirmModal, ErrorBanner, Modal, Pagination, errMessage, selectCls, useToast } from "@/components/admin/ui";
 import { ExamAttendanceModal } from "@/components/admin/exam-attendance-modal";
+import {
+  CandidateParticipationModal,
+  type CandidateParticipationExam,
+} from "@/components/exam/candidate-participation-modal";
 
 type SittingStatus = "SCHEDULED" | "OPEN" | "CLOSED" | "CANCELLED";
 
@@ -26,8 +30,11 @@ interface Sitting {
   examKind: string;
   examSlug?: string | null;
   publicLink?: string | null;
+  publicUrl?: string | null;
+  studentStartLink?: string | null;
   isPublic?: boolean;
   accessCode?: string | null;
+  passMark?: number | null;
   courseCode: string | null;
   courseTitle: string | null;
   subjectName: string | null;
@@ -136,6 +143,7 @@ export default function AdminExamSchedule() {
   const [revealedCodes, setRevealedCodes] = React.useState<Record<string, string>>({});
   const [maskedCodes, setMaskedCodes] = React.useState<Record<string, boolean>>({});
   const [attendanceSittingId, setAttendanceSittingId] = React.useState<string | null>(null);
+  const [participationExam, setParticipationExam] = React.useState<CandidateParticipationExam | null>(null);
   const [menu, setMenu] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [cancelling, setCancelling] = React.useState<Sitting | null>(null);
@@ -332,77 +340,137 @@ export default function AdminExamSchedule() {
                           {slot.examTitle} · {KIND_LABEL[slot.examKind] ?? slot.examKind}
                           {slot.sessionName ? ` · ${slot.sessionName}` : ""}
                         </div>
-                        {slot.publicLink && (
-                          <div className="mt-1 flex items-center gap-2">
-                            <a
-                              href={slot.publicLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-mono font-medium"
-                            >
-                              <Link2 size={11} /> {slot.publicLink}
-                            </a>
-                            <button
-                              type="button"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const url = `${window.location.origin}${slot.publicLink}`;
-                                await copyToClipboard(url);
-                                toast.show("Public exam link copied.");
-                              }}
-                              className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
-                              title="Copy full public exam link"
-                            >
-                              <Copy size={12} />
-                            </button>
-                          </div>
-                        )}
-                        <div className="mt-1.5 flex items-center gap-2">
-                          {(() => {
-                            const code = revealedCodes[slot.id] ?? slot.accessCode;
-                            const isMasked = maskedCodes[slot.id] ?? false;
-                            if (code) {
-                              return (
-                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-mono font-bold">
-                                  <KeyRound size={11} className="text-blue-600" />
-                                  <span>Code: {isMasked ? "••••••" : code}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setMaskedCodes((prev) => ({ ...prev, [slot.id]: !isMasked }));
-                                    }}
-                                    className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer"
-                                    title={isMasked ? "Show access code" : "Hide access code"}
-                                  >
-                                    {isMasked ? <Eye size={12} /> : <EyeOff size={12} />}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      await copyToClipboard(code);
-                                      toast.show("Access code copied.");
-                                    }}
-                                    className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer ml-0.5"
-                                    title="Copy access code"
-                                  >
-                                    <Copy size={11} />
-                                  </button>
-                                </div>
-                              );
-                            }
-                            return (
+
+                        {/* Direct Candidate Entrance Link */}
+                        {(() => {
+                          const isPublic = slot.audience === "PUBLIC" || slot.isPublic;
+                          const examSlug = slot.examSlug || slot.examId;
+                          const candidatePath = isPublic ? `/exam/${examSlug}` : `/student/exam/${slot.id}/start`;
+                          const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${candidatePath}` : candidatePath;
+
+                          return (
+                            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] text-gray-500 font-medium">
+                                {isPublic ? "Candidate URL:" : "Start URL:"}
+                              </span>
+                              <a
+                                href={candidatePath}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-mono font-medium bg-blue-50/80 px-1.5 py-0.5 rounded border border-blue-200"
+                              >
+                                <Link2 size={11} /> {candidatePath}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await copyToClipboard(fullUrl);
+                                  toast.show("Candidate exam link copied to clipboard.");
+                                }}
+                                className="text-gray-500 hover:text-gray-800 p-0.5 cursor-pointer"
+                                title="Copy full exam link"
+                              >
+                                <Copy size={12} />
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void viewCode(slot);
+                                  window.open(fullUrl, "_blank", "noopener");
                                 }}
-                                className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline cursor-pointer"
+                                className="text-gray-500 hover:text-gray-800 p-0.5 cursor-pointer"
+                                title="Open entrance page in new tab"
                               >
-                                <KeyRound size={11} /> {busy === `view-code-${slot.id}` ? "Loading..." : "Check Access Code"}
+                                <ExternalLink size={12} />
                               </button>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Access code & Share Button */}
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          {(() => {
+                            const code = revealedCodes[slot.id] ?? slot.accessCode;
+                            const isMasked = maskedCodes[slot.id] ?? false;
+                            const isPublic = slot.audience === "PUBLIC" || slot.isPublic;
+                            const examSlug = slot.examSlug || slot.examId;
+                            const candidatePath = isPublic ? `/exam/${examSlug}` : `/student/exam/${slot.id}/start`;
+
+                            return (
+                              <>
+                                {code ? (
+                                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-mono font-bold">
+                                    <KeyRound size={11} className="text-blue-600" />
+                                    <span>Code: {isMasked ? "••••••" : code}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMaskedCodes((prev) => ({ ...prev, [slot.id]: !isMasked }));
+                                      }}
+                                      className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer"
+                                      title={isMasked ? "Show access code" : "Hide access code"}
+                                    >
+                                      {isMasked ? <Eye size={12} /> : <EyeOff size={12} />}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await copyToClipboard(code);
+                                        toast.show("Access code copied.");
+                                      }}
+                                      className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer ml-0.5"
+                                      title="Copy access code"
+                                    >
+                                      <Copy size={11} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void viewCode(slot);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline cursor-pointer bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-medium"
+                                  >
+                                    <KeyRound size={11} /> {busy === `view-code-${slot.id}` ? "Loading..." : "Check Access Code"}
+                                  </button>
+                                )}
+
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2.5 text-[11px] font-medium text-blue-900 bg-white border border-blue-300 hover:bg-blue-50 shadow-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${candidatePath}` : candidatePath;
+                                    setParticipationExam({
+                                      id: slot.examId || slot.id,
+                                      title: slot.examTitle,
+                                      courseCode: slot.courseCode,
+                                      courseTitle: slot.courseTitle,
+                                      audience: isPublic ? "PUBLIC" : "INSTITUTIONAL",
+                                      status: slot.status,
+                                      durationMin: slot.durationMin,
+                                      passMark: slot.passMark,
+                                      publicSlug: examSlug,
+                                      publicLink: candidatePath,
+                                      publicUrl: fullUrl,
+                                      accessCode: code,
+                                      startsAt: slot.startsAt,
+                                      endsAt: slot.endsAt,
+                                      venue: slot.venue,
+                                      requireWebcam: slot.requireWebcam,
+                                    });
+                                  }}
+                                >
+                                  <Share2 size={12} className="mr-1 text-blue-600" />
+                                  Candidate Participation Info
+                                </Button>
+                              </>
                             );
                           })()}
                         </div>
@@ -500,19 +568,54 @@ export default function AdminExamSchedule() {
                               >
                                 Open Live Monitor
                               </Link>
-                              {slot.publicLink && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    setMenu(null);
-                                    await copyToClipboard(`${window.location.origin}${slot.publicLink}`);
-                                    toast.show("Public exam link copied to clipboard.");
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer flex items-center gap-1.5"
-                                >
-                                  <Link2 size={13} /> Copy Public Link
-                                </button>
-                              )}
+                              {(() => {
+                                const isPublic = slot.audience === "PUBLIC" || slot.isPublic;
+                                const examSlug = slot.examSlug || slot.examId;
+                                const candidatePath = isPublic ? `/exam/${examSlug}` : `/student/exam/${slot.id}/start`;
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setMenu(null);
+                                        const fullUrl = `${window.location.origin}${candidatePath}`;
+                                        setParticipationExam({
+                                          id: slot.examId || slot.id,
+                                          title: slot.examTitle,
+                                          courseCode: slot.courseCode,
+                                          courseTitle: slot.courseTitle,
+                                          audience: isPublic ? "PUBLIC" : "INSTITUTIONAL",
+                                          status: slot.status,
+                                          durationMin: slot.durationMin,
+                                          passMark: slot.passMark,
+                                          publicSlug: examSlug,
+                                          publicLink: candidatePath,
+                                          publicUrl: fullUrl,
+                                          accessCode: revealedCodes[slot.id] ?? slot.accessCode,
+                                          startsAt: slot.startsAt,
+                                          endsAt: slot.endsAt,
+                                          venue: slot.venue,
+                                          requireWebcam: slot.requireWebcam,
+                                        });
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer flex items-center gap-1.5 font-medium"
+                                    >
+                                      <Share2 size={13} className="text-blue-600" /> Candidate Participation Info
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        setMenu(null);
+                                        await copyToClipboard(`${window.location.origin}${candidatePath}`);
+                                        toast.show("Exam entrance link copied to clipboard.");
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer flex items-center gap-1.5"
+                                    >
+                                      <Link2 size={13} /> Copy Entrance Link
+                                    </button>
+                                  </>
+                                );
+                              })()}
                               {(slot.status === "SCHEDULED" || slot.status === "OPEN") && (
                                 <>
                                   <button
@@ -641,6 +744,21 @@ export default function AdminExamSchedule() {
         <ExamAttendanceModal
           sittingId={attendanceSittingId}
           onClose={() => setAttendanceSittingId(null)}
+        />
+      )}
+
+      {participationExam && (
+        <CandidateParticipationModal
+          exam={participationExam}
+          role="ADMIN"
+          onClose={() => setParticipationExam(null)}
+          onCodeUpdated={(newCode) => {
+            if (participationExam) {
+              setRevealedCodes((prev) => ({ ...prev, [participationExam.id]: newCode }));
+              setParticipationExam((prev) => (prev ? { ...prev, accessCode: newCode } : null));
+              void reload();
+            }
+          }}
         />
       )}
 
