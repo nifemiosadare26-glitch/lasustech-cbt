@@ -28,8 +28,22 @@ import {
   ShieldAlert,
   Radio,
   AlertCircle,
-  Loader2
+  Loader2,
+  Globe,
+  Building2,
+  KeyRound,
+  Copy,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Share2,
 } from "lucide-react";
+import {
+  CandidateParticipationModal,
+  type CandidateParticipationExam,
+} from "@/components/exam/candidate-participation-modal";
+import { copyToClipboard } from "@/lib/browser";
+import { apiClient } from "@/lib/apiClient";
 import {
   AreaChart,
   Area,
@@ -47,6 +61,27 @@ import {
 /** A day on the activity chart, as GET /admin/dashboard returns it. */
 type SeriesPoint = { date: string; logins: number; exams: number };
 
+export type ActiveExamItem = {
+  id: string;
+  title: string;
+  courseCode: string;
+  courseTitle: string;
+  audience: "INSTITUTIONAL" | "PUBLIC";
+  status: string;
+  durationMin: number;
+  passMark: number | null;
+  questionCount: number;
+  sittingId: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  venue: string | null;
+  requireWebcam: boolean;
+  accessCode: string | null;
+  publicSlug: string | null;
+  publicLink: string | null;
+  publicUrl: string | null;
+};
+
 type DashboardData = {
   stats: {
     activeUsers: { value: number; previous: number };
@@ -54,6 +89,7 @@ type DashboardData = {
     openAlerts: { total: number; high: number };
     uptimeSeconds: number;
   };
+  activeExams?: ActiveExamItem[];
   series: SeriesPoint[];
   health: { name: string; status: string; latencyMs: number | null }[];
   recent: {
@@ -115,6 +151,26 @@ export default function AdminDashboard() {
   // Quick action modals
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [selectedExamForParticipation, setSelectedExamForParticipation] = useState<CandidateParticipationExam | null>(null);
+  const [maskedCodes, setMaskedCodes] = useState<Record<string, boolean>>({});
+  const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
+  const [busyCodeId, setBusyCodeId] = useState<string | null>(null);
+
+  const fetchExamCode = async (exam: ActiveExamItem) => {
+    const targetId = exam.sittingId || exam.id;
+    if (revealedCodes[targetId]) return;
+    setBusyCodeId(targetId);
+    try {
+      const res = await apiClient<{ data: { accessCode: string | null } }>(`/admin/schedule/${targetId}/access-code`);
+      if (res.data?.accessCode) {
+        setRevealedCodes((prev) => ({ ...prev, [targetId]: res.data.accessCode! }));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBusyCodeId(null);
+    }
+  };
 
   // Form states. Role keys and field names match POST /admin/users exactly.
   const [newUser, setNewUser] = useState({
@@ -542,6 +598,200 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
+      {/* Active & Public Examinations — Candidate Entrance & Access Codes */}
+      <Card
+        title="Active & Public Examinations"
+        action={{ label: "Manage timetable & sittings", href: "/admin/schedule" }}
+        className="w-full"
+        noPadding
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-blue-50/70 border-b border-gray-200">
+                <th className="px-4 py-3 text-[13px] font-semibold text-gray-900">Exam & Course</th>
+                <th className="px-4 py-3 text-[13px] font-semibold text-gray-900">Type</th>
+                <th className="px-4 py-3 text-[13px] font-semibold text-gray-900">Schedule (WAT)</th>
+                <th className="px-4 py-3 text-[13px] font-semibold text-gray-900">Status</th>
+                <th className="px-4 py-3 text-[13px] font-semibold text-gray-900">Access Code</th>
+                <th className="px-4 py-3 text-[13px] font-semibold text-gray-900">Candidate Participation</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {(data?.activeExams ?? []).map((exam) => {
+                const targetId = exam.sittingId || exam.id;
+                const effectiveCode = revealedCodes[targetId] || exam.accessCode;
+                const isMasked = maskedCodes[targetId] ?? false;
+                const isBusy = busyCodeId === targetId;
+
+                const startLabel = exam.startsAt
+                  ? new Intl.DateTimeFormat("en-NG", {
+                      timeZone: "Africa/Lagos",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }).format(new Date(exam.startsAt)) + " WAT"
+                  : "On Demand";
+
+                return (
+                  <tr key={exam.id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="px-4 py-3.5">
+                      <div className="min-w-0">
+                        <span className="font-semibold text-[14px] text-gray-900 block truncate">
+                          {exam.title}
+                        </span>
+                        <span className="text-[12px] text-gray-500 block truncate">
+                          {exam.courseCode} · {exam.durationMin} mins · {exam.questionCount} Qs
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {exam.audience === "PUBLIC" ? (
+                        <Badge variant="blue-tint" className="gap-1 text-[11px]">
+                          <Globe size={11} /> Public
+                        </Badge>
+                      ) : (
+                        <Badge variant="gray-tint" className="gap-1 text-[11px]">
+                          <Building2 size={11} /> Institutional
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
+                      {startLabel}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <Badge
+                        variant={
+                          exam.status === "OPEN"
+                            ? "success"
+                            : exam.status === "SCHEDULED" || exam.status === "APPROVED"
+                              ? "blue-solid"
+                              : "default"
+                        }
+                        className="text-[11px]"
+                      >
+                        {exam.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {effectiveCode ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[13px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                            {isMasked ? "••••••" : effectiveCode}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMaskedCodes((prev) => ({ ...prev, [targetId]: !isMasked }))
+                            }
+                            className="p-1 text-gray-400 hover:text-gray-700 rounded cursor-pointer"
+                            title={isMasked ? "Show code" : "Hide code"}
+                          >
+                            {isMasked ? <Eye size={13} /> : <EyeOff size={13} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await copyToClipboard(effectiveCode);
+                              toast({ title: "Access code copied to clipboard", variant: "success" });
+                            }}
+                            className="p-1 text-gray-400 hover:text-gray-700 rounded cursor-pointer"
+                            title="Copy access code"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="tertiary"
+                          className="h-7 text-[12px] px-2 text-blue-600 hover:text-blue-800"
+                          disabled={isBusy}
+                          onClick={() => void fetchExamCode(exam)}
+                        >
+                          {isBusy ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin mr-1" /> Fetching...
+                            </>
+                          ) : (
+                            <>
+                              <KeyRound size={12} className="mr-1" /> Reveal Code
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 px-2.5 text-[12px] font-medium"
+                          onClick={() =>
+                            setSelectedExamForParticipation({
+                              id: exam.id,
+                              title: exam.title,
+                              courseCode: exam.courseCode,
+                              courseTitle: exam.courseTitle,
+                              audience: exam.audience,
+                              status: exam.status,
+                              durationMin: exam.durationMin,
+                              passMark: exam.passMark,
+                              questionCount: exam.questionCount,
+                              publicSlug: exam.publicSlug,
+                              publicLink: exam.publicLink,
+                              publicUrl: exam.publicUrl,
+                              accessCode: effectiveCode,
+                              startsAt: exam.startsAt,
+                              endsAt: exam.endsAt,
+                              venue: exam.venue,
+                              requireWebcam: exam.requireWebcam,
+                            })
+                          }
+                        >
+                          <Share2 size={13} className="mr-1.5 text-blue-600" />
+                          Student Info & Share
+                        </Button>
+                        {exam.audience === "PUBLIC" && (exam.publicSlug || exam.publicUrl) && (
+                          <Button
+                            size="sm"
+                            variant="tertiary"
+                            className="h-8 px-2 text-[12px] text-gray-600 hover:text-gray-900"
+                            onClick={() => {
+                              const url = exam.publicUrl || `/exam/${exam.publicSlug || exam.id}`;
+                              window.open(url, "_blank", "noopener");
+                            }}
+                            title="Open candidate entrance page"
+                          >
+                            <ExternalLink size={13} />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!loading && (data?.activeExams ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-[13px] text-gray-500">
+                    No active or public examinations currently scheduled.
+                  </td>
+                </tr>
+              )}
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-[13px] text-gray-500">
+                    <Loader2 size={16} className="inline animate-spin mr-2" />
+                    Loading active examinations…
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 4. Recent audit events */}
         <Card
@@ -910,6 +1160,21 @@ export default function AdminDashboard() {
             </div>
           </section>
         </div>
+      )}
+
+      {selectedExamForParticipation && (
+        <CandidateParticipationModal
+          exam={selectedExamForParticipation}
+          role="ADMIN"
+          onClose={() => setSelectedExamForParticipation(null)}
+          onCodeUpdated={(newCode) => {
+            if (selectedExamForParticipation) {
+              const targetId = selectedExamForParticipation.id;
+              setRevealedCodes((prev) => ({ ...prev, [targetId]: newCode }));
+              setSelectedExamForParticipation((prev) => (prev ? { ...prev, accessCode: newCode } : null));
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -13,10 +13,24 @@ import {
   GraduationCap,
   ClipboardList,
   FileText,
+  Globe,
+  Building2,
+  KeyRound,
+  Copy,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { useApi } from "@/lib/useApi";
+import { copyToClipboard } from "@/lib/browser";
+import { useToast } from "@/components/admin/ui";
+import {
+  CandidateParticipationModal,
+  type CandidateParticipationExam,
+} from "@/components/exam/candidate-participation-modal";
 
 type Me = { names?: string };
 type Summary = { courses: number; subjects: number; questions: number; exams: number };
@@ -40,9 +54,21 @@ type ExamRow = {
   ownerLabel: string;
   questionCount: number;
   durationMin: number | null;
+  passMark: number | string | null;
   publishedAt: string | null;
+  publicSlug: string | null;
+  publicLink: string | null;
   publicUrl: string | null;
+  accessCode: string | null;
   status: string;
+  sitting?: {
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    status: string;
+    venue: string | null;
+    requireWebcam: boolean;
+  } | null;
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -88,6 +114,10 @@ function StatCard({
 
 export default function LecturerDashboard() {
   const [greeting, setGreeting] = useState("Good morning");
+  const toast = useToast();
+  const [selectedExam, setSelectedExam] = useState<CandidateParticipationExam | null>(null);
+  const [maskedCodes, setMaskedCodes] = useState<Record<string, boolean>>({});
+  const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({});
 
   const me = useApi<Me>("/me");
   const summary = useApi<Summary>("/lecturer/dashboard/summary");
@@ -220,34 +250,131 @@ export default function LecturerDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {recentExams.map((exam) => (
-                  <Link
-                    key={exam.id}
-                    href={`/lecturer/exams/${exam.id}/preview`}
-                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="p-2 bg-blue-100 rounded-md text-blue-700 shrink-0">
-                        <FileText size={18} />
+                {recentExams.map((exam) => {
+                  const effectiveCode = revealedCodes[exam.id] || exam.accessCode;
+                  const isMasked = maskedCodes[exam.id] ?? false;
+
+                  return (
+                    <div
+                      key={exam.id}
+                      className="p-3.5 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-xs transition-all space-y-2.5"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <Link
+                          href={`/lecturer/exams/${exam.id}/preview`}
+                          className="flex items-center gap-3 min-w-0 group"
+                        >
+                          <div className="p-2 bg-blue-100 rounded-md text-blue-700 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[14px] font-semibold text-gray-900 block truncate group-hover:text-blue-600 transition-colors">
+                              {exam.title}
+                            </span>
+                            <span className="text-[12px] text-gray-500 block truncate">
+                              {exam.ownerLabel} • {exam.kindLabel ?? KIND_LABEL[exam.kind] ?? exam.kind} •{" "}
+                              {exam.questionCount} Qs {exam.durationMin ? `• ${exam.durationMin} mins` : ""}
+                            </span>
+                          </div>
+                        </Link>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant={exam.audience === "PUBLIC" ? "blue-solid" : "default"}>
+                            {exam.audience === "PUBLIC" ? "Public" : "School"}
+                          </Badge>
+                          <Link href={`/lecturer/exams/${exam.id}/preview`}>
+                            <Button size="sm" variant="tertiary" className="h-7 px-2 text-[12px]">
+                              Preview <ArrowRight className="ml-1" size={14} />
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <span className="text-[14px] font-medium text-gray-900 block truncate">
-                          {exam.title}
-                        </span>
-                        <span className="text-[12px] text-gray-500 block truncate">
-                          {exam.ownerLabel} • {exam.kindLabel ?? KIND_LABEL[exam.kind] ?? exam.kind} •{" "}
-                          {exam.questionCount} question{exam.questionCount === 1 ? "" : "s"}
-                        </span>
+
+                      {/* Access code & Student Participation Controls */}
+                      <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-medium flex items-center gap-1">
+                            <KeyRound size={13} className="text-blue-600" /> Access Code:
+                          </span>
+                          {effectiveCode ? (
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono text-[12px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                                {isMasked ? "••••••" : effectiveCode}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setMaskedCodes((prev) => ({ ...prev, [exam.id]: !isMasked }))
+                                }
+                                className="p-1 text-gray-400 hover:text-gray-700 rounded cursor-pointer"
+                                title={isMasked ? "Show code" : "Hide code"}
+                              >
+                                {isMasked ? <Eye size={12} /> : <EyeOff size={12} />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await copyToClipboard(effectiveCode);
+                                  toast.show("Access code copied.");
+                                }}
+                                className="p-1 text-gray-400 hover:text-gray-700 rounded cursor-pointer"
+                                title="Copy access code"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">Generated on schedule</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {exam.audience === "PUBLIC" && (exam.publicSlug || exam.publicUrl) && (
+                            <Button
+                              size="sm"
+                              variant="tertiary"
+                              className="h-7 px-2 text-[11px] text-blue-600 hover:text-blue-800"
+                              onClick={async () => {
+                                const url = exam.publicUrl || `/exam/${exam.publicSlug || exam.id}`;
+                                await copyToClipboard(url);
+                                toast.show("Public exam link copied.");
+                              }}
+                            >
+                              <Copy size={12} className="mr-1" /> Copy Link
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 px-2.5 text-[11px] font-medium"
+                            onClick={() =>
+                              setSelectedExam({
+                                id: exam.id,
+                                title: exam.title,
+                                ownerLabel: exam.ownerLabel,
+                                audience: exam.audience,
+                                status: exam.status,
+                                durationMin: exam.durationMin,
+                                passMark: exam.passMark,
+                                questionCount: exam.questionCount,
+                                publicSlug: exam.publicSlug,
+                                publicLink: exam.publicLink,
+                                publicUrl: exam.publicUrl,
+                                accessCode: effectiveCode,
+                                startsAt: exam.sitting?.startsAt ?? null,
+                                endsAt: exam.sitting?.endsAt ?? null,
+                                venue: exam.sitting?.venue ?? null,
+                                requireWebcam: exam.sitting?.requireWebcam ?? false,
+                              })
+                            }
+                          >
+                            <Share2 size={12} className="mr-1 text-blue-600" />
+                            Share with Candidates
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant={exam.audience === "PUBLIC" ? "blue-solid" : "default"}>
-                        {exam.audience === "PUBLIC" ? "Public" : "School"}
-                      </Badge>
-                      <ArrowRight className="text-gray-400" size={16} />
-                    </div>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -345,6 +472,22 @@ export default function LecturerDashboard() {
           )}
         </Card>
       </div>
+
+      {toast.node}
+
+      {selectedExam && (
+        <CandidateParticipationModal
+          exam={selectedExam}
+          role="LECTURER"
+          onClose={() => setSelectedExam(null)}
+          onCodeUpdated={(newCode) => {
+            if (selectedExam) {
+              setRevealedCodes((prev) => ({ ...prev, [selectedExam.id]: newCode }));
+              setSelectedExam((prev) => (prev ? { ...prev, accessCode: newCode } : null));
+            }
+          }}
+        />
+      )}
     </>
   );
 }

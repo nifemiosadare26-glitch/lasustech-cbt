@@ -6,13 +6,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, Clock, FileCheck, CheckCircle2, Link2, Loader2, Globe, Building2, CalendarDays, ShieldCheck, KeyRound, Copy, Eye, EyeOff,
+  ArrowLeft, Clock, FileCheck, CheckCircle2, Link2, Loader2, Globe, Building2, CalendarDays, ShieldCheck, KeyRound, Copy, Eye, EyeOff, Share2, RefreshCw,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
-import { mediaSrc } from "@/lib/apiClient";
+import { mediaSrc, apiClient } from "@/lib/apiClient";
 import { ErrorBanner, useToast } from "@/components/admin/ui";
 import { DiagramRenderer } from "@/components/question/diagram-renderer";
 import { copyToClipboard } from "@/lib/browser";
+import {
+  CandidateParticipationModal,
+  type CandidateParticipationExam,
+} from "@/components/exam/candidate-participation-modal";
 
 interface MediaView {
   id: string;
@@ -113,8 +117,28 @@ export default function ExamPreview() {
   const router = useRouter();
   const toast = useToast();
   const [showAccessCode, setShowAccessCode] = React.useState(false);
+  const [showParticipationModal, setShowParticipationModal] = React.useState(false);
+  const [busyCode, setBusyCode] = React.useState(false);
 
   const { data: exam, error, loading, reload } = useApi<ExamDetail>(id ? `/lecturer/exams/${id}` : null);
+
+  const regenerateCode = async () => {
+    if (!id) return;
+    setBusyCode(true);
+    try {
+      const res = await apiClient<{ data: { accessCode: string } }>(`/lecturer/exams/${id}/access-code`, {
+        method: "POST",
+      });
+      if (res.data?.accessCode) {
+        toast.show("Access code updated!");
+        await reload();
+      }
+    } catch {
+      toast.show("Failed to update access code.", "err");
+    } finally {
+      setBusyCode(false);
+    }
+  };
 
   const publicUrl = typeof window !== "undefined" && exam?.publicSlug
     ? `${window.location.origin}/exam/${exam.publicSlug}`
@@ -208,6 +232,12 @@ export default function ExamPreview() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs"
+              onClick={() => setShowParticipationModal(true)}
+            >
+              <Share2 size={16} className="mr-2" /> Candidate Participation Notice
+            </Button>
             {exam.audience === "PUBLIC" && publicUrl && (
               <>
                 <Button variant="secondary" onClick={() => void copy()}>
@@ -282,11 +312,29 @@ export default function ExamPreview() {
                     <Button size="sm" variant="tertiary" className="h-7 px-2 text-blue-700 hover:text-blue-900" onClick={() => void copyCode()}>
                       <Copy size={13} className="mr-1" /> Copy code
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="tertiary"
+                      className="h-7 px-2 text-amber-700 hover:text-amber-900"
+                      disabled={busyCode}
+                      onClick={() => void regenerateCode()}
+                      title="Regenerate code"
+                    >
+                      <RefreshCw size={12} className={`mr-1 ${busyCode ? "animate-spin" : ""}`} />
+                      Regenerate
+                    </Button>
                   </div>
                 ) : (
-                  <span className="text-[12px] text-blue-600 italic">
-                    Will be generated automatically when scheduled by Administrator
-                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 text-[12px] bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300"
+                    disabled={busyCode}
+                    onClick={() => void regenerateCode()}
+                  >
+                    <RefreshCw size={12} className={`mr-1 ${busyCode ? "animate-spin" : ""}`} />
+                    Generate Access Code Now
+                  </Button>
                 )}
               </div>
               <p className="text-[12px] text-blue-600">
@@ -531,6 +579,32 @@ export default function ExamPreview() {
           </div>
         </div>
       </div>
+
+      {showParticipationModal && exam && (
+        <CandidateParticipationModal
+          exam={{
+            id: exam.id,
+            title: exam.title,
+            ownerLabel: exam.ownerLabel,
+            audience: exam.audience,
+            status: exam.status,
+            durationMin: exam.durationMin,
+            passMark: exam.passMark ? Number(exam.passMark) : null,
+            questionCount: questionCount,
+            publicSlug: exam.publicSlug,
+            publicLink: exam.publicLink,
+            publicUrl: publicUrl,
+            accessCode: exam.accessCode,
+            startsAt: exam.sittings[0]?.startsAt ?? exam.publicOpensAt ?? null,
+            endsAt: exam.sittings[0]?.endsAt ?? exam.publicClosesAt ?? null,
+            venue: exam.sittings[0]?.venue ?? null,
+            requireWebcam: exam.sittings[0]?.requireWebcam ?? false,
+          }}
+          role="LECTURER"
+          onClose={() => setShowParticipationModal(false)}
+          onCodeUpdated={() => void reload()}
+        />
+      )}
     </>
   );
 }

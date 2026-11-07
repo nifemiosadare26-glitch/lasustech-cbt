@@ -7,12 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, MoreHorizontal, FileCheck, Calendar, Link2, Loader2, Globe, Building2, KeyRound, Copy, Eye, EyeOff,
+  Search, Plus, MoreHorizontal, FileCheck, Calendar, Link2, Loader2, Globe, Building2, KeyRound, Copy, Eye, EyeOff, Share2, RefreshCw,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
 import { ErrorBanner, selectCls, useToast } from "@/components/admin/ui";
 import { copyToClipboard } from "@/lib/browser";
+import { apiClient } from "@/lib/apiClient";
+import {
+  CandidateParticipationModal,
+  type CandidateParticipationExam,
+} from "@/components/exam/candidate-participation-modal";
 
 type Audience = "INSTITUTIONAL" | "PUBLIC";
 
@@ -77,6 +82,24 @@ export default function ExamManagementList() {
   const [audience, setAudience] = React.useState("ALL");
   const [status, setStatus] = React.useState("ALL");
   const [maskedCodes, setMaskedCodes] = React.useState<Record<string, boolean>>({});
+  const [selectedExam, setSelectedExam] = React.useState<CandidateParticipationExam | null>(null);
+  const [revealedCodes, setRevealedCodes] = React.useState<Record<string, string>>({});
+  const [busyCodeId, setBusyCodeId] = React.useState<string | null>(null);
+
+  const retrieveCode = async (exam: ExamRow) => {
+    setBusyCodeId(exam.id);
+    try {
+      const res = await apiClient<{ data: { accessCode: string } }>(`/lecturer/exams/${exam.id}/access-code`);
+      if (res.data?.accessCode) {
+        setRevealedCodes((prev) => ({ ...prev, [exam.id]: res.data.accessCode }));
+        toast.show("Access code retrieved.");
+      }
+    } catch {
+      toast.show("Could not retrieve access code.", "err");
+    } finally {
+      setBusyCodeId(null);
+    }
+  };
 
   const query = new URLSearchParams();
   if (audience !== "ALL") query.set("audience", audience);
@@ -248,38 +271,63 @@ export default function ExamManagementList() {
                               <Link2 size={12} /> Copy link
                             </button>
                           )}
-                          {exam.accessCode ? (
-                            <div className="flex items-center gap-1">
-                              <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                <KeyRound size={10} /> {maskedCodes[exam.id] ? "••••••" : exam.accessCode}
-                              </span>
+                          {(() => {
+                            const effectiveCode = revealedCodes[exam.id] || exam.accessCode;
+                            const isBusy = busyCodeId === exam.id;
+                            if (effectiveCode) {
+                              return (
+                                <div className="flex items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                    <KeyRound size={10} /> {maskedCodes[exam.id] ? "••••••" : effectiveCode}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMaskedCodes((prev) => ({ ...prev, [exam.id]: !prev[exam.id] }));
+                                    }}
+                                    className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                                    title={maskedCodes[exam.id] ? "Show access code" : "Hide access code"}
+                                  >
+                                    {maskedCodes[exam.id] ? <Eye size={11} /> : <EyeOff size={11} />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await copyToClipboard(effectiveCode);
+                                      toast.show("Access code copied.");
+                                    }}
+                                    className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                                    title="Copy access code"
+                                  >
+                                    <Copy size={11} />
+                                  </button>
+                                </div>
+                              );
+                            }
+                            return (
                               <button
                                 type="button"
+                                disabled={isBusy}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setMaskedCodes((prev) => ({ ...prev, [exam.id]: !prev[exam.id] }));
+                                  void retrieveCode(exam);
                                 }}
-                                className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
-                                title={maskedCodes[exam.id] ? "Show access code" : "Hide access code"}
+                                className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
                               >
-                                {maskedCodes[exam.id] ? <Eye size={11} /> : <EyeOff size={11} />}
+                                {isBusy ? (
+                                  <>
+                                    <Loader2 size={10} className="animate-spin" /> Fetching...
+                                  </>
+                                ) : (
+                                  <>
+                                    <KeyRound size={10} /> Get Access Code
+                                  </>
+                                )}
                               </button>
-                              <button
-                                type="button"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await copyToClipboard(exam.accessCode!);
-                                  toast.show("Access code copied.");
-                                }}
-                                className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
-                                title="Copy access code"
-                              >
-                                <Copy size={11} />
-                              </button>
-                            </div>
-                          ) : exam.status === "DRAFT" || exam.status === "IN_MODERATION" ? (
-                            <span className="text-[10px] text-gray-400 italic block">Code set on schedule</span>
-                          ) : null}
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -294,17 +342,44 @@ export default function ExamManagementList() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/lecturer/exams/${exam.id}/preview`);
-                          }}
-                          className="text-gray-400 hover:text-gray-900 rounded p-1 transition-colors cursor-pointer"
-                          title="View exam details"
-                        >
-                          <MoreHorizontal size={18} />
-                        </button>
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 px-2 text-[11px] font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedExam({
+                                id: exam.id,
+                                title: exam.title,
+                                ownerLabel: exam.ownerLabel,
+                                audience: exam.audience,
+                                status: exam.status,
+                                durationMin: exam.durationMin,
+                                passMark: exam.passMark,
+                                questionCount: exam.questionCount,
+                                publicSlug: exam.publicSlug,
+                                publicLink: exam.publicLink,
+                                publicUrl: exam.publicUrl,
+                                accessCode: revealedCodes[exam.id] || exam.accessCode,
+                              });
+                            }}
+                          >
+                            <Share2 size={12} className="mr-1 text-blue-600" />
+                            Candidate Info
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/lecturer/exams/${exam.id}/preview`);
+                            }}
+                            className="text-gray-400 hover:text-gray-900 rounded p-1 transition-colors cursor-pointer"
+                            title="View exam details"
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -314,6 +389,21 @@ export default function ExamManagementList() {
           </div>
         </Card>
       </div>
+
+      {selectedExam && (
+        <CandidateParticipationModal
+          exam={selectedExam}
+          role="LECTURER"
+          onClose={() => setSelectedExam(null)}
+          onCodeUpdated={(newCode) => {
+            if (selectedExam) {
+              setRevealedCodes((prev) => ({ ...prev, [selectedExam.id]: newCode }));
+              setSelectedExam((prev) => (prev ? { ...prev, accessCode: newCode } : null));
+              void reload();
+            }
+          }}
+        />
+      )}
     </>
   );
 }
