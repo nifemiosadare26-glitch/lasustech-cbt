@@ -15,6 +15,8 @@ import {
   Loader2,
   ShieldCheck,
   Building,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { apiClient } from "@/lib/apiClient";
@@ -38,6 +40,7 @@ type SittingPayload = {
     startsAt?: string;
     endsAt?: string;
     requiresAccessCode: boolean;
+    accessCode?: string | null;
     instructions: Record<string, any> | null;
     isAlreadyTaken?: boolean;
     isGraceExpired?: boolean;
@@ -110,8 +113,15 @@ export default function ExamStartPage() {
   );
 
   const [accessCode, setAccessCode] = useState(initialCode);
+  const [showCode, setShowCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!accessCode && data?.sitting?.accessCode) {
+      setAccessCode(data.sitting.accessCode);
+    }
+  }, [data?.sitting?.accessCode, accessCode]);
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,7 +397,7 @@ export default function ExamStartPage() {
                 Examination Has Not Commenced Yet
               </div>
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                This examination is scheduled for {sitting.startsAt ? new Date(sitting.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "its designated schedule"}. Access to start the examination is restricted until the official scheduled start date and time.
+                This examination is scheduled for {sitting.startsAt ? new Date(sitting.startsAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Africa/Lagos' }) : "its designated schedule"}. Access to start the examination is restricted until the official scheduled start date and time.
               </p>
               <div className="pt-2">
                 <Link
@@ -473,14 +483,23 @@ export default function ExamStartPage() {
                     <div className="relative">
                       <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
-                        type="text"
+                        type={showCode ? "text" : "password"}
                         maxLength={10}
                         value={accessCode}
                         onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                         placeholder="ENTER CODE"
-                        className="w-full sm:w-48 pl-9 pr-3 py-2.5 font-mono text-base font-bold uppercase border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                        className="w-full sm:w-48 pl-9 pr-10 py-2.5 font-mono text-base font-bold uppercase border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                         disabled={submitting}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowCode(!showCode)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1"
+                        tabIndex={-1}
+                        title={showCode ? "Hide access code" : "Show access code"}
+                      >
+                        {showCode ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                       Check your student dashboard notifications or obtain from the hall invigilator.

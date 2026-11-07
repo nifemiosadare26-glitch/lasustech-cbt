@@ -16,9 +16,13 @@ import {
   KeyRound,
   Lock,
   X,
+  Eye,
+  EyeOff,
+  Copy,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
+import { copyToClipboard } from "@/lib/browser";
 
 import { useUser } from "@/components/auth/user-context";
 
@@ -111,6 +115,7 @@ export default function StudentDashboard() {
     useApi<DashboardPayload>("/student/dashboard");
 
   const [showLoginNotice, setShowLoginNotice] = React.useState(false);
+  const [maskedCodes, setMaskedCodes] = React.useState<Record<string, boolean>>({});
 
   // Pop up notifications immediately upon login, then remember dismissal for the session
   React.useEffect(() => {
@@ -335,7 +340,29 @@ export default function StudentDashboard() {
                         {exam.accessCode ? (
                           <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 text-xs font-semibold text-amber-900 dark:text-amber-200">
                             <KeyRound size={13} className="text-amber-600 dark:text-amber-400" />
-                            <span>Unlock Access Code: <strong className="font-mono tracking-wider">{exam.accessCode}</strong></span>
+                            <span>Unlock Access Code: <strong className="font-mono tracking-wider">{maskedCodes[exam.id] ? "••••••" : exam.accessCode}</strong></span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMaskedCodes((prev) => ({ ...prev, [exam.id]: !prev[exam.id] }));
+                              }}
+                              className="text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 p-0.5 cursor-pointer ml-1"
+                              title={maskedCodes[exam.id] ? "Show code" : "Hide code"}
+                            >
+                              {maskedCodes[exam.id] ? <Eye size={12} /> : <EyeOff size={12} />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await copyToClipboard(exam.accessCode!);
+                              }}
+                              className="text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 p-0.5 cursor-pointer"
+                              title="Copy code"
+                            >
+                              <Copy size={12} />
+                            </button>
                           </div>
                         ) : (
                           <div className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -424,6 +451,34 @@ export default function StudentDashboard() {
                       <MapPin size={13} className="text-slate-400" /> {exam.venue}
                     </span>
                   </div>
+                  {exam.accessCode && (
+                    <div className="flex items-center gap-1.5 pt-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                      <KeyRound size={12} />
+                      <span>Unlock Code: <strong className="font-mono">{maskedCodes[exam.id] ? "••••••" : exam.accessCode}</strong></span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMaskedCodes((prev) => ({ ...prev, [exam.id]: !prev[exam.id] }));
+                        }}
+                        className="p-0.5 cursor-pointer text-amber-600 hover:text-amber-800"
+                        title={maskedCodes[exam.id] ? "Show code" : "Hide code"}
+                      >
+                        {maskedCodes[exam.id] ? <Eye size={11} /> : <EyeOff size={11} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await copyToClipboard(exam.accessCode!);
+                        }}
+                        className="p-0.5 cursor-pointer text-amber-600 hover:text-amber-800"
+                        title="Copy code"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="shrink-0">

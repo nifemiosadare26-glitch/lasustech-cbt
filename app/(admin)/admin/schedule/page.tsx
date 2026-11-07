@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock, Printer, Globe, Link2, Copy,
+  Search, Plus, Calendar, Clock, Monitor, User, MoreHorizontal, X, Radio, KeyRound, Loader2, Trash2, Video, VideoOff, ShieldCheck, Lock, Printer, Globe, Link2, Copy, Eye, EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import { apiClient } from "@/lib/apiClient";
@@ -133,6 +133,8 @@ export default function AdminExamSchedule() {
 
   const [panel, setPanel] = React.useState<{ mode: "create" } | { mode: "edit"; sitting: Sitting } | null>(null);
   const [accessCode, setAccessCode] = React.useState<string | null>(null);
+  const [revealedCodes, setRevealedCodes] = React.useState<Record<string, string>>({});
+  const [maskedCodes, setMaskedCodes] = React.useState<Record<string, boolean>>({});
   const [attendanceSittingId, setAttendanceSittingId] = React.useState<string | null>(null);
   const [menu, setMenu] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -141,8 +143,10 @@ export default function AdminExamSchedule() {
   const [transitioning, setTransitioning] = React.useState<{ sitting: Sitting; action: "open" | "close" } | null>(null);
 
   const viewCode = async (sitting: Sitting) => {
-    if (sitting.accessCode) {
-      setAccessCode(sitting.accessCode);
+    const existing = revealedCodes[sitting.id] || sitting.accessCode;
+    if (existing) {
+      setAccessCode(existing);
+      setRevealedCodes((prev) => ({ ...prev, [sitting.id]: existing }));
       return;
     }
     setBusy(`view-code-${sitting.id}`);
@@ -150,7 +154,7 @@ export default function AdminExamSchedule() {
       const res = await apiClient<{ data: { accessCode: string | null } }>(`/admin/schedule/${sitting.id}/access-code`);
       if (res.data?.accessCode) {
         setAccessCode(res.data.accessCode);
-        sitting.accessCode = res.data.accessCode;
+        setRevealedCodes((prev) => ({ ...prev, [sitting.id]: res.data.accessCode! }));
       } else {
         toast.show("No active access code found. You can generate a new one using Actions → Regenerate Access Code.", "err");
       }
@@ -171,6 +175,7 @@ export default function AdminExamSchedule() {
       if (action === "close") toast.show(`${sitting.courseCode} sitting closed.`);
       if (action === "access-code" && res.data.accessCode) {
         setAccessCode(res.data.accessCode);
+        setRevealedCodes((prev) => ({ ...prev, [sitting.id]: res.data.accessCode! }));
       }
       await reload();
     } catch (e) {
@@ -204,8 +209,7 @@ export default function AdminExamSchedule() {
           <div>
             <h2 className="text-[24px] font-semibold text-gray-900 tracking-tight">Exam Schedule</h2>
             <p className="text-[14px] text-gray-500 mt-1">
-              Admin &amp; CBT Officer timetable. Only one school sitting can run at a time — exams are taken online, so
-              no venue is allocated.
+              Admin &amp; CBT Officer timetable. Schedule and manage multiple concurrent internal or public examinations.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -354,35 +358,53 @@ export default function AdminExamSchedule() {
                           </div>
                         )}
                         <div className="mt-1.5 flex items-center gap-2">
-                          {slot.accessCode ? (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-mono font-bold">
-                              <KeyRound size={11} className="text-blue-600" />
-                              <span>Code: {slot.accessCode}</span>
+                          {(() => {
+                            const code = revealedCodes[slot.id] ?? slot.accessCode;
+                            const isMasked = maskedCodes[slot.id] ?? false;
+                            if (code) {
+                              return (
+                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-mono font-bold">
+                                  <KeyRound size={11} className="text-blue-600" />
+                                  <span>Code: {isMasked ? "••••••" : code}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMaskedCodes((prev) => ({ ...prev, [slot.id]: !isMasked }));
+                                    }}
+                                    className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer"
+                                    title={isMasked ? "Show access code" : "Hide access code"}
+                                  >
+                                    {isMasked ? <Eye size={12} /> : <EyeOff size={12} />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await copyToClipboard(code);
+                                      toast.show("Access code copied.");
+                                    }}
+                                    className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer ml-0.5"
+                                    title="Copy access code"
+                                  >
+                                    <Copy size={11} />
+                                  </button>
+                                </div>
+                              );
+                            }
+                            return (
                               <button
                                 type="button"
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  await copyToClipboard(slot.accessCode!);
-                                  toast.show("Access code copied.");
+                                  void viewCode(slot);
                                 }}
-                                className="text-blue-500 hover:text-blue-800 p-0.5 cursor-pointer ml-0.5"
-                                title="Copy access code"
+                                className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline cursor-pointer"
                               >
-                                <Copy size={11} />
+                                <KeyRound size={11} /> {busy === `view-code-${slot.id}` ? "Loading..." : "Check Access Code"}
                               </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void viewCode(slot);
-                              }}
-                              className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline cursor-pointer"
-                            >
-                              <KeyRound size={11} /> {busy === `view-code-${slot.id}` ? "Loading..." : "Check Access Code"}
-                            </button>
-                          )}
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-6 py-4">

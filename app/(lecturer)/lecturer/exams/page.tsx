@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, Plus, MoreHorizontal, FileCheck, Calendar, Link2, Loader2, Globe, Building2, KeyRound, Copy,
+  Search, Plus, MoreHorizontal, FileCheck, Calendar, Link2, Loader2, Globe, Building2, KeyRound, Copy, Eye, EyeOff,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { useRealtimeEvent } from "@/lib/realtime";
@@ -76,6 +76,7 @@ export default function ExamManagementList() {
   const [search, setSearch] = React.useState("");
   const [audience, setAudience] = React.useState("ALL");
   const [status, setStatus] = React.useState("ALL");
+  const [maskedCodes, setMaskedCodes] = React.useState<Record<string, boolean>>({});
 
   const query = new URLSearchParams();
   if (audience !== "ALL") query.set("audience", audience);
@@ -234,43 +235,52 @@ export default function ExamManagementList() {
                             <Building2 size={12} /> Internal
                           </Badge>
                         )}
-                        {exam.audience === "PUBLIC" && (
-                          <div className="mt-1.5 space-y-1">
-                            {(exam.publicSlug || exam.publicUrl) && (
+                        <div className="mt-1.5 space-y-1">
+                          {exam.audience === "PUBLIC" && (exam.publicSlug || exam.publicUrl) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void copyLink(exam);
+                              }}
+                              className="flex items-center gap-1 text-[12px] text-blue-600 hover:text-blue-800 cursor-pointer"
+                            >
+                              <Link2 size={12} /> Copy link
+                            </button>
+                          )}
+                          {exam.accessCode ? (
+                            <div className="flex items-center gap-1">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                <KeyRound size={10} /> {maskedCodes[exam.id] ? "••••••" : exam.accessCode}
+                              </span>
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void copyLink(exam);
+                                  setMaskedCodes((prev) => ({ ...prev, [exam.id]: !prev[exam.id] }));
                                 }}
-                                className="flex items-center gap-1 text-[12px] text-blue-600 hover:text-blue-800 cursor-pointer"
+                                className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                                title={maskedCodes[exam.id] ? "Show access code" : "Hide access code"}
                               >
-                                <Link2 size={12} /> Copy link
+                                {maskedCodes[exam.id] ? <Eye size={11} /> : <EyeOff size={11} />}
                               </button>
-                            )}
-                            {exam.accessCode ? (
-                              <div className="flex items-center gap-1">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                  <KeyRound size={10} /> {exam.accessCode}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    await copyToClipboard(exam.accessCode!);
-                                    toast.show("Access code copied.");
-                                  }}
-                                  className="text-gray-400 hover:text-gray-700 p-0.5"
-                                  title="Copy access code"
-                                >
-                                  <Copy size={11} />
-                                </button>
-                              </div>
-                            ) : exam.status === "DRAFT" ? (
-                              <span className="text-[10px] text-gray-400 italic block">Code set on schedule</span>
-                            ) : null}
-                          </div>
-                        )}
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await copyToClipboard(exam.accessCode!);
+                                  toast.show("Access code copied.");
+                                }}
+                                className="text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                                title="Copy access code"
+                              >
+                                <Copy size={11} />
+                              </button>
+                            </div>
+                          ) : exam.status === "DRAFT" || exam.status === "IN_MODERATION" ? (
+                            <span className="text-[10px] text-gray-400 italic block">Code set on schedule</span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant={STATUS_VARIANT[exam.status] ?? "gray-tint"}>

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, Clock, FileCheck, CheckCircle2, Link2, Loader2, Globe, Building2, CalendarDays, ShieldCheck, KeyRound, Copy,
+  ArrowLeft, Clock, FileCheck, CheckCircle2, Link2, Loader2, Globe, Building2, CalendarDays, ShieldCheck, KeyRound, Copy, Eye, EyeOff,
 } from "lucide-react";
 import { useApi } from "@/lib/useApi";
 import { mediaSrc } from "@/lib/apiClient";
@@ -112,6 +112,7 @@ export default function ExamPreview() {
   const id = params?.id;
   const router = useRouter();
   const toast = useToast();
+  const [showAccessCode, setShowAccessCode] = React.useState(false);
 
   const { data: exam, error, loading, reload } = useApi<ExamDetail>(id ? `/lecturer/exams/${id}` : null);
 
@@ -266,8 +267,18 @@ export default function ExamPreview() {
                 {exam.accessCode ? (
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-mono font-bold text-[14px] rounded border border-blue-300 tracking-wider">
-                      {exam.accessCode}
+                      {showAccessCode ? exam.accessCode : "••••••"}
                     </span>
+                    <Button
+                      size="sm"
+                      variant="tertiary"
+                      className="h-7 px-2 text-blue-700 hover:text-blue-900"
+                      onClick={() => setShowAccessCode(!showAccessCode)}
+                      title={showAccessCode ? "Hide access code" : "Show access code"}
+                    >
+                      {showAccessCode ? <EyeOff size={13} className="mr-1" /> : <Eye size={13} className="mr-1" />}
+                      {showAccessCode ? "Hide" : "Show"}
+                    </Button>
                     <Button size="sm" variant="tertiary" className="h-7 px-2 text-blue-700 hover:text-blue-900" onClick={() => void copyCode()}>
                       <Copy size={13} className="mr-1" /> Copy code
                     </Button>
@@ -288,13 +299,55 @@ export default function ExamPreview() {
         )}
 
         {exam.audience === "INSTITUTIONAL" && (
-          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-            <CalendarDays size={18} className="text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-[13px] text-amber-800 font-medium">
-              {exam.status === "APPROVED"
-                ? "This exam is active and scheduled on the university timetable."
-                : "This exam paper is awaiting scheduling by an Administrator. It will become active once timetabled."}
-            </p>
+          <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <Building2 size={20} className="text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[14px] text-amber-950 font-semibold">Institutional Examination Timetable & Access Code</p>
+                    <Badge variant={exam.status === "APPROVED" ? "success" : "warning"}>
+                      {exam.status === "APPROVED" ? "Active on Timetable" : "Pending Admin Schedule"}
+                    </Badge>
+                  </div>
+                  <p className="text-[13px] text-amber-800 mt-1">
+                    {exam.status === "APPROVED"
+                      ? "This examination is timetabled and scheduled for enrolled students."
+                      : "This exam paper is awaiting scheduling by an Administrator. Access code is generated upon scheduling."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {exam.accessCode && (
+              <div className="pt-2 border-t border-amber-200/80 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <KeyRound size={16} className="text-amber-800" />
+                  <span className="text-[13px] text-amber-900 font-medium">Candidate Unlock Access Code:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 bg-amber-100 text-amber-950 font-mono font-bold text-[14px] rounded border border-amber-300 tracking-wider">
+                      {showAccessCode ? exam.accessCode : "••••••"}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="tertiary"
+                      className="h-7 px-2 text-amber-800 hover:text-amber-950"
+                      onClick={() => setShowAccessCode(!showAccessCode)}
+                      title={showAccessCode ? "Hide access code" : "Show access code"}
+                    >
+                      {showAccessCode ? <EyeOff size={13} className="mr-1" /> : <Eye size={13} className="mr-1" />}
+                      {showAccessCode ? "Hide" : "Show"}
+                    </Button>
+                    <Button size="sm" variant="tertiary" className="h-7 px-2 text-amber-800 hover:text-amber-950" onClick={() => void copyCode()}>
+                      <Copy size={13} className="mr-1" /> Copy code
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-[12px] text-amber-700">
+                  Invigilators and enrolled candidates use this code to unlock the examination attempt.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   AlertCircle, ArrowRight, Building2, CalendarClock, CheckCircle2, Clock, FileQuestion,
-  Globe, KeyRound, Loader2, Lock, PlayCircle, ShieldCheck, User,
+  Globe, KeyRound, Loader2, Lock, PlayCircle, ShieldCheck, User, Eye, EyeOff,
 } from "lucide-react";
 import {
   publicApi,
@@ -53,8 +53,16 @@ export default function PublicExamLanding() {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [accessCode, setAccessCode] = React.useState("");
+  const [showAccessCode, setShowAccessCode] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [starting, setStarting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const q = new URLSearchParams(window.location.search).get("code");
+      if (q) setAccessCode(q.toUpperCase());
+    }
+  }, []);
 
   const [existing, setExisting] = React.useState<{ attemptId: string; token: string; name?: string } | null>(null);
 
@@ -142,7 +150,7 @@ export default function PublicExamLanding() {
     );
   }
 
-  const isPendingSchedule = exam.status ? exam.status !== "APPROVED" : exam.isScheduled === false;
+  const isPendingSchedule = exam.status ? (exam.status !== "APPROVED" && exam.status !== "LOCKED") : exam.isScheduled === false;
   const notOpen = exam.state === "NOT_OPEN";
   const closed = exam.state === "CLOSED";
   const blocked = isPendingSchedule || notOpen || closed;
@@ -323,13 +331,23 @@ export default function PublicExamLanding() {
                 <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                 <Input
                   id="candidate-code"
-                  className="pl-9 bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 font-mono tracking-widest font-bold"
+                  type={showAccessCode ? "text" : "password"}
+                  className="pl-9 pr-10 bg-white dark:bg-slate-800/80 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 font-mono tracking-widest font-bold"
                   placeholder="Enter 6-digit access code"
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                   autoComplete="off"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowAccessCode(!showAccessCode)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-1"
+                  tabIndex={-1}
+                  title={showAccessCode ? "Hide access code" : "Show access code"}
+                >
+                  {showAccessCode ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
                 Enter the access code provided by your examiner or administrator.
