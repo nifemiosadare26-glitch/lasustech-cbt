@@ -83,6 +83,62 @@ const CALC_BUTTONS = [
   ["0", ".", "=", "+", "±"],
 ];
 
+function extractText(content: unknown): string {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  if (typeof content === "object" && content !== null) {
+    if ("text" in content && typeof (content as any).text === "string") return (content as any).text;
+    if ("html" in content && typeof (content as any).html === "string") return (content as any).html;
+    if ("body" in content && typeof (content as any).body === "string") return (content as any).body;
+    try {
+      return JSON.stringify(content);
+    } catch {
+      return "";
+    }
+  }
+  return String(content);
+}
+
+class QuestionErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[Question Render Error Caught]", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center space-y-3">
+          <AlertCircle className="mx-auto text-amber-600 dark:text-amber-400" size={28} />
+          <h3 className="font-bold text-amber-900 dark:text-amber-100 text-sm">Question display issue</h3>
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            This question could not be rendered completely. You may flag it for review and proceed to the next question.
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="text-xs px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 font-semibold cursor-pointer shadow-xs"
+          >
+            Retry Display
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function PublicExamAttempt() {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug ?? "";
@@ -213,10 +269,14 @@ export default function PublicExamAttempt() {
     publicApi<{ data: PublicAttempt }>(`/public/attempts/${stored.attemptId}`, { token: stored.token })
       .then((res) => {
         if (!active) return;
+        if (!res?.data) {
+          throw new Error("No examination attempt data received from server.");
+        }
         hydrate(res.data);
       })
       .catch((error) => {
         if (!active) return;
+        console.error("[Attempt Load Error]", error);
         setLoadError(publicErrorMessage(error));
       })
       .finally(() => {
@@ -230,13 +290,15 @@ export default function PublicExamAttempt() {
 
   const hydrate = (data: PublicAttempt) => {
     setAttempt(data);
-    setRemaining(data.remainingSec);
+    setRemaining(data.remainingSec ?? null);
 
     const initialAnswers: Record<string, number[]> = {};
     const initialFlags: Record<string, boolean> = {};
     const initialSaves: Record<string, SaveState> = {};
 
-    for (const q of data.questions) {
+    const questionsList = Array.isArray(data.questions) ? data.questions : [];
+    for (const q of questionsList) {
+      if (!q || !q.questionVersionId) continue;
       const positions = q.saved?.positions ?? [];
       const isFlagged = q.saved?.flagged ?? false;
       initialAnswers[q.questionVersionId] = positions;
@@ -718,36 +780,49 @@ export default function PublicExamAttempt() {
           <p className="text-sm text-gray-600 dark:text-slate-400">
             {loadError ?? "This examination is not available."}
           </p>
-          <Link
-            href={`/exam/${slug}`}
-            className="inline-block px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors"
-          >
-            Return to Exam Info
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                clearAttemptSession(slug);
+                router.replace(`/exam/${slug}`);
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer"
+            >
+              Re-enter Access Code
+            </button>
+            <Link
+              href={`/exam/${slug}`}
+              className="w-full sm:w-auto inline-block px-5 py-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Return to Exam Info
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   if (result) {
-    return <ResultView exam={attempt.exam} result={result} slug={slug} />;
+    return <ResultView exam={attempt?.exam} result={result} slug={slug} />;
   }
 
-  const questions = attempt.questions;
-  const question = questions[current];
-  const answeredCount = questions.filter((q) => (answers[q.questionVersionId] ?? []).length > 0).length;
-  const unansweredCount = questions.length - answeredCount;
-  const flaggedCount = questions.filter((q) => flagged[q.questionVersionId]).length;
-  const isCurrentFlagged = question ? flagged[question.questionVersionId] : false;
+  const questions = Array.isArray(attempt.questions) ? attempt.questions : [];
+  const question = questions[current] || null;
+  const answeredCount = questions.filter((q) => q && (answers[q.questionVersionId] ?? []).length > 0).length;
+  const unansweredCount = Math.max(0, questions.length - answeredCount);
+  const flaggedCount = questions.filter((q) => q && flagged[q.questionVersionId]).length;
+  const isCurrentFlagged = question ? flagged[question.questionVersionId] ?? false : false;
   const currentSelected = question ? answers[question.questionVersionId] ?? [] : [];
   const currentSaveStatus = question ? saveState[question.questionVersionId] : undefined;
 
   // Derived effective sections
   const effectiveSections = React.useMemo(() => {
-    if (attempt.sections && attempt.sections.length > 0) return attempt.sections;
+    if (attempt?.sections && attempt.sections.length > 0) return attempt.sections;
     const map = new Map<string, { id: string; title: string; position: number; count: number }>();
     let fallbackPos = 1;
     for (const item of questions) {
+      if (!item) continue;
       const sId = item.sectionId || "default";
       if (!map.has(sId)) {
         map.set(sId, {
@@ -762,20 +837,22 @@ export default function PublicExamAttempt() {
     }
     const derived = Array.from(map.values()).sort((a, b) => a.position - b.position);
     return derived.length > 1 ? derived.map((s) => ({ ...s, questionCount: s.count })) : [];
-  }, [attempt.sections, questions]);
+  }, [attempt?.sections, questions]);
 
   const hasMultipleSections = effectiveSections.length > 1;
   const currentSectionId = question?.sectionId;
   const currentSection = effectiveSections.find((s) => s.id === currentSectionId) || (effectiveSections[0] ?? null);
   const currentSectionQuestions = currentSection
-    ? questions.filter((item) => item.sectionId === currentSection.id)
+    ? questions.filter((item) => item && item.sectionId === currentSection.id)
     : questions;
-  const questionIndexInSection = currentSectionQuestions.findIndex((item) => item.questionVersionId === question?.questionVersionId) + 1;
+  const questionIndexInSection = currentSection && question
+    ? currentSectionQuestions.findIndex((item) => item?.questionVersionId === question.questionVersionId) + 1
+    : 0;
 
   const isLastQuestionOfCurrentSection = React.useMemo(() => {
-    if (!currentSection || currentSectionQuestions.length === 0) return false;
+    if (!currentSection || currentSectionQuestions.length === 0 || !question) return false;
     const lastQ = currentSectionQuestions[currentSectionQuestions.length - 1];
-    return question?.questionVersionId === lastQ.questionVersionId;
+    return lastQ ? question.questionVersionId === lastQ.questionVersionId : false;
   }, [currentSection, currentSectionQuestions, question]);
 
   React.useEffect(() => {
@@ -843,7 +920,7 @@ export default function PublicExamAttempt() {
               />
             </div>
             <div className="font-bold text-[15px] truncate max-w-[180px] sm:max-w-xs md:max-w-md flex items-center gap-2">
-              <span>{attempt.exam.title}</span>
+              <span>{attempt?.exam?.title ?? "Examination"}</span>
               {currentSection && (
                 <>
                   <span className="text-blue-300 dark:text-slate-500 font-normal">|</span>
@@ -1029,143 +1106,151 @@ export default function PublicExamAttempt() {
                   No active question.
                 </div>
               ) : (
-                <div>
-                  {/* Section Navigation Tabs (When exam has multiple sections) */}
-                  {hasMultipleSections && (
-                    <div className="mb-6 flex items-center gap-2 p-1.5 bg-gray-100/90 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-2xs">
-                      {effectiveSections.map((sec, idx) => {
-                        const isActive = sec.id === currentSectionId;
-                        const secQuestions = questions.filter((item) => item.sectionId === sec.id);
-                        const secAnswered = secQuestions.filter((item) => (answers[item.questionVersionId] ?? []).length > 0).length;
-                        const firstQIdx = questions.findIndex((item) => item.sectionId === sec.id);
+                <QuestionErrorBoundary>
+                  <div>
+                    {/* Section Navigation Tabs (When exam has multiple sections) */}
+                    {hasMultipleSections && (
+                      <div className="mb-6 flex items-center gap-2 p-1.5 bg-gray-100/90 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-2xs">
+                        {effectiveSections.map((sec, idx) => {
+                          const isActive = sec.id === currentSectionId;
+                          const secQuestions = questions.filter((item) => item && item.sectionId === sec.id);
+                          const secAnswered = secQuestions.filter((item) => (answers[item.questionVersionId] ?? []).length > 0).length;
+                          const firstQIdx = questions.findIndex((item) => item && item.sectionId === sec.id);
 
-                        return (
-                          <button
-                            key={sec.id}
-                            type="button"
-                            onClick={() => {
-                              if (firstQIdx >= 0) setCurrent(firstQIdx);
-                            }}
-                            className={cn(
-                              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer",
-                              isActive
-                                ? "bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs border border-gray-200/90 dark:border-slate-700"
-                                : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50"
-                            )}
-                          >
-                            <span
+                          return (
+                            <button
+                              key={sec.id}
+                              type="button"
+                              onClick={() => {
+                                if (firstQIdx >= 0) setCurrent(firstQIdx);
+                              }}
                               className={cn(
-                                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black",
-                                completedSectionIds.has(sec.id)
-                                  ? "bg-emerald-600 text-white"
-                                  : isActive
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
-                              )}
-                            >
-                              {completedSectionIds.has(sec.id) ? "✓" : String.fromCharCode(65 + idx)}
-                            </span>
-                            <span>{sec.title}</span>
-                            <span
-                              className={cn(
-                                "text-[11px] px-2 py-0.5 rounded-full font-medium",
+                                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer",
                                 isActive
-                                  ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
-                                  : "bg-gray-200/70 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
+                                  ? "bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs border border-gray-200/90 dark:border-slate-700"
+                                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50"
                               )}
                             >
-                              {secAnswered}/{secQuestions.length}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col gap-2 border-b border-gray-200 dark:border-slate-800 pb-4 mb-6">
-                    {hasMultipleSections && currentSection && (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                          <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400" />
-                          {currentSection.title}
-                          {questionIndexInSection > 0 && ` • Question ${questionIndexInSection} of ${currentSectionQuestions.length}`}
-                        </span>
+                              <span
+                                className={cn(
+                                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black",
+                                  completedSectionIds.has(sec.id)
+                                    ? "bg-emerald-600 text-white"
+                                    : isActive
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
+                                )}
+                              >
+                                {completedSectionIds.has(sec.id) ? "✓" : String.fromCharCode(65 + idx)}
+                              </span>
+                              <span>{sec.title}</span>
+                              <span
+                                className={cn(
+                                  "text-[11px] px-2 py-0.5 rounded-full font-medium",
+                                  isActive
+                                    ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                                    : "bg-gray-200/70 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
+                                )}
+                              >
+                                {secAnswered}/{secQuestions.length}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                        Question {current + 1} of {questions.length}
-                        {isCurrentFlagged && <Flag size={20} className="text-amber-600 fill-amber-600" />}
-                      </h2>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-slate-400">
-                          {question.marks} mark{Number(question.marks) === 1 ? "" : "s"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => toggleFlag(question)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer",
-                            isCurrentFlagged
-                              ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200"
-                              : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50"
-                          )}
-                        >
-                          <Flag size={13} />
-                          {isCurrentFlagged ? "Flagged" : "Flag"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Question Stem Text and Diagrams */}
-                  <DiagramRenderer
-                    text={question.stem?.text ?? ""}
-                    mediaUrl={question.stemMediaUrl}
-                    className="text-[16px] md:text-[18px] text-gray-900 dark:text-slate-100 mb-6 font-medium"
-                  />
-
-                  {/* Options */}
-                  <div className="space-y-3.5 mb-8">
-                    {question.options.map((option, idx) => {
-                      const isSelected = currentSelected.includes(option.position);
-                      return (
-                        <label
-                          key={option.id}
-                          onClick={() => choose(question, option.position)}
-                          className={cn(
-                            "flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer select-none",
-                            isSelected
-                              ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 shadow-2xs"
-                              : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-gray-300 dark:hover:border-slate-700 text-gray-800 dark:text-slate-200"
-                          )}
-                        >
-                          <div
+                    <div className="flex flex-col gap-2 border-b border-gray-200 dark:border-slate-800 pb-4 mb-6">
+                      {hasMultipleSections && currentSection && (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400" />
+                            {currentSection.title}
+                            {questionIndexInSection > 0 && ` • Question ${questionIndexInSection} of ${currentSectionQuestions.length}`}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+                          Question {current + 1} of {questions.length}
+                          {isCurrentFlagged && <Flag size={20} className="text-amber-600 fill-amber-600" />}
+                        </h2>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-slate-400">
+                            {question.marks} mark{Number(question.marks) === 1 ? "" : "s"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleFlag(question)}
                             className={cn(
-                              "w-7 h-7 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 mt-0.5 border transition-colors",
-                              isSelected
-                                ? "border-blue-600 bg-blue-600 text-white"
-                                : "border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
+                              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer",
+                              isCurrentFlagged
+                                ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200"
+                                : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50"
                             )}
                           >
-                            {String.fromCharCode(65 + idx)}
-                          </div>
-                          <div className="flex-1 text-[15px] sm:text-[16px] leading-relaxed pt-0.5">
-                            <MathText text={option.body?.text ?? ""} />
-                            {option.mediaUrl && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={mediaSrc(option.mediaUrl) ?? ""}
-                                alt="Option illustration"
-                                className="mt-2 max-h-48 rounded border border-gray-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900 p-2"
-                              />
-                            )}
-                          </div>
-                        </label>
-                      );
-                    })}
+                            <Flag size={13} />
+                            {isCurrentFlagged ? "Flagged" : "Flag"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Question Stem Text and Diagrams */}
+                    <DiagramRenderer
+                      text={extractText(question.stem)}
+                      mediaUrl={question.stemMediaUrl}
+                      className="text-[16px] md:text-[18px] text-gray-900 dark:text-slate-100 mb-6 font-medium"
+                    />
+
+                    {/* Options */}
+                    <div className="space-y-3.5 mb-8">
+                      {Array.isArray(question.options) && question.options.length > 0 ? (
+                        question.options.map((option, idx) => {
+                          const isSelected = currentSelected.includes(option.position);
+                          return (
+                            <label
+                              key={option.id || `opt-${idx}`}
+                              onClick={() => choose(question, option.position)}
+                              className={cn(
+                                "flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer select-none",
+                                isSelected
+                                  ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 shadow-2xs"
+                                  : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-gray-300 dark:hover:border-slate-700 text-gray-800 dark:text-slate-200"
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  "w-7 h-7 rounded-full flex items-center justify-center font-bold text-[13px] shrink-0 mt-0.5 border transition-colors",
+                                  isSelected
+                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    : "border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
+                                )}
+                              >
+                                {String.fromCharCode(65 + idx)}
+                              </div>
+                              <div className="flex-1 text-[15px] sm:text-[16px] leading-relaxed pt-0.5">
+                                <MathText text={extractText(option.body)} />
+                                {option.mediaUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={mediaSrc(option.mediaUrl) ?? ""}
+                                    alt="Option illustration"
+                                    className="mt-2 max-h-48 rounded border border-gray-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900 p-2"
+                                  />
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <div className="text-xs text-gray-500 italic p-3 rounded-lg border border-gray-200 dark:border-slate-800">
+                          No answer options available for this question.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </QuestionErrorBoundary>
               )}
             </div>
 
@@ -1534,7 +1619,7 @@ export default function PublicExamAttempt() {
 
               <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                 {effectiveSections.map((sec, idx) => {
-                  const count = questions.filter((q) => q.sectionId === sec.id).length;
+                  const count = questions.filter((q) => q && q.sectionId === sec.id).length;
                   return (
                     <div
                       key={sec.id}
@@ -1561,7 +1646,7 @@ export default function PublicExamAttempt() {
                 onClick={() => {
                   setShowMultipleSectionsIntro(false);
                   if (effectiveSections.length > 0) {
-                    const firstQIdx = questions.findIndex((q) => q.sectionId === effectiveSections[0].id);
+                    const firstQIdx = questions.findIndex((q) => q && q.sectionId === effectiveSections[0].id);
                     if (firstQIdx >= 0) setCurrent(firstQIdx);
                   }
                 }}
@@ -1599,8 +1684,8 @@ export default function PublicExamAttempt() {
 
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {sectionModalData.pendingSections.map((sec) => {
-                      const secQs = questions.filter((q) => q.sectionId === sec.id);
-                      const ansCount = secQs.filter((q) => (answers[q.questionVersionId] ?? []).length > 0).length;
+                      const secQs = questions.filter((q) => q && q.sectionId === sec.id);
+                      const ansCount = secQs.filter((q) => q && (answers[q.questionVersionId] ?? []).length > 0).length;
                       return (
                         <div
                           key={sec.id}
@@ -1631,7 +1716,7 @@ export default function PublicExamAttempt() {
                         type="button"
                         onClick={() => {
                           const targetSec = sectionModalData.nextSection!;
-                          const firstQIdx = questions.findIndex((q) => q.sectionId === targetSec.id);
+                          const firstQIdx = questions.findIndex((q) => q && q.sectionId === targetSec.id);
                           if (firstQIdx >= 0) setCurrent(firstQIdx);
                           setSectionModalData(null);
                         }}
@@ -1692,8 +1777,8 @@ export default function PublicExamAttempt() {
 
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {showPendingSectionsWarning.map((sec) => {
-                  const secQs = questions.filter((q) => q.sectionId === sec.id);
-                  const ansCount = secQs.filter((q) => (answers[q.questionVersionId] ?? []).length > 0).length;
+                  const secQs = questions.filter((q) => q && q.sectionId === sec.id);
+                  const ansCount = secQs.filter((q) => q && (answers[q.questionVersionId] ?? []).length > 0).length;
                   return (
                     <div
                       key={sec.id}
@@ -1712,7 +1797,7 @@ export default function PublicExamAttempt() {
                   onClick={() => {
                     const firstPending = showPendingSectionsWarning[0];
                     if (firstPending) {
-                      const firstQIdx = questions.findIndex((q) => q.sectionId === firstPending.id);
+                      const firstQIdx = questions.findIndex((q) => q && q.sectionId === firstPending.id);
                       if (firstQIdx >= 0) setCurrent(firstQIdx);
                     }
                     setShowPendingSectionsWarning(null);
@@ -1795,12 +1880,13 @@ function ResultView({
   result,
   slug,
 }: {
-  exam: PublicAttempt["exam"];
+  exam?: PublicAttempt["exam"] | null;
   result: SubmitResult;
   slug: string;
 }) {
   const showScore = result.showResults !== false && result.percent != null;
-  const passed = result.passed ?? (result.percent != null ? result.percent >= (exam.passMark ?? 50) : null);
+  const passMark = exam?.passMark ?? 50;
+  const passed = result.passed ?? (result.percent != null ? result.percent >= passMark : null);
   const router = useRouter();
   const [copied, setCopied] = React.useState(false);
 
@@ -1833,7 +1919,7 @@ function ResultView({
             {result.autoSubmitted ? "Time Elapsed — Exam Submitted" : "Examination Submitted"}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            {exam.title}
+            {exam?.title ?? "Examination"}
             {result.alreadySubmitted ? " • (Session Concluded)" : ""}
           </p>
         </div>
@@ -1928,7 +2014,7 @@ function ResultView({
           >
             Exit Exam
           </button>
-          {exam.allowRetake && (
+          {exam?.allowRetake && (
             <button
               type="button"
               onClick={() => router.push(`/exam/${slug}`)}

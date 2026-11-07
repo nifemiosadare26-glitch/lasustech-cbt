@@ -11,6 +11,7 @@ import {
   Globe, KeyRound, Loader2, Lock, PlayCircle, ShieldCheck, User, Eye, EyeOff,
 } from "lucide-react";
 import {
+  clearAttemptSession,
   publicApi,
   publicErrorMessage,
   readAttemptSession,
@@ -19,17 +20,23 @@ import {
   type PublicExamMeta,
 } from "@/lib/publicExamClient";
 
-const fmtDate = (iso: string | null) =>
-  iso
-    ? new Intl.DateTimeFormat("en-NG", {
-        timeZone: "Africa/Lagos",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date(iso))
-    : null;
+const fmtDate = (iso: string | null) => {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat("en-NG", {
+      timeZone: "Africa/Lagos",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    return null;
+  }
+};
 
 function instructionsText(instructions: unknown): string {
   if (!instructions) return "";
@@ -261,9 +268,20 @@ export default function PublicExamLanding() {
               <p className="mt-1 text-[13px] text-gray-600 dark:text-slate-300">
                 {existing.name ? `${existing.name}, your` : "Your"} attempt is still open in this browser.
               </p>
-              <Button className="mt-4" onClick={() => router.push(`/exam/${slug}/attempt`)}>
-                <PlayCircle size={16} className="mr-2" /> Continue exam
-              </Button>
+              <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                <Button onClick={() => router.push(`/exam/${slug}/attempt`)}>
+                  <PlayCircle size={16} className="mr-2" /> Continue exam
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    clearAttemptSession(slug);
+                    setExisting(null);
+                  }}
+                >
+                  Start Fresh
+                </Button>
+              </div>
             </section>
           )}
         </div>
