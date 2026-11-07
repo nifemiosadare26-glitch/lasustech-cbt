@@ -449,6 +449,7 @@ export default function AdminExamSchedule() {
                                     const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${candidatePath}` : candidatePath;
                                     setParticipationExam({
                                       id: slot.examId || slot.id,
+                                      sittingId: slot.id,
                                       title: slot.examTitle,
                                       courseCode: slot.courseCode,
                                       courseTitle: slot.courseTitle,
@@ -581,6 +582,7 @@ export default function AdminExamSchedule() {
                                         const fullUrl = `${window.location.origin}${candidatePath}`;
                                         setParticipationExam({
                                           id: slot.examId || slot.id,
+                                          sittingId: slot.id,
                                           title: slot.examTitle,
                                           courseCode: slot.courseCode,
                                           courseTitle: slot.courseTitle,

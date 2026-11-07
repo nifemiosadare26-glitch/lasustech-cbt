@@ -28,6 +28,7 @@ import { copyToClipboard } from "@/lib/browser";
 
 export interface CandidateParticipationExam {
   id: string;
+  sittingId?: string | null;
   title: string;
   courseCode?: string | null;
   courseTitle?: string | null;
@@ -96,26 +97,38 @@ export function CandidateParticipationModal({
     ? `${computedPublicUrl}${computedPublicUrl.includes("?") ? "&" : "?"}code=${accessCode}`
     : computedPublicUrl;
 
-  // If code is not available, automatically fetch it
+  // If code is not available, automatically fetch it with resilient fallbacks
   React.useEffect(() => {
     if (!accessCode) {
       let isMounted = true;
       const fetchCode = async () => {
         setBusy(true);
-        try {
-          const endpoint =
-            role === "ADMIN"
-              ? `/admin/schedule/${exam.id}/access-code`
-              : `/lecturer/exams/${exam.id}/access-code`;
-          const res = await apiClient<{ data: { accessCode: string | null } }>(endpoint);
-          if (isMounted && res.data?.accessCode) {
-            setAccessCode(res.data.accessCode);
-            onCodeUpdated?.(res.data.accessCode);
+        const candidates = [
+          exam.sittingId ? `/admin/schedule/${exam.sittingId}/access-code` : null,
+          `/admin/schedule/${exam.id}/access-code`,
+          `/admin/exams/${exam.id}/access-code`,
+          `/lecturer/exams/${exam.id}/access-code`,
+        ].filter(Boolean) as string[];
+
+        let retrieved: string | null = null;
+        for (const endpoint of candidates) {
+          try {
+            const res = await apiClient<{ data: { accessCode: string | null } }>(endpoint);
+            if (res.data?.accessCode) {
+              retrieved = res.data.accessCode;
+              break;
+            }
+          } catch {
+            // try next endpoint
           }
-        } catch {
-          // silently continue
-        } finally {
-          if (isMounted) setBusy(false);
+        }
+
+        if (isMounted) {
+          if (retrieved) {
+            setAccessCode(retrieved);
+            onCodeUpdated?.(retrieved);
+          }
+          setBusy(false);
         }
       };
       void fetchCode();
@@ -123,7 +136,7 @@ export function CandidateParticipationModal({
         isMounted = false;
       };
     }
-  }, [accessCode, exam.id, role, onCodeUpdated]);
+  }, [accessCode, exam.id, exam.sittingId, onCodeUpdated]);
 
   const copyText = async (text: string, key: string, label: string) => {
     await copyToClipboard(text);
@@ -137,22 +150,36 @@ export function CandidateParticipationModal({
   const handleRegenerateCode = async () => {
     setBusy(true);
     setConfirmRegen(false);
-    try {
-      const endpoint =
-        role === "ADMIN"
-          ? `/admin/schedule/${exam.id}/access-code`
-          : `/lecturer/exams/${exam.id}/access-code`;
-      const res = await apiClient<{ data: { accessCode: string } }>(endpoint, { method: "POST" });
-      if (res.data?.accessCode) {
-        setAccessCode(res.data.accessCode);
-        onCodeUpdated?.(res.data.accessCode);
-        toast.show("Access code regenerated successfully!");
+    const candidates = [
+      exam.sittingId ? `/admin/schedule/${exam.sittingId}/access-code` : null,
+      `/admin/schedule/${exam.id}/access-code`,
+      `/admin/exams/${exam.id}/access-code`,
+      `/lecturer/exams/${exam.id}/access-code`,
+    ].filter(Boolean) as string[];
+
+    let generated: string | null = null;
+    let lastError: unknown = null;
+
+    for (const endpoint of candidates) {
+      try {
+        const res = await apiClient<{ data: { accessCode: string } }>(endpoint, { method: "POST" });
+        if (res.data?.accessCode) {
+          generated = res.data.accessCode;
+          break;
+        }
+      } catch (e) {
+        lastError = e;
       }
-    } catch (e) {
-      toast.show(errMessage(e), "err");
-    } finally {
-      setBusy(false);
     }
+
+    if (generated) {
+      setAccessCode(generated);
+      onCodeUpdated?.(generated);
+      toast.show("Access code generated successfully!");
+    } else {
+      toast.show(errMessage(lastError), "err");
+    }
+    setBusy(false);
   };
 
   const copyFullCandidateNotice = async () => {
@@ -299,7 +326,19 @@ export function CandidateParticipationModal({
                 </span>
               </div>
             ) : (
-              <span className="text-[13px] text-gray-500 italic">No access code generated yet</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-gray-500 italic">No access code generated yet</span>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="h-7 px-2.5 text-[11px] bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs"
+                  disabled={busy}
+                  onClick={() => void handleRegenerateCode()}
+                >
+                  {busy ? <Loader2 size={12} className="animate-spin mr-1" /> : <KeyRound size={12} className="mr-1" />}
+                  Generate Code
+                </Button>
+              </div>
             )}
 
             {accessCode && (
