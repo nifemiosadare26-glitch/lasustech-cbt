@@ -88,7 +88,7 @@ export function CandidateParticipationModal({
   const slug = exam.publicSlug || exam.id;
   const publicRelativePath = exam.audience === "PUBLIC" ? `/exam/${slug}` : `/student/exam/${exam.id}/start`;
   const computedPublicUrl = exam.publicUrl
-    ? exam.publicUrl
+    ? exam.publicUrl.replace(/\/public\/exam\//, "/exam/")
     : origin
       ? `${origin}${publicRelativePath}`
       : publicRelativePath;
