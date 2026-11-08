@@ -760,54 +760,7 @@ export default function PublicExamAttempt() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeTool, attempt, current, result, calcExpr]);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-gray-50 dark:bg-slate-950 space-y-4">
-        <Loader2 className="animate-spin text-blue-600" size={36} />
-        <p className="text-sm font-semibold text-gray-600 dark:text-slate-300">
-          Loading secure CBT examination session...
-        </p>
-      </div>
-    );
-  }
-
-  if (loadError || !attempt) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-gray-50 dark:bg-slate-950 p-6">
-        <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 text-center">
-          <AlertCircle className="mx-auto text-rose-600" size={36} />
-          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">Unable to Open Exam</h2>
-          <p className="text-sm text-gray-600 dark:text-slate-400">
-            {loadError ?? "This examination is not available."}
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                clearAttemptSession(slug);
-                router.replace(`/exam/${slug}`);
-              }}
-              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer"
-            >
-              Re-enter Access Code
-            </button>
-            <Link
-              href={`/exam/${slug}`}
-              className="w-full sm:w-auto inline-block px-5 py-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              Return to Exam Info
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (result) {
-    return <ResultView exam={attempt?.exam} result={result} slug={slug} />;
-  }
-
-  const questions = Array.isArray(attempt.questions) ? attempt.questions : [];
+  const questions = Array.isArray(attempt?.questions) ? attempt.questions : [];
   const question = questions[current] || null;
   const answeredCount = questions.filter((q) => q && (answers[q.questionVersionId] ?? []).length > 0).length;
   const unansweredCount = Math.max(0, questions.length - answeredCount);
@@ -903,6 +856,53 @@ export default function PublicExamAttempt() {
       handleOpenSubmit();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-gray-50 dark:bg-slate-950 space-y-4">
+        <Loader2 className="animate-spin text-blue-600" size={36} />
+        <p className="text-sm font-semibold text-gray-600 dark:text-slate-300">
+          Loading secure CBT examination session...
+        </p>
+      </div>
+    );
+  }
+
+  if (loadError || !attempt) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-gray-50 dark:bg-slate-950 p-6">
+        <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-4 text-center">
+          <AlertCircle className="mx-auto text-rose-600" size={36} />
+          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">Unable to Open Exam</h2>
+          <p className="text-sm text-gray-600 dark:text-slate-400">
+            {loadError ?? "This examination is not available."}
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                clearAttemptSession(slug);
+                router.replace(`/exam/${slug}`);
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer"
+            >
+              Re-enter Access Code
+            </button>
+            <Link
+              href={`/exam/${slug}`}
+              className="w-full sm:w-auto inline-block px-5 py-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Return to Exam Info
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (result) {
+    return <ResultView exam={attempt?.exam} result={result} slug={slug} />;
+  }
 
   return (
     <RoleThemeProvider role="student" className="h-full">
