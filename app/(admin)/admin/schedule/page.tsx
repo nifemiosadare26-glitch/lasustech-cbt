@@ -756,7 +756,11 @@ export default function AdminExamSchedule() {
           onClose={() => setParticipationExam(null)}
           onCodeUpdated={(newCode) => {
             if (participationExam) {
-              setRevealedCodes((prev) => ({ ...prev, [participationExam.id]: newCode }));
+              setRevealedCodes((prev) => ({
+                ...prev,
+                [participationExam.id]: newCode,
+                ...(participationExam.sittingId ? { [participationExam.sittingId]: newCode } : {}),
+              }));
               setParticipationExam((prev) => (prev ? { ...prev, accessCode: newCode } : null));
               void reload();
             }

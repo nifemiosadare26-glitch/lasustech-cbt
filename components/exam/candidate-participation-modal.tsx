@@ -86,7 +86,7 @@ export function CandidateParticipationModal({
   // Compute public URLs
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const slug = exam.publicSlug || exam.id;
-  const publicRelativePath = exam.audience === "PUBLIC" ? `/exam/${slug}` : `/student/exam/${exam.id}/start`;
+  const publicRelativePath = exam.audience === "PUBLIC" ? `/exam/${slug}` : `/student/exam/${exam.sittingId || exam.id}/start`;
   const computedPublicUrl = exam.publicUrl
     ? exam.publicUrl.replace(/\/public\/exam\//, "/exam/")
     : origin
@@ -127,8 +127,11 @@ export function CandidateParticipationModal({
           if (retrieved) {
             setAccessCode(retrieved);
             onCodeUpdated?.(retrieved);
+            setBusy(false);
+          } else {
+            // Auto-generate code silently if none exists yet!
+            void handleRegenerateCode(true);
           }
-          setBusy(false);
         }
       };
       void fetchCode();
@@ -147,7 +150,7 @@ export function CandidateParticipationModal({
     }, 2500);
   };
 
-  const handleRegenerateCode = async () => {
+  const handleRegenerateCode = async (silent = false) => {
     setBusy(true);
     setConfirmRegen(false);
     const candidates = [
@@ -175,8 +178,8 @@ export function CandidateParticipationModal({
     if (generated) {
       setAccessCode(generated);
       onCodeUpdated?.(generated);
-      toast.show("Access code generated successfully!");
-    } else {
+      if (!silent) toast.show("Access code generated successfully!");
+    } else if (!silent) {
       toast.show(errMessage(lastError), "err");
     }
     setBusy(false);
