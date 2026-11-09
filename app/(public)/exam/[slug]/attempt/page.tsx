@@ -188,6 +188,10 @@ export default function PublicExamAttempt() {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
 
+  // Invigilator Proctor Intervention & Paused State
+  const [isPausedByProctor, setIsPausedByProctor] = React.useState<boolean>(false);
+  const [proctorMessage, setProctorMessage] = React.useState<string | null>(null);
+
   // Anti-cheat tab switch monitoring state
   const [tabSwitches, setTabSwitches] = React.useState(0);
   const [tabWarningModal, setTabWarningModal] = React.useState<number | null>(null);
@@ -350,19 +354,37 @@ export default function PublicExamAttempt() {
   React.useEffect(() => {
     if (!session || result) return;
     const interval = setInterval(() => {
-      publicApi<{ data: { status: string; remainingSec: number } }>(
+      publicApi<{
+        data: {
+          status: string;
+          remainingSec: number;
+          isPaused?: boolean;
+          deadlineAt?: string;
+          message?: { id: string; text: string; sentAt: string } | null;
+        };
+      }>(
         `/public/attempts/${session.attemptId}/heartbeat`,
         { method: "POST", token: session.token },
       )
         .then((res) => {
           if (isClosed(res.data.status)) {
             void submit(true);
-          } else if (typeof res.data.remainingSec === "number") {
-            setRemaining((prev) => (prev === null ? res.data.remainingSec : Math.min(prev, res.data.remainingSec)));
+          } else {
+            if (res.data.isPaused || res.data.status === "PAUSED") {
+              setIsPausedByProctor(true);
+            } else if (res.data.status === "IN_PROGRESS") {
+              setIsPausedByProctor(false);
+            }
+            if (typeof res.data.remainingSec === "number") {
+              setRemaining((prev) => (prev === null ? res.data.remainingSec : Math.min(prev, res.data.remainingSec)));
+            }
+            if (res.data.message?.text) {
+              setProctorMessage(res.data.message.text);
+            }
           }
         })
         .catch(() => {});
-    }, 30000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [session, result]);
@@ -458,7 +480,7 @@ export default function PublicExamAttempt() {
 
   // --- Camera Acquisition & Stream Setup ------------------------------------
   React.useEffect(() => {
-    if (!attempt || !attempt.requireWebcam || result) return;
+    if (!attempt || attempt.requireWebcam === false || result) return;
 
     let unmounted = false;
 
@@ -524,7 +546,41 @@ export default function PublicExamAttempt() {
       }
     };
 
+    const handleIntervene = (data: any) => {
+      if (data?.attemptId && session?.attemptId && data.attemptId !== session.attemptId) return;
+
+      if (data?.action === "MESSAGE") {
+        const msg = data.message || data.reason || "Invigilator message";
+        setProctorMessage(msg);
+      } else if (data?.action === "EXTEND") {
+        const minutes = Number(data.extraMinutes ?? data.minutes);
+        if (Number.isFinite(minutes) && minutes > 0) {
+          setRemaining((prev) => (prev !== null ? prev + minutes * 60 : minutes * 60));
+          const msg = `Extra time granted: +${minutes} minutes added to your examination timer.`;
+          setProctorMessage(msg);
+        }
+      } else if (data?.action === "PAUSE") {
+        setIsPausedByProctor(true);
+      } else if (data?.action === "RESUME") {
+        setIsPausedByProctor(false);
+      } else if (data?.action === "END") {
+        setNotice("Your examination has been concluded by the invigilator. Submitting script...");
+        setTimeout(() => {
+          void submit(true);
+        }, 1200);
+      }
+    };
+
+    const handleExtendAll = (data: any) => {
+      if (typeof data?.minutes === "number" && data.minutes > 0) {
+        setRemaining((prev) => (prev !== null ? prev + data.minutes * 60 : data.minutes * 60));
+        setProctorMessage(`Hall announcement: All candidates have been granted +${data.minutes} extra minutes.`);
+      }
+    };
+
     socket.on("sitting.broadcast", handleBroadcast);
+    socket.on("sitting.extend_all", handleExtendAll);
+    socket.on("attempt.intervene", handleIntervene);
     socket.on("event", handleBroadcast);
 
     let frameInterval: NodeJS.Timeout | null = null;
@@ -546,17 +602,20 @@ export default function PublicExamAttempt() {
         socket.emit("camera_frame", {
           sittingId: attempt.sittingId,
           attemptId: session.attemptId,
-          studentId: session.name || "Guest Candidate",
+          studentId: session.attemptId,
           studentName: session.name || "Guest Candidate",
           matricNo: "EXT-" + session.attemptId.slice(0, 6).toUpperCase(),
           image: dataUrl,
+          frame: dataUrl,
         });
-      }, 15000);
+      }, 3500);
     }
 
     return () => {
       if (frameInterval) clearInterval(frameInterval);
       socket.off("sitting.broadcast", handleBroadcast);
+      socket.off("sitting.extend_all", handleExtendAll);
+      socket.off("attempt.intervene", handleIntervene);
       socket.off("event", handleBroadcast);
       socket.emit("leave_sitting", attempt.sittingId);
     };
@@ -944,7 +1003,7 @@ export default function PublicExamAttempt() {
             </div>
 
             {/* Live Proctor Monitored Indicator Badge */}
-            {attempt.requireWebcam ? (
+            {attempt.requireWebcam !== false ? (
               <div
                 className={cn(
                   "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold tracking-wide border shadow-2xs transition-colors",
@@ -1293,7 +1352,7 @@ export default function PublicExamAttempt() {
           {/* Right Column: Question Palette Sidebar matching Student CBT */}
           <div className="w-80 border-l border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 h-full overflow-hidden">
             {/* Candidate Live Proctor Camera Feed (Docked cleanly in sidebar - NEVER overlaps Submit Exam) */}
-            {attempt.requireWebcam && (
+            {attempt.requireWebcam !== false && (
               <div className="p-3 border-b border-gray-100 dark:border-slate-800 bg-slate-900 shrink-0">
                 <div className="relative w-full h-36 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 shadow-inner flex items-center justify-center">
                   {cameraActive ? (
@@ -1872,6 +1931,46 @@ export default function PublicExamAttempt() {
                   }}
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Proctor Paused Overlay */}
+        {isPausedByProctor && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-amber-300 dark:border-amber-700 text-center space-y-4">
+              <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center mx-auto">
+                <Clock size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Examination Paused
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                Your exam session has been temporarily paused by the invigilator. Please stay at your workstation.
+                Your answers are securely saved and your timer will resume once the invigilator unpauses your session.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Proctor Direct Message Notice */}
+        {proctorMessage && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[110] w-[94%] max-w-xl animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto">
+            <div className="bg-slate-900 text-white px-5 py-4 rounded-2xl shadow-2xl border-2 border-blue-500/60 flex items-start gap-4">
+              <div className="w-9 h-9 rounded-xl bg-blue-600/30 text-blue-400 flex items-center justify-center shrink-0 mt-0.5 border border-blue-500/30">
+                <Megaphone size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-0.5">Invigilator Message</div>
+                <p className="text-sm font-medium text-slate-200 leading-relaxed">{proctorMessage}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProctorMessage(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
             </div>
           </div>
         )}
