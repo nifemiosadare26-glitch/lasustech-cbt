@@ -378,9 +378,14 @@ export default function PublicExamAttempt() {
         await publicApi(`/public/attempts/${session.attemptId}/answers`, {
           method: "POST",
           token: session.token,
-          body: JSON.stringify({ questionVersionId, selectedPositions: positions }),
+          body: JSON.stringify({
+            questionVersionId,
+            positions,
+            selectedPositions: positions,
+          }),
         });
         setSaveState((prev) => ({ ...prev, [questionVersionId]: "saved" }));
+        setNotice(null);
       })
       .catch((error) => {
         setSaveState((prev) => ({ ...prev, [questionVersionId]: "error" }));
